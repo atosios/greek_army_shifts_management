@@ -1,0 +1,58 @@
+name: Build Electron App
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Angular app
+        run: npm run app:build
+
+      - name: Build Electron portable exe
+        run: npx electron-builder --win portable --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload exe as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShiftManager-${{ github.sha }}
+          path: dist-portable/ShiftManager.exe
+          retention-days: 30
+
+      # Only runs when a version tag is pushed (e.g. v1.0.0)
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ShiftManager ${{ github.ref_name }}
+          body: |
+            ## Greek Army Shifts Manager ${{ github.ref_name }}
+
+            ### Installation
+            Download `ShiftManager.exe` below and run it — no installation required (portable).
+          files: dist-portable/ShiftManager.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
