@@ -1,0 +1,264 @@
+<div class="leaves-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Άδειες & Απαλλαγές</h1>
+      <p class="page-subtitle">Καταγραφή μη διαθέσιμου προσωπικού για την ακριβή και αντικειμενική κατανομή των υπηρεσιών.</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="openAddModal()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Καταχώρηση Άδειας / Ε.Υ.
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabs & Search Toolbar -->
+  <div class="card toolbar-card">
+    <div class="tabs-row">
+      <button 
+        class="tab-btn" 
+        [class.active]="selectedTab() === 'ACTIVE_TODAY'"
+        (click)="selectedTab.set('ACTIVE_TODAY')">
+        Ενεργές Σήμερα
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="selectedTab() === 'UPCOMING'"
+        (click)="selectedTab.set('UPCOMING')">
+        Προσεχείς
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="selectedTab() === 'ALL'"
+        (click)="selectedTab.set('ALL')">
+        Όλες
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="selectedTab() === 'PAST'"
+        (click)="selectedTab.set('PAST')">
+        Ιστορικό
+      </button>
+    </div>
+
+    <div class="search-box">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input 
+        type="text" 
+        class="form-control search-input" 
+        placeholder="Αναζήτηση με ονοματεπώνυμο ή τύπο..."
+        [value]="searchQuery()"
+        (input)="searchQuery.set($any($event.target).value)"
+      />
+    </div>
+  </div>
+
+  <!-- Leaves Table -->
+  <div class="data-table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Α/Α</th>
+          <th>Στέλεχος / Στρατιώτης</th>
+          <th>Τύπος</th>
+          <th>Από</th>
+          <th>Έως</th>
+          <th>Κατάσταση</th>
+          <th style="text-align: right;">Ενέργειες</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (l of filteredLeaves(); track l.id; let idx = $index) {
+          <tr>
+            <td><span class="text-dim">{{ idx + 1 }}</span></td>
+            <td>
+              <strong class="person-fullname">{{ caps(l.personName) }}</strong>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="getTypeBadgeClass(l.type)">
+                {{ l.type }}
+              </span>
+            </td>
+            <td><span class="date-tag">{{ formatGreekDate(l.startDate) }}</span></td>
+            <td><span class="date-tag">{{ formatGreekDate(l.endDate) }}</span></td>
+            <td>
+              <span class="badge" [class.badge-success]="computeStatus(l) === 'Ενεργή'" [class.badge-corporate]="computeStatus(l) === 'Ολοκληρωμένη'" [class.badge-info]="computeStatus(l) === 'Προσεχής'">
+                {{ computeStatus(l) }}
+              </span>
+            </td>
+            <td style="text-align: right;">
+              <div class="row-actions">
+                <button class="btn btn-secondary btn-sm" (click)="openEditModal(l)" title="Επεξεργασία">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                </button>
+                <button class="btn btn-secondary btn-sm" (click)="deleteLeave(l)" title="Διαγραφή">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7" class="text-center py-4">
+              <div class="empty-state">
+                <p>Δεν βρέθηκαν καταχωρημένες άδειες ή απαλλαγές για την επιλεγμένη προβολή.</p>
+                <button class="btn btn-primary btn-sm" (click)="openAddModal()">
+                  Καταχώρηση Νέας Άδειας
+                </button>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Add/Edit Leave Modal -->
+  @if (isModalOpen()) {
+    <div class="modal-overlay" (click)="closeModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            {{ editingLeaveId() ? 'Επεξεργασία Άδειας / Απαλλαγής' : 'Νέα Άδεια / Απαλλαγή' }}
+          </h2>
+          <button class="close-btn" (click)="closeModal()">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="form-group person-search-group">
+            <label class="form-label font-bold">Στέλεχος / Στρατιώτης *</label>
+            
+            <div class="combobox-wrapper">
+              <div class="combobox-input-box" [class.is-focused]="isPersonDropdownOpen()">
+                <svg class="combobox-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input 
+                  type="text" 
+                  class="combobox-input" 
+                  placeholder="Πληκτρολογήστε όνομα, βαθμό ή λόχο..."
+                  [value]="personSearchQuery()"
+                  (input)="onPersonSearchInput($any($event.target).value)"
+                  (focus)="openPersonDropdown()"
+                  autocomplete="off"
+                />
+                @if (personSearchQuery()) {
+                  <button 
+                    type="button" 
+                    class="combobox-action-btn" 
+                    (click)="clearPersonSearch($event)"
+                    title="Καθαρισμός">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="6" x2="6" y2="18"/>
+                      <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                }
+                <button 
+                  type="button" 
+                  class="combobox-action-btn toggle-arrow" 
+                  [class.is-open]="isPersonDropdownOpen()"
+                  (click)="togglePersonDropdown($event)"
+                  title="Άνοιγμα / Κλείσιμο λίστας">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Dropdown Menu -->
+              @if (isPersonDropdownOpen()) {
+                <div class="combobox-dropdown-backdrop" (click)="closePersonDropdown()"></div>
+                <div class="combobox-menu">
+                  <div class="combobox-count-bar">
+                    <span>Αποτελέσματα: {{ filteredPersonnel().length }} άτομα</span>
+                  </div>
+                  <div class="combobox-items-scroll">
+                    @for (p of filteredPersonnel(); track p.id) {
+                      <div 
+                        class="combobox-item" 
+                        [class.selected]="p.id === formModel.personId"
+                        (click)="selectPerson(p)">
+                        <div class="item-left">
+                          <span class="item-rank-badge">{{ caps(p.rankShort) }}</span>
+                          <span class="item-name">{{ caps(p.fullName) }}</span>
+                        </div>
+                        <div class="item-right">
+                          <span class="item-meta">{{ p.company }}</span>
+                          @if (p.specialty) {
+                            <span class="item-spec">• {{ p.specialty }}</span>
+                          }
+                          @if (p.id === formModel.personId) {
+                            <svg class="item-check-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                          }
+                        </div>
+                      </div>
+                    } @empty {
+                      <div class="combobox-empty-item">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <circle cx="12" cy="12" r="10"/>
+                          <line x1="12" y1="8" x2="12" y2="12"/>
+                          <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        <span>Δεν βρέθηκε κανένα άτομο με "{{ personSearchQuery() }}"</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Τύπος Άδειας / Εξαίρεσης</label>
+            <select class="form-select" [(ngModel)]="formModel.type">
+              @for (t of leaveTypes; track t) {
+                <option [value]="t">{{ t }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="dates-grid">
+            <div class="form-group">
+              <label class="form-label">Ημερομηνία Από (Έναρξη) *</label>
+              <input type="date" class="form-control" [(ngModel)]="formModel.startDate" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Ημερομηνία Έως (Λήξη) *</label>
+              <input type="date" class="form-control" [(ngModel)]="formModel.endDate" />
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="closeModal()">Ακύρωση</button>
+          <button class="btn btn-primary" (click)="saveLeave()">
+            {{ editingLeaveId() ? 'Ενημέρωση' : 'Καταχώρηση' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

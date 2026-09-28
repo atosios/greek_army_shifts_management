@@ -1,0 +1,340 @@
+<div class="calendar-page">
+  <!-- 1. Page Header (Standard Executive UI) -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Ημερολόγιο</h1>
+      <p class="page-subtitle">Μηνιαία επισκόπηση διαταγών, οριστικοποιήσεων και γρήγορη πρόσβαση σε κάθε ημέρα.</p>
+    </div>
+  </div>
+
+  <!-- 2. Date Navigation & Actions Bar (Identical UI to Produce Duties) -->
+  <div class="card scheduler-control-bar">
+    <div class="control-bar-left">
+      <div class="date-navigation-group">
+        <button type="button" class="btn btn-secondary btn-icon-nav" (click)="prevMonth()" title="Προηγούμενος Μήνας">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+
+        <div class="single-date-box" title="Τρέχων μήνας και έτος">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="calendar-icon">
+            <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          <span class="date-ddmmyyyy-text">{{ monthYearLabel() }}</span>
+        </div>
+
+        <button type="button" class="btn btn-secondary btn-icon-nav" (click)="nextMonth()" title="Επόμενος Μήνας">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+
+        <button type="button" class="btn btn-secondary btn-sm" (click)="goToToday()" title="Επιστροφή στον τρέχοντα μήνα">
+          Σήμερα
+        </button>
+      </div>
+    </div>
+
+    <!-- Right: 'Πρόγραμμα Σήμερα' on the far right (matches produce duties control bar) -->
+    <div class="control-bar-right">
+      <a [routerLink]="['/scheduler']" [queryParams]="{ date: todayDateStr }" class="btn btn-primary btn-sm btn-today-schedule" title="Μετάβαση στο πρόγραμμα της σημερινής ημέρας">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <span>Πρόγραμμα Σήμερα</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- 3. Calendar Main Grid -->
+  <div class="calendar-grid-card card">
+    <!-- Day of Week Headers -->
+    <div class="calendar-grid-header">
+      @for (w of greekWeekdays; track $index; let idx = $index) {
+      <div class="weekday-col-header" [class.is-weekend]="idx === 5 || idx === 6" [class.is-friday]="idx === 4">
+        <span class="w-full">{{ w }}</span>
+        <span class="w-short">{{ greekWeekdaysShort[idx] }}</span>
+      </div>
+      }
+    </div>
+
+    <!-- Days Grid Cells (7 columns) -->
+    <div class="calendar-grid-cells">
+      @for (day of calendarDays(); track day.dateStr) {
+      <div class="calendar-day-cell"
+        [class.other-month]="!day.isCurrentMonth"
+        [class.is-today]="day.isToday"
+        [class.is-weekend]="day.isWeekend"
+        [class.is-finalized]="day.isFinalized"
+        [class.has-schedule]="day.hasSchedule"
+        (click)="onDayClick(day)"
+        role="button"
+        tabindex="0"
+        title="Κάντε κλικ για προεπισκόπηση υπηρεσιών ({{ day.dateStr }})">
+
+        <!-- Top: Date Number & Badges -->
+        <div class="cell-top-bar">
+          <div class="day-number-wrap">
+            <span class="day-number">{{ day.dayNumber }}</span>
+            @if (day.isToday) {
+            <span class="today-tag">ΣΗΜΕΡΑ</span>
+            }
+          </div>
+
+          <div class="cell-badges-wrap">
+            @if (day.isFinalized) {
+            <span class="status-pill finalized-pill" title="Οριστικοποιημένο πρόγραμμα (μόρια πιστωμένα)">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <span>Οριστ.</span>
+            </span>
+            } @else if (day.hasSchedule) {
+            <span class="status-pill draft-pill" title="Πρόχειρο πρόγραμμα">
+              <span>{{ day.mannedSlots }}/{{ day.totalSlots }}</span>
+            </span>
+            }
+          </div>
+        </div>
+
+        <!-- Middle: Duties Chips -->
+        <div class="cell-duties-body">
+          @if (day.hasSchedule && day.dutiesSummary.length > 0) {
+          <div class="duties-chips-list">
+            @for (duty of day.dutiesSummary.slice(0, 4); track duty.dutyTypeId) {
+            <div class="cell-duty-chip" [class.is-fully-manned]="duty.manned === duty.total && duty.total > 0" [class.has-empty]="duty.manned < duty.total">
+              <span class="chip-short">{{ duty.shortName }}</span>
+              <span class="chip-count">{{ duty.manned }}/{{ duty.total }}</span>
+            </div>
+            }
+            @if (day.dutiesSummary.length > 4) {
+            <span class="cell-more-duties">+{{ day.dutiesSummary.length - 4 }} ακόμη</span>
+            }
+          </div>
+          }
+        </div>
+
+        <!-- Bottom: Active Leaves / Weekend Off Indicator -->
+        <div class="cell-bottom-bar">
+          @if (day.hasSchedule && day.activeLeavesCount > 0) {
+          <span class="cell-leave-badge" title="{{ day.activeLeavesCount }} στρατιώτες σε άδεια ή ΕΥ">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <span>{{ day.activeLeavesCount }} σε άδεια</span>
+          </span>
+          }
+
+          @if (day.hasSchedule && day.isWeekend && day.weekendPlan) {
+          <span class="cell-weekend-plan-badge" title="Κατανομή εξόδων Σ/Κ">
+            <span class="dot-sat"></span>
+            <span class="dot-sun"></span>
+          </span>
+          }
+        </div>
+      </div>
+      }
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- DAY DETAILS PREVIEW MODAL -->
+<!-- ============================================================ -->
+@if (selectedDayPreview(); as day) {
+<div class="modal-backdrop preview-backdrop" (click)="closePreview()">
+  <div class="modal-card preview-modal-card" (click)="$event.stopPropagation()">
+    <!-- Modal Header -->
+    <div class="modal-header preview-header">
+      <div class="preview-title-wrap">
+        <div class="preview-date-badge">
+          <span class="preview-date-num">{{ day.dayNumber }}</span>
+          <span class="preview-date-month">{{ formatDateDdMm(day.dateStr) }}</span>
+        </div>
+        <div class="preview-title-content">
+          <h2 class="modal-title">{{ formatGreekDate(day.dateStr) }}</h2>
+          <div class="preview-status-badges">
+            @if (day.isFinalized) {
+            <span class="finalized-tag">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Οριστικοποιημένο
+            </span>
+            } @else if (day.hasSchedule && day.mannedSlots > 0) {
+            <span class="draft-tag">
+              Πρόχειρο Πρόγραμμα
+            </span>
+            } @else {
+            <span class="empty-tag">
+              Χωρίς υπηρεσίες
+            </span>
+            }
+
+            @if (day.isWeekend) {
+            <span class="weekend-tag">Σαββατοκύριακο</span>
+            }
+          </div>
+        </div>
+      </div>
+      <button type="button" class="modal-close-btn" (click)="closePreview()" aria-label="Κλείσιμο">&times;</button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="modal-body preview-body">
+      <!-- Quick Stats -->
+      <div class="preview-stats-row">
+        <div class="preview-stat-pill">
+          <span class="stat-num">{{ day.totalSlots }}</span>
+          <span class="stat-lbl">Θέσεις</span>
+        </div>
+        <div class="preview-stat-pill">
+          <span class="stat-num">{{ day.mannedSlots }}/{{ day.totalSlots }}</span>
+          <span class="stat-lbl">Επανδρωμένες</span>
+        </div>
+        <div class="preview-stat-pill">
+          <span class="stat-num">{{ day.distinctPersonnelCount }}</span>
+          <span class="stat-lbl">Στρατιώτες</span>
+        </div>
+        <div class="preview-stat-pill">
+          <span class="stat-num">{{ day.activeLeavesCount }}</span>
+          <span class="stat-lbl">Άδειες / ΕΥ</span>
+        </div>
+      </div>
+
+      <!-- Leaves on date -->
+      @if (day.leaves.length > 0) {
+      <div class="preview-leaves-section">
+        <div class="leaves-header-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="leaves-icon">
+            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span class="leaves-title">Απόντες σε Άδεια / Ελεύθεροι Υπηρεσίας ({{ day.leaves.length }}):</span>
+        </div>
+        <div class="preview-leaves-chips">
+          @for (l of day.leaves; track $index) {
+          <span class="preview-leave-chip">{{ l.personName }} ({{ l.type }})</span>
+          }
+        </div>
+      </div>
+      }
+
+      <!-- Duties Breakdown -->
+      @if (day.schedule && day.schedule.duties && day.schedule.duties.length > 0) {
+      <div class="preview-duties-section">
+        <div class="section-heading-row">
+          <h3 class="section-title">Κατανομή Υπηρεσιών Ημέρας</h3>
+          <span class="section-subtitle">{{ day.schedule.duties.length }} υπηρεσίες</span>
+        </div>
+        <div class="preview-duties-list">
+          @for (d of day.schedule.duties; track d.dutyTypeId) {
+          <div class="preview-duty-card">
+            <div class="duty-card-head">
+              <span class="duty-badge-sm">{{ d.shortName }}</span>
+              <strong class="duty-name">{{ d.dutyName }}</strong>
+              <span class="slots-pill">{{ d.slots.length }} θέσεις</span>
+            </div>
+
+            <div class="duty-grouped-shifts-list">
+              @for (shift of getGroupedDutySlots(d); track shift.key) {
+              <div class="grouped-shift-item">
+                <!-- Top Row: Time & Shift metadata -->
+                <div class="shift-time-row">
+                  <div class="shift-time-info">
+                    <span class="shift-idx-badge">#{{ shift.slotIndices.join(', #') }}</span>
+                    @if (shift.groupTitle) {
+                      <span class="shift-title-tag">{{ shift.groupTitle }}</span>
+                    }
+                    <span class="shift-hours-badge">{{ formatShiftHours(shift) }}</span>
+                  </div>
+                  <div class="shift-header-right" title="{{ shift.assignedCount }}/{{ shift.peopleCount }} {{ shift.peopleCount === 1 ? 'άτομο' : 'άτομα' }}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="people-icon">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span class="people-count-text">{{ shift.assignedCount }}/{{ shift.peopleCount }}</span>
+                  </div>
+                </div>
+
+                <!-- Bottom Row: Assigned Soldiers (Merged together, dedicated row to avoid wrapping) -->
+                <div class="shift-soldiers-row">
+                  @for (p of shift.persons; track p.slotIndex) {
+                  <div class="soldier-slot-pill" [class.is-empty]="!p.personId" [class.has-error]="p.conflictSeverity === 'ERROR'">
+                    @if (p.personId) {
+                      <span class="soldier-rank">{{ p.rankShort }}</span>
+                      <span class="soldier-name">{{ p.personName }}</span>
+                      @if (p.conflictWarning) {
+                        <span class="slot-warning-indicator" [class.is-warning]="p.conflictSeverity === 'WARNING'" [class.is-error]="p.conflictSeverity === 'ERROR'" [title]="p.conflictWarning">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="warning-icon-svg">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                            <line x1="12" y1="9" x2="12" y2="13" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                          </svg>
+                        </span>
+                      }
+                    } @else {
+                      <span class="soldier-empty-txt">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="empty-icon-svg">
+                          <line x1="12" y1="5" x2="12" y2="19"/>
+                          <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Κενή Θέση (#{{ p.slotIndex }})
+                      </span>
+                      @if (p.conflictWarning) {
+                        <span class="slot-warning-indicator is-error" [title]="p.conflictWarning">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="warning-icon-svg">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                            <line x1="12" y1="9" x2="12" y2="13" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                          </svg>
+                        </span>
+                      }
+                    }
+                  </div>
+                  }
+                </div>
+              </div>
+              }
+            </div>
+          </div>
+          }
+        </div>
+      </div>
+      } @else {
+      <div class="preview-no-duties">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.5">
+          <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <p>Δεν έχουν καταχωρηθεί ή παραχθεί υπηρεσίες για αυτή την ημέρα.</p>
+      </div>
+      }
+    </div>
+
+    <!-- Modal Footer with CTA -->
+    <div class="modal-footer preview-footer">
+      <button type="button" class="btn btn-secondary" (click)="closePreview()">Κλείσιμο</button>
+      <button type="button" class="btn btn-primary btn-open-scheduler" (click)="goToScheduler(day.dateStr)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/>
+          <line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+        <span>Άνοιγμα στο Πρόγραμμα</span>
+      </button>
+    </div>
+  </div>
+</div>
+}

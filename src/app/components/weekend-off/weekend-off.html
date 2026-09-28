@@ -1,0 +1,333 @@
+<div class="weekend-off-page">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Εξοδούχοι Σ/Κ</h1>
+      <p class="page-subtitle">Διαχείριση κατανομής εξόδων Σαββατοκύριακου (Σάββατο / Κυριακή).</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="saveWeekendPlan()" title="Αποθήκευση κατανομής εξόδων">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+          <polyline points="17 21 17 13 7 13 7 21"/>
+          <polyline points="7 3 7 8 15 8"/>
+        </svg>
+        Αποθήκευση
+      </button>
+    </div>
+  </div>
+
+  <!-- Weekend Navigation & Presets Bar -->
+  <div class="card weekend-control-bar">
+    <!-- Left: Weekend Dates Navigator -->
+    <div class="weekend-nav-group">
+      <div class="nav-chevrons">
+        <button class="btn btn-secondary btn-icon-nav" (click)="navigateWeekend(-1)" title="Προηγούμενο Σ/Κ">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+        <button class="btn btn-secondary btn-current-weekend" (click)="setUpcomingWeekend()" title="Τρέχον / Επόμενο Σ/Κ">
+          Τρέχον Σ/Κ
+        </button>
+        <button class="btn btn-secondary btn-icon-nav" (click)="navigateWeekend(1)" title="Επόμενο Σ/Κ">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="weekend-dates-display">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="calendar-icon">
+          <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+          <line x1="16" x2="16" y1="2" y2="6"/>
+          <line x1="8" x2="8" y1="2" y2="6"/>
+          <line x1="3" x2="21" y1="10" y2="10"/>
+        </svg>
+        <span class="weekend-range-text">
+          Σ/Κ: <strong>{{ formatGreekDate(weekendDates().friday) }}</strong> — <strong>{{ formatGreekDate(weekendDates().sunday) }}</strong>
+        </span>
+      </div>
+    </div>
+
+    <!-- Right: Quick Presets & Search -->
+    <div class="weekend-presets-group">
+      <button class="btn btn-secondary btn-sm" (click)="loadWeekendPlan()" title="Εφαρμογή αντιστροφής από το προηγούμενο Σ/Κ">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="1 4 1 10 7 10"/>
+          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+        </svg>
+        Εναλλαγή από Προηγούμενο Σ/Κ
+      </button>
+
+      <button class="btn btn-secondary btn-sm" (click)="applyBalancedPreset()" title="Ισοκατανομή 50% Σάββατο - 50% Κυριακή">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="3" x2="12" y2="21"/>
+          <path d="M5 6l7-3 7 3"/>
+          <path d="M2 13l3-7 3 7a3 3 0 0 1-6 0z"/>
+          <path d="M16 13l3-7 3 7a3 3 0 0 1-6 0z"/>
+        </svg>
+        50% - 50%
+      </button>
+
+      <button class="btn btn-secondary btn-sm" (click)="invertCurrentGroups()" title="Αντιστροφή Σαββάτου και Κυριακής">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M7 16V4m0 0L3 8m4-4l4 4m6 4v12m0 0l4-4m-4 4l-4-4"/>
+        </svg>
+        Αντιστροφή
+      </button>
+
+      <div class="search-wrap">
+        <input 
+          type="text" 
+          class="form-control form-control-sm search-soldier-input" 
+          [(ngModel)]="searchQuery" 
+          placeholder="Αναζήτηση..."
+        />
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Strip -->
+  <div class="weekend-stats-strip">
+    <div class="stat-pill">
+      <span class="pill-title">Έξοδος Σαββάτου</span>
+      <span class="pill-count">{{ satOffSoldiers().length }}</span>
+    </div>
+
+    <div class="stat-pill">
+      <span class="pill-title">Έξοδος Κυριακής</span>
+      <span class="pill-count">{{ sunOffSoldiers().length }}</span>
+    </div>
+
+    @if (unassignedSoldiers().length > 0) {
+      <div class="stat-pill unassigned-pill">
+        <span class="pill-title">Μη κατανεμημένοι</span>
+        <span class="pill-count">{{ unassignedSoldiers().length }}</span>
+      </div>
+    }
+
+    <div class="balance-indicator">
+      @if (satOffSoldiers().length === sunOffSoldiers().length && satOffSoldiers().length > 0) {
+        <span class="badge badge-success">Ισορροπία 50% - 50%</span>
+      } @else if (satOffSoldiers().length > 0 || sunOffSoldiers().length > 0) {
+        <span class="badge badge-secondary">Κατανομή: {{ satOffSoldiers().length }} / {{ sunOffSoldiers().length }}</span>
+      }
+    </div>
+  </div>
+
+  <!-- Two Groups Columns (Saturday vs Sunday) -->
+  <div class="groups-columns-container">
+    <!-- Left Column: SATURDAY OFF -->
+    <div class="card group-column-card">
+      <div class="column-header">
+        <div class="column-title-wrap">
+          <span class="column-badge-icon">ΣΑΒ</span>
+          <div>
+            <h2 class="column-title">Έξοδος Σαββάτου</h2>
+            <span class="column-subtitle">Έξοδος 12:00 - 22:00</span>
+          </div>
+        </div>
+        <div class="column-header-right">
+          <button 
+            type="button" 
+            class="btn-clear-column-minimal" 
+            [disabled]="satOffSoldiers().length === 0" 
+            (click)="clearGroup('SAT')" 
+            title="Εκκαθάριση εξοδούχων Σαββάτου"
+            aria-label="Εκκαθάριση εξοδούχων Σαββάτου">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <line x1="10" y1="11" x2="10" y2="17" />
+              <line x1="14" y1="11" x2="14" y2="17" />
+            </svg>
+          </button>
+          <span class="column-counter">{{ satOffSoldiers().length }}</span>
+        </div>
+      </div>
+
+      <div class="soldiers-list">
+        @if (satOffSoldiers().length === 0) {
+          <div class="empty-column-state">
+            Δεν υπάρχουν στρατιώτες με έξοδο Σαββάτου.
+          </div>
+        }
+
+        @for (p of satOffSoldiers(); track p.id) {
+          <div 
+            class="soldier-off-card" 
+            [class.has-leave]="soldiersOnLeave().has(p.id)">
+            
+            <div class="soldier-info-main">
+              <span class="soldier-fullname">{{ p.fullName }}</span>
+              @if (soldiersOnLeave().has(p.id)) {
+                <span class="badge badge-warning leave-tag" title="Έχει άδεια στο Σ/Κ">
+                  {{ soldiersOnLeave().get(p.id) }}
+                </span>
+              }
+            </div>
+
+            <div class="soldier-card-actions">
+              <!-- Move to Sunday Button -->
+              <button 
+                type="button"
+                class="btn btn-secondary btn-xs action-btn move-action-btn" 
+                (click)="moveToGroup(p.id, 'SUN')" 
+                title="Μεταφορά στην Έξοδο Κυριακής">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+                Κυριακή
+              </button>
+
+              <!-- Unassign Button -->
+              <button 
+                type="button"
+                class="btn btn-secondary btn-xs action-btn unassign-action-btn" 
+                (click)="moveToGroup(p.id, 'UNASSIGNED')" 
+                title="Αφαίρεση από την έξοδο">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Right Column: SUNDAY OFF -->
+    <div class="card group-column-card">
+      <div class="column-header">
+        <div class="column-title-wrap">
+          <span class="column-badge-icon">ΚΥΡ</span>
+          <div>
+            <h2 class="column-title">Έξοδος Κυριακής</h2>
+            <span class="column-subtitle">Έξοδος 10:00 - 22:00</span>
+          </div>
+        </div>
+        <div class="column-header-right">
+          <button 
+            type="button" 
+            class="btn-clear-column-minimal" 
+            [disabled]="sunOffSoldiers().length === 0" 
+            (click)="clearGroup('SUN')" 
+            title="Εκκαθάριση εξοδούχων Κυριακής"
+            aria-label="Εκκαθάριση εξοδούχων Κυριακής">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <line x1="10" y1="11" x2="10" y2="17" />
+              <line x1="14" y1="11" x2="14" y2="17" />
+            </svg>
+          </button>
+          <span class="column-counter">{{ sunOffSoldiers().length }}</span>
+        </div>
+      </div>
+
+      <div class="soldiers-list">
+        @if (sunOffSoldiers().length === 0) {
+          <div class="empty-column-state">
+            Δεν υπάρχουν στρατιώτες με έξοδο Κυριακής.
+          </div>
+        }
+
+        @for (p of sunOffSoldiers(); track p.id) {
+          <div 
+            class="soldier-off-card" 
+            [class.has-leave]="soldiersOnLeave().has(p.id)">
+            
+            <div class="soldier-info-main">
+              <span class="soldier-fullname">{{ p.fullName }}</span>
+              @if (soldiersOnLeave().has(p.id)) {
+                <span class="badge badge-warning leave-tag" title="Έχει άδεια στο Σ/Κ">
+                  {{ soldiersOnLeave().get(p.id) }}
+                </span>
+              }
+            </div>
+
+            <div class="soldier-card-actions">
+              <!-- Move to Saturday Button -->
+              <button 
+                type="button"
+                class="btn btn-secondary btn-xs action-btn move-action-btn" 
+                (click)="moveToGroup(p.id, 'SAT')" 
+                title="Μεταφορά στην Έξοδο Σαββάτου">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="15 18 9 12 15 6"/>
+                </svg>
+                Σάββατο
+              </button>
+
+              <!-- Unassign Button -->
+              <button 
+                type="button"
+                class="btn btn-secondary btn-xs action-btn unassign-action-btn" 
+                (click)="moveToGroup(p.id, 'UNASSIGNED')" 
+                title="Αφαίρεση από την έξοδο">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Unassigned Personnel Section -->
+  @if (unassignedSoldiers().length > 0) {
+    <div class="card unassigned-section-card">
+      <div class="unassigned-header">
+        <div class="unassigned-title-wrap">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <h3 class="unassigned-title">Μη κατανεμημένοι ({{ unassignedSoldiers().length }})</h3>
+        </div>
+        <span class="unassigned-subtitle">Στρατιώτες που δεν έχουν οριστεί ακόμα σε έξοδο Σαββάτου ή Κυριακής.</span>
+      </div>
+
+      <div class="unassigned-grid">
+        @for (p of unassignedSoldiers(); track p.id) {
+          <div class="unassigned-item-card">
+            <div class="unassigned-info-main">
+              <span class="unassigned-fullname">{{ p.fullName }}</span>
+              @if (soldiersOnLeave().has(p.id)) {
+                <span class="badge badge-warning leave-tag" title="Έχει άδεια στο Σ/Κ">{{ soldiersOnLeave().get(p.id) }}</span>
+              }
+              @if (p.exemptFromAllDuties) {
+                <span class="badge badge-secondary leave-tag">Απαλλαγή</span>
+              }
+            </div>
+
+            <div class="unassigned-item-actions">
+              <button 
+                type="button"
+                class="btn btn-secondary btn-xs action-btn" 
+                (click)="moveToGroup(p.id, 'SAT')" 
+                title="Ανάθεση στην έξοδο Σαββάτου">
+                + Σάββατο
+              </button>
+              <button 
+                type="button"
+                class="btn btn-secondary btn-xs action-btn" 
+                (click)="moveToGroup(p.id, 'SUN')" 
+                title="Ανάθεση στην έξοδο Κυριακής">
+                + Κυριακή
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

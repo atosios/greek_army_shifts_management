@@ -1,0 +1,316 @@
+/* ==========================================================================
+   The Steel Executive: App Shell (Left Sidebar #262B31 + Right Main #F4F5F7)
+   ========================================================================== */
+
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--ice-sheet);
+  color: var(--text-primary);
+  overflow-x: hidden;
+}
+
+/* Left Sidebar Navigation (Deep Iron #262B31) */
+.sidebar {
+  width: 260px;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  z-index: 100;
+}
+
+.sidebar-header {
+  padding: 1.15rem 1.15rem 1rem 1.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--sidebar-border);
+  background: var(--sidebar-header);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.sidebar-crest {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: #323842;
+  border: 1px solid var(--steel-blue-gray);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  flex-shrink: 0;
+}
+
+.sidebar-brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-sub {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--cool-slate);
+  letter-spacing: 0.08em;
+}
+
+.brand-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1.25;
+}
+
+/* Sidebar Unit Mini Card */
+.sidebar-unit-card {
+  margin: 0.85rem 0.85rem 0.35rem 0.85rem;
+  padding: 0.6rem 0.75rem;
+  background: rgba(13, 15, 18, 0.4);
+  border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius-sm);
+}
+
+.unit-card-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: 0.02em;
+}
+
+.unit-card-sub {
+  font-size: 0.7rem;
+  color: var(--cool-slate);
+  margin-top: 0.15rem;
+}
+
+/* Nav Menu */
+.sidebar-nav {
+  padding: 0.65rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.nav-section-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--cool-slate);
+  letter-spacing: 0.08em;
+  padding: 0.5rem 0.6rem 0.25rem 0.6rem;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius-sm);
+  color: var(--sidebar-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-nav-item:hover {
+  color: #FFFFFF;
+  background: var(--sidebar-item-hover);
+}
+
+.sidebar-nav-item.active {
+  color: #FFFFFF;
+  background: var(--sidebar-item-active);
+  border-left: 3px solid #60A5FA;
+}
+
+.nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  flex-shrink: 0;
+  color: var(--cool-slate);
+}
+
+.sidebar-nav-item.active .nav-icon {
+  color: #FFFFFF;
+}
+
+.nav-label {
+  flex: 1;
+}
+
+.nav-badge {
+  background: #1E2227;
+  border: 1px solid var(--sidebar-border);
+  color: var(--cool-slate);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-xs);
+}
+
+.nav-badge.leaves {
+  background: rgba(217, 119, 6, 0.2);
+  border-color: rgba(217, 119, 6, 0.4);
+  color: #FBBF24;
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+  padding: 0.85rem;
+  border-top: 1px solid var(--sidebar-border);
+  background: var(--sidebar-header);
+}
+
+.sidebar-save-btn {
+  width: 100%;
+}
+
+/* Right Main Section (Ice Sheet #F4F5F7) */
+.main-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100vh;
+  overflow-y: auto;
+  background-color: var(--ice-sheet);
+}
+
+/* Top Utility Bar */
+.top-bar {
+  background: #FFFFFF;
+  border-bottom: 1px solid var(--border-medium);
+  padding: 0.65rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.unit-title-pill {
+  background: #EEF2F6;
+  border: 1px solid var(--border-medium);
+  color: var(--midnight-charcoal);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-xs);
+}
+
+.top-breadcrumb {
+  font-size: 0.8125rem;
+  color: var(--steel-blue-gray);
+  font-weight: 500;
+}
+
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.top-clock {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: monospace;
+  font-size: 0.8125rem;
+  color: var(--steel-blue-gray);
+  background: var(--bg-base);
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+}
+
+.clock-icon {
+  color: var(--steel-blue-gray);
+}
+
+.last-save-pill {
+  font-size: 0.75rem;
+  color: var(--status-success);
+  background: var(--status-success-bg);
+  border: 1px solid var(--status-success-border);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-xs);
+  font-weight: 600;
+}
+
+/* Toast */
+.notification-toast {
+  position: fixed;
+  top: 55px;
+  right: 20px;
+  z-index: 9999;
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-md);
+}
+
+.toast-success {
+  background: #ECFDF5;
+  border: 1px solid #10B981;
+  color: #065F46;
+}
+
+.toast-warning {
+  background: #FFFBEB;
+  border: 1px solid #F59E0B;
+  color: #92400E;
+}
+
+.toast-error {
+  background: #FFF1F2;
+  border: 1px solid #F43F5E;
+  color: #9F1239;
+}
+
+.toast-info {
+  background: #F0FDF4;
+  border: 1px solid #64748B;
+  color: var(--midnight-charcoal);
+}
+
+/* Content Body */
+.content-body {
+  flex: 1;
+  padding: 1.25rem 1.75rem 2rem 1.75rem;
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Bottom Footer */
+.app-footer-bar {
+  background: #FFFFFF;
+  border-top: 1px solid var(--border-light);
+  padding: 0.65rem 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

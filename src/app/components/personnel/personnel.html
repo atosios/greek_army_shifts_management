@@ -1,0 +1,1376 @@
+<div class="personnel-page">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Δύναμη</h1>
+      <p class="page-subtitle">Διαχείριση μητρώου στρατιωτών, όπλων, ικανοτήτων, θαλάμων και υπηρεσιών.</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary" (click)="exportExcel()" title="Εξαγωγή πίνακα σε αρχείο Excel">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="8" y1="13" x2="16" y2="13"/>
+          <line x1="8" y1="17" x2="16" y2="17"/>
+        </svg>
+        Εξαγωγή Δύναμης
+      </button>
+      <button class="btn btn-secondary" (click)="resetScores()" title="Μηδενισμός καταμετρητών υπηρεσιών">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+          <path d="M21 3v5h-5"/>
+          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+          <path d="M3 21v-5h5"/>
+        </svg>
+        Μηδενισμός Μορίων
+      </button>
+      <button class="btn btn-secondary" (click)="openCsvModal()" title="Μαζική εισαγωγή νέων στρατιωτών από αρχείο CSV">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Μαζική Εισαγωγή (CSV)
+      </button>
+      <button class="btn btn-primary" (click)="openAddModal()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Προσθήκη Στρατιώτη
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters & Search Toolbar -->
+  <div class="card toolbar-card">
+    <div class="toolbar-main-row">
+      <!-- Search Box - Compact & Far Left -->
+      <div class="search-box">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input 
+          type="text" 
+          class="form-control search-input" 
+          placeholder="Αναζήτηση..."
+          [value]="searchQuery()"
+          (input)="searchQuery.set($any($event.target).value)"
+        />
+        @if (searchQuery()) {
+          <button type="button" class="search-clear-btn" (click)="searchQuery.set('')" title="Καθαρισμός αναζήτησης">&times;</button>
+        }
+      </div>
+
+      <!-- Filter Trigger & Count - Far Right -->
+      <div class="toolbar-actions">
+        <div class="toolbar-meta-count">
+          Εμφάνιση <strong>{{ filteredPersonnel().length }}</strong> από <strong>{{ storage.personnel().length }}</strong> στρατιώτες
+        </div>
+        <button 
+          type="button" 
+          class="btn filter-icon-btn" 
+          [class.has-active]="hasActiveFilters()"
+          (click)="openFilterModal()"
+          title="Φίλτρα Αναζήτησης"
+          aria-label="Φίλτρα Αναζήτησης"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+          </svg>
+          @if (activeFilterCount() > 0) {
+            <span class="filter-count-badge">{{ activeFilterCount() }}</span>
+          }
+        </button>
+      </div>
+    </div>
+
+    <!-- Active Filter Chips -->
+    @if (hasActiveFilters()) {
+      <div class="filter-chips-row">
+        @if (searchQuery().trim()) {
+          <div class="filter-chip">
+            <span class="chip-label">Κείμενο:</span>
+            <span class="chip-value">"{{ searchQuery() }}"</span>
+            <button type="button" class="chip-remove" (click)="clearFilter('query')">&times;</button>
+          </div>
+        }
+        @if (filterCorps().length > 0) {
+          <div class="filter-chip">
+            <span class="chip-label">ΟΠΛΟ:</span>
+            <span class="chip-value">{{ filterCorps().join(', ') }}</span>
+            <button type="button" class="chip-remove" (click)="clearFilter('corps')">&times;</button>
+          </div>
+        }
+        @if (filterRooms().length > 0) {
+          <div class="filter-chip">
+            <span class="chip-label">Θάλαμοι:</span>
+            <span class="chip-value">{{ getRoomsDisplayString() }}</span>
+            <button type="button" class="chip-remove" (click)="clearFilter('rooms')">&times;</button>
+          </div>
+        }
+        @if (filterFitness().length > 0) {
+          <div class="filter-chip">
+            <span class="chip-label">Ικανότητα:</span>
+            <span class="chip-value">{{ filterFitness().join(', ') }}</span>
+            <button type="button" class="chip-remove" (click)="clearFilter('fitness')">&times;</button>
+          </div>
+        }
+        @if (filterArmed() !== 'ALL') {
+          <div class="filter-chip">
+            <span class="chip-label">Οπλισμός:</span>
+            <span class="chip-value">{{ filterArmed() }}</span>
+            <button type="button" class="chip-remove" (click)="clearFilter('armed')">&times;</button>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Personnel Table -->
+  <div class="data-table-container">
+
+    <!-- Bulk Selection Action Bar -->
+    @if (selectedCount() > 0) {
+      <div class="bulk-actions-bar">
+        <div class="bulk-info">
+          <span class="bulk-count-badge">{{ selectedCount() }}</span>
+          <span class="bulk-count-text">Επιλεγμένοι στρατιώτες</span>
+        </div>
+        <div class="bulk-buttons">
+          <button type="button" class="btn btn-secondary btn-sm bulk-action-btn" (click)="openBulkRoomModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            Αλλαγή Θαλάμου
+          </button>
+
+          <button type="button" class="btn btn-secondary btn-sm bulk-action-btn" (click)="openBulkCorpsModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            Αλλαγή Όπλου
+          </button>
+
+
+          <button type="button" class="btn btn-danger btn-sm bulk-action-btn" (click)="openBulkDeleteModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            Διαγραφή ({{ selectedCount() }})
+          </button>
+
+          <button type="button" class="btn btn-text btn-sm bulk-cancel-btn" (click)="clearSelection()" title="Ακύρωση επιλογής">
+            Αποεπιλογή όλων
+          </button>
+        </div>
+      </div>
+    }
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <!-- Col 0: Checkbox Selection -->
+          <th class="checkbox-th text-center">
+            <input 
+              type="checkbox" 
+              class="table-checkbox"
+              [checked]="isAllSelected()"
+              [indeterminate]="isPartiallySelected()"
+              (change)="toggleSelectAll($any($event.target).checked)"
+              title="Επιλογή όλων των στρατιωτών"
+            />
+          </th>
+
+          <!-- Col 1: Α/Α -->
+          <th class="sortable-th text-center" (click)="toggleSort('aa')" title="Ταξινόμηση κατά Αύξοντα Αριθμό">
+            <div class="th-content center">
+              <span>Α/Α</span>
+              <span class="sort-icon" [class.active]="sortColumn() === 'aa'">
+                {{ sortColumn() === 'aa' ? (sortDirection() === 'asc' ? '▲' : '▼') : '⇅' }}
+              </span>
+            </div>
+          </th>
+
+          <!-- Col 2: Ονοματεπώνυμο -->
+          <th class="sortable-th" (click)="toggleSort('fullName')" title="Ταξινόμηση κατά Ονοματεπώνυμο">
+            <div class="th-content">
+              <span>Ονοματεπώνυμο</span>
+              <span class="sort-icon" [class.active]="sortColumn() === 'fullName'">
+                {{ sortColumn() === 'fullName' ? (sortDirection() === 'asc' ? '▲' : '▼') : '⇅' }}
+              </span>
+            </div>
+          </th>
+
+          <!-- Col 3: Α.Σ.Μ. -->
+          <th class="sortable-th" (click)="toggleSort('asm')" title="Ταξινόμηση κατά Αριθμό Στρατιωτικού Μητρώου">
+            <div class="th-content">
+              <span>Α.Σ.Μ.</span>
+              <span class="sort-icon" [class.active]="sortColumn() === 'asm'">
+                {{ sortColumn() === 'asm' ? (sortDirection() === 'asc' ? '▲' : '▼') : '⇅' }}
+              </span>
+            </div>
+          </th>
+
+          <!-- Col 4: ΟΠΛΟ -->
+          <th class="sortable-th" (click)="toggleSort('corps')" title="Ταξινόμηση κατά Όπλο/Σώμα">
+            <div class="th-content">
+              <span>ΟΠΛΟ</span>
+              <span class="sort-icon" [class.active]="sortColumn() === 'corps'">
+                {{ sortColumn() === 'corps' ? (sortDirection() === 'asc' ? '▲' : '▼') : '⇅' }}
+              </span>
+            </div>
+          </th>
+
+          <!-- Col 5: Ικανότητα -->
+          <th class="sortable-th text-center" (click)="toggleSort('fitness')" title="Ταξινόμηση κατά Σωματική Ικανότητα (Ι1-Ι4)">
+            <div class="th-content center">
+              <span>Ικανότητα</span>
+              <span class="sort-icon" [class.active]="sortColumn() === 'fitness'">
+                {{ sortColumn() === 'fitness' ? (sortDirection() === 'asc' ? '▲' : '▼') : '⇅' }}
+              </span>
+            </div>
+          </th>
+
+          <!-- Col 6: Οπλισμός -->
+          <th class="sortable-th text-center" (click)="toggleSort('status')" title="Ταξινόμηση κατά Οπλισμό (Ένοπλος/Άοπλος)">
+            <div class="th-content center">
+              <span>Οπλισμός</span>
+              <span class="sort-icon" [class.active]="sortColumn() === 'status'">
+                {{ sortColumn() === 'status' ? (sortDirection() === 'asc' ? '▲' : '▼') : '⇅' }}
+              </span>
+            </div>
+          </th>
+
+
+          <!-- Col 8: Θάλαμος -->
+          <th class="sortable-th" (click)="toggleSort('barracksRoom')" title="Ταξινόμηση κατά Θάλαμο Διαμονής">
+            <div class="th-content">
+              <span>Θάλαμος</span>
+              <span class="sort-icon" [class.active]="sortColumn() === 'barracksRoom'">
+                {{ sortColumn() === 'barracksRoom' ? (sortDirection() === 'asc' ? '▲' : '▼') : '⇅' }}
+              </span>
+            </div>
+          </th>
+
+          <!-- Col 9: Κρεβάτι -->
+          <th class="sortable-th text-center" (click)="toggleSort('bedNumber')" title="Ταξινόμηση κατά Αριθμό Κρεβατιού">
+            <div class="th-content center">
+              <span>Κρεβάτι</span>
+              <span class="sort-icon" [class.active]="sortColumn() === 'bedNumber'">
+                {{ sortColumn() === 'bedNumber' ? (sortDirection() === 'asc' ? '▲' : '▼') : '⇅' }}
+              </span>
+            </div>
+          </th>
+
+          <!-- Col 10: Υπηρεσίες (πρώην Σύνολο) -->
+          <th class="sortable-th text-center" (click)="toggleSort('dutyScore')" title="Ταξινόμηση κατά Σύνολο Υπηρεσιών">
+            <div class="th-content center">
+              <span>Υπηρεσίες</span>
+              <span class="sort-icon" [class.active]="sortColumn() === 'dutyScore'">
+                {{ sortColumn() === 'dutyScore' ? (sortDirection() === 'asc' ? '▲' : '▼') : '⇅' }}
+              </span>
+            </div>
+          </th>
+
+          <!-- Col 11: Τελ. Υπηρεσία -->
+          <th class="sortable-th" (click)="toggleSort('lastDutyDate')" title="Ταξινόμηση κατά Ημερομηνία Τελευταίας Υπηρεσίας">
+            <div class="th-content">
+              <span>Τελ. Υπηρεσία</span>
+              <span class="sort-icon" [class.active]="sortColumn() === 'lastDutyDate'">
+                {{ sortColumn() === 'lastDutyDate' ? (sortDirection() === 'asc' ? '▲' : '▼') : '⇅' }}
+              </span>
+            </div>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of filteredPersonnel(); track p.id; let idx = $index) {
+          <tr 
+            [class.inactive-row]="!p.active" 
+            [class.exempt-row]="p.exemptFromAllDuties" 
+            [class.is-row-selected]="isSoldierSelected(p.id)"
+            class="clickable-row" 
+            (click)="openEditModal(p)" 
+            title="Κλικ για προβολή & επεξεργασία στοιχείων"
+          >
+            <!-- Col 0: Checkbox -->
+            <td class="checkbox-td text-center" (click)="$event.stopPropagation()">
+              <input 
+                type="checkbox" 
+                class="table-checkbox"
+                [checked]="isSoldierSelected(p.id)"
+                (change)="toggleSelectSoldier(p.id, $event)"
+              />
+            </td>
+
+            <!-- Col 1: Α/Α -->
+            <td class="text-center"><span class="text-dim">{{ idx + 1 }}</span></td>
+
+            <!-- Col 2: Ονοματεπώνυμο -->
+            <td>
+              <strong class="person-fullname">{{ p.fullName }}</strong>
+              @if (!p.active) {
+                <span class="inactive-pill">ΑΝΕΝΕΡΓΟΣ</span>
+              }
+              @if (p.notes) {
+                <div class="person-notes">{{ p.notes }}</div>
+              }
+            </td>
+
+            <!-- Col 3: Α.Σ.Μ. -->
+            <td><span class="asm-tag">{{ p.asm || '-' }}</span></td>
+
+            <!-- Col 4: ΟΠΛΟ (Shortname only) -->
+            <td>
+              <span class="corps-tag">{{ getCorpsShort(p.specialty) }}</span>
+            </td>
+
+            <!-- Col 5: Ικανότητα -->
+            <td class="text-center">
+              <span class="fitness-tag" [attr.data-fit]="p.fitnessProfile || 'Ι1'">{{ p.fitnessProfile || 'Ι1' }}</span>
+            </td>
+
+            <!-- Col 6: Οπλισμός -->
+            <td class="text-center">
+              <span class="badge" 
+                [class.badge-success]="p.status === 'Ένοπλος'"
+                [class.badge-warning]="p.status === 'Άοπλος'">
+                {{ p.status }}
+              </span>
+            </td>
+
+
+            <!-- Col 8: Θάλαμος -->
+            <td>
+              @if (p.barracksRoom) {
+                <span class="room-tag">{{ p.barracksRoom }}</span>
+              } @else {
+                <span class="text-muted-dash">-</span>
+              }
+            </td>
+
+            <!-- Col 9: Κρεβάτι -->
+            <td class="text-center">
+              @if (p.bedNumber) {
+                <span class="bed-tag">{{ p.bedNumber }}</span>
+              } @else {
+                <span class="text-muted-dash">-</span>
+              }
+            </td>
+
+            <!-- Col 10: Υπηρεσίες -->
+            <td class="text-center">
+              <span class="score-badge" title="Σύνολο εκτελεσμένων υπηρεσιών">
+                {{ p.dutyScore }}
+              </span>
+            </td>
+
+            <!-- Col 11: Τελ. Υπηρεσία -->
+            <td>
+              <span class="last-duty-date">{{ formatGreekDate(p.lastDutyDate) }}</span>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="11" class="text-center py-4">
+              <div class="empty-state">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="empty-icon">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <p class="empty-text">Δεν βρέθηκε προσωπικό με τα επιλεγμένα κριτήρια.</p>
+                <button class="btn btn-primary btn-sm" (click)="resetAllFilters()">
+                  Επαναφορά Όλων των Φίλτρων
+                </button>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Filter Popup Modal -->
+  @if (isFilterModalOpen()) {
+    <div class="modal-overlay" (click)="closeFilterModal()">
+      <div class="modal-content filter-modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="filter-modal-title-wrap">
+            <h2 class="card-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+              </svg>
+              Φίλτρα Αναζήτησης Προσωπικού
+            </h2>
+            @if (activeFilterCount() > 0) {
+              <span class="filter-count-badge">{{ activeFilterCount() }} ενεργά</span>
+            }
+          </div>
+          <button class="close-btn" (click)="closeFilterModal()" title="Κλείσιμο παραθύρου">&times;</button>
+        </div>
+
+        <div class="modal-body filter-modal-body">
+          <div class="filter-sections-stack">
+            <!-- 1. ΟΠΛΟ / ΣΩΜΑ (Multi-select) -->
+            <div class="filter-group-card">
+              <div class="filter-card-header">
+                <span class="filter-card-title">ΟΠΛΟ / ΣΩΜΑ</span>
+              </div>
+              <div class="filter-chip-group">
+                <button 
+                  type="button" 
+                  class="filter-chip-btn" 
+                  [class.is-selected]="filterCorps().length === 0"
+                  (click)="filterCorps.set([])"
+                >
+                  Όλα
+                </button>
+                @for (c of corps; track c) {
+                  <button 
+                    type="button" 
+                    class="filter-chip-btn" 
+                    [class.is-selected]="filterCorps().includes(c)"
+                    (click)="toggleCorpsFilter(c)"
+                  >
+                    {{ c }}
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- 2. ΘΑΛΑΜΟΙ (Dynamic from user entries) -->
+            <div class="filter-group-card">
+              <div class="filter-card-header">
+                <span class="filter-card-title">ΘΑΛΑΜΟΣ</span>
+              </div>
+              <div class="filter-chip-group">
+                <button 
+                  type="button" 
+                  class="filter-chip-btn" 
+                  [class.is-selected]="filterRooms().length === 0"
+                  (click)="filterRooms.set([])"
+                >
+                  Όλοι οι Θάλαμοι
+                </button>
+
+                @for (r of uniqueRooms(); track r.room) {
+                  <button 
+                    type="button" 
+                    class="filter-chip-btn room-chip" 
+                    [class.is-selected]="filterRooms().includes(r.room)"
+                    (click)="toggleRoomFilter(r.room)"
+                    [title]="r.room + ' (' + r.count + ' στρατιώτες)'"
+                  >
+                    <span class="room-chip-name">{{ r.room }}</span>
+                    <span class="room-chip-badge">{{ r.count }}</span>
+                  </button>
+                }
+
+                @if (unassignedRoomCount() > 0) {
+                  <button 
+                    type="button" 
+                    class="filter-chip-btn room-chip unassigned-room" 
+                    [class.is-selected]="filterRooms().includes('__NONE__')"
+                    (click)="toggleRoomFilter('__NONE__')"
+                    title="Στρατιώτες χωρίς καταχωρημένο θάλαμο"
+                  >
+                    <span class="room-chip-name">Χωρίς Θάλαμο</span>
+                    <span class="room-chip-badge">{{ unassignedRoomCount() }}</span>
+                  </button>
+                }
+
+                @if (uniqueRooms().length === 0 && unassignedRoomCount() === 0) {
+                  <span class="no-rooms-msg">Δεν έχουν καταχωρηθεί θάλαμοι ακόμα στη Δύναμη.</span>
+                }
+              </div>
+            </div>
+
+            <!-- Two-column grid for remaining filters -->
+            <div class="filter-subgrid">
+              <!-- 3. Ικανότητα (Multi-select) -->
+              <div class="filter-group-card">
+                <div class="filter-card-header">
+                  <span class="filter-card-title">Ικανότητα</span>
+                </div>
+                <div class="filter-chip-group">
+                  <button 
+                    type="button" 
+                    class="filter-chip-btn" 
+                    [class.is-selected]="filterFitness().length === 0"
+                    (click)="filterFitness.set([])"
+                  >
+                    Όλες
+                  </button>
+                  @for (f of ['Ι1', 'Ι2', 'Ι3', 'Ι4']; track f) {
+                    <button 
+                      type="button" 
+                      class="filter-chip-btn fitness-pill" 
+                      [class.is-selected]="filterFitness().includes(f)"
+                      (click)="toggleFitnessFilter(f)"
+                    >
+                      {{ f }}
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <!-- 4. Οπλισμός -->
+              <div class="filter-group-card">
+                <div class="filter-card-header">
+                  <span class="filter-card-title">Οπλισμός</span>
+                </div>
+                <div class="filter-chip-group">
+                  <button 
+                    type="button" 
+                    class="filter-chip-btn" 
+                    [class.is-selected]="filterArmed() === 'ALL'"
+                    (click)="filterArmed.set('ALL')"
+                  >
+                    Όλοι
+                  </button>
+                  <button 
+                    type="button" 
+                    class="filter-chip-btn" 
+                    [class.is-selected]="filterArmed() === 'Ένοπλος'"
+                    (click)="filterArmed.set('Ένοπλος')"
+                  >
+                    Ένοπλος
+                  </button>
+                  <button 
+                    type="button" 
+                    class="filter-chip-btn" 
+                    [class.is-selected]="filterArmed() === 'Άοπλος'"
+                    (click)="filterArmed.set('Άοπλος')"
+                  >
+                    Άοπλος
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer modal-footer-split">
+          <button type="button" class="btn btn-secondary" (click)="resetAllFilters()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+              <path d="M21 3v5h-5"/>
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+              <path d="M3 21v-5h5"/>
+            </svg>
+            Επαναφορά Όλων
+          </button>
+          <button type="button" class="btn btn-primary" (click)="closeFilterModal()">
+            Εφαρμογή ({{ filteredPersonnel().length }} άτομα)
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Add/Edit Person Modal -->
+  @if (isModalOpen()) {
+    <div class="modal-overlay" (click)="closeModal()">
+      <div class="modal-content soldier-modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            {{ editingPersonId() ? 'Επεξεργασία Στοιχείων Στρατιώτη' : 'Προσθήκη Νέου Στρατιώτη' }}
+          </h2>
+          <button class="close-btn" (click)="closeModal()" title="Κλείσιμο παραθύρου">&times;</button>
+        </div>
+
+        <div class="modal-body soldier-modal-body">
+          <div class="soldier-modal-layout">
+            <!-- Left Column: Form Details -->
+            <div class="soldier-form-column">
+              <!-- Row 1: Ονοματεπώνυμο, ΑΣΜ, ΟΠΛΟ -->
+              <div class="form-row-custom row-1-grid">
+                <div class="form-group row-1-name">
+                  <label class="form-label">Ονοματεπώνυμο *</label>
+                  <input 
+                    type="text" 
+                    class="form-control uppercase-name-input" 
+                    [value]="formModel.fullName" 
+                    (input)="onFullNameInput($event)"
+                    (blur)="onFullNameBlur()"
+                    placeholder="π.χ. ΠΑΠΑΔΟΠΟΥΛΟΣ ΓΕΩΡΓΙΟΣ" 
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                </div>
+
+                <div class="form-group row-1-asm">
+                  <label class="form-label">ΑΣΜ</label>
+                  <input 
+                    type="text" 
+                    class="form-control uppercase-asm-input" 
+                    [value]="formModel.asm" 
+                    (input)="onAsmInput($event)"
+                    placeholder="π.χ. 2024 Δ / 09144" 
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                </div>
+
+                <div class="form-group row-1-corps">
+                  <label class="form-label">ΟΠΛΟ</label>
+                  <select class="form-select" [(ngModel)]="formModel.specialty">
+                    @for (c of corps; track c) {
+                      <option [value]="c">{{ c }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+
+              <!-- Row 2: Θάλαμος, Κρεβάτι -->
+              <div class="form-row-custom row-2-grid">
+                <div class="form-group">
+                  <label class="form-label">Θάλαμος</label>
+                  <input 
+                    type="text" 
+                    class="form-control uppercase-name-input" 
+                    [value]="formModel.barracksRoom"
+                    (input)="onRoomInput($event)"
+                    placeholder="π.χ. 1.1" 
+                    autocomplete="off"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Κρεβάτι</label>
+                  <input 
+                    type="text" 
+                    class="form-control uppercase-name-input" 
+                    [value]="formModel.bedNumber"
+                    (input)="onBedInput($event)"
+                    placeholder="π.χ. 6" 
+                    autocomplete="off"
+                  />
+                </div>
+
+              </div>
+
+              <!-- Row 3: Ικανότητα, Οπλισμός, Αριθμος Οπλου (if ενοπλος) else disabled and '-' -->
+              <div class="form-row-custom row-3-grid">
+                <div class="form-group">
+                  <label class="form-label">Ικανότητα</label>
+                  <select class="form-select" [ngModel]="formModel.fitnessProfile" (ngModelChange)="onFitnessChange($event)">
+                    <option value="Ι1">Ι1</option>
+                    <option value="Ι2">Ι2</option>
+                    <option value="Ι3">Ι3</option>
+                    <option value="Ι4">Ι4</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">
+                    Οπλισμός
+                    @if (formModel.fitnessProfile === 'Ι1' || formModel.fitnessProfile === 'Ι2') {
+                      <span class="label-hint">(Ένοπλος)</span>
+                    }
+                  </label>
+                  <select 
+                    class="form-select" 
+                    [ngModel]="formModel.status"
+                    (ngModelChange)="onStatusChange($event)"
+                    [disabled]="formModel.fitnessProfile === 'Ι1' || formModel.fitnessProfile === 'Ι2'"
+                  >
+                    <option value="Ένοπλος">Ένοπλος</option>
+                    <option value="Άοπλος">Άοπλος</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">
+                    Αριθμός Όπλου
+                    @if (formModel.status === 'Άοπλος') {
+                      <span class="label-hint">(Άοπλος: -)</span>
+                    }
+                  </label>
+                  <input 
+                    type="text" 
+                    class="form-control uppercase-asm-input" 
+                    [value]="formModel.status === 'Άοπλος' ? '-' : formModel.weaponNumber"
+                    (input)="onWeaponNumberInput($event)"
+                    [disabled]="formModel.status === 'Άοπλος'"
+                    placeholder="π.χ. 124859" 
+                    autocomplete="off"
+                  />
+                </div>
+              </div>
+
+              <!-- Row 4: Παρατηρήσεις / Σημειώσεις -->
+              <div class="form-group">
+                <label class="form-label">Παρατηρήσεις / Σημειώσεις</label>
+                <input type="text" class="form-control" [(ngModel)]="formModel.notes" placeholder="π.χ. Δίπλωμα Γ' κατηγορίας" />
+              </div>
+
+              <!-- Duty Eligibility Section -->
+              <div class="duties-eligibility-card">
+                <div class="duties-eligibility-header">
+                  <div>
+                    <div class="duties-section-title">Επιλέξιμος για τις παρακάτω υπηρεσίες:</div>
+                    <div class="duties-subtitle">Επιλέξτε τις υπηρεσίες που δύναται να εκτελέσει ο στρατιώτης (προεπιλογή: όλες επιλεγμένες).</div>
+                  </div>
+                  <div class="duties-quick-actions">
+                    <button type="button" class="btn btn-secondary btn-xs" (click)="selectAllDuties()" [disabled]="formModel.exemptFromAllDuties">
+                      Επιλογή Όλων
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-xs" (click)="deselectAllDuties()" [disabled]="formModel.exemptFromAllDuties">
+                      Αποεπιλογή Όλων
+                    </button>
+                  </div>
+                </div>
+
+                <div class="exempt-toggle-box">
+                  <label class="exempt-checkbox-label">
+                    <input 
+                      type="checkbox" 
+                      [ngModel]="formModel.exemptFromAllDuties" 
+                      (ngModelChange)="onExemptFromAllChange($event)" 
+                    />
+                    <span class="exempt-label-text">
+                      <strong>Δεν εκτελεί καμία υπηρεσία</strong> (πλήρης απαλλαγή υπηρεσιών)
+                    </span>
+                  </label>
+                </div>
+
+                @if (!formModel.exemptFromAllDuties) {
+                  <div class="duties-checkbox-grid">
+                    @for (duty of storage.dutyTypes(); track duty.id) {
+                      <label class="duty-check-item" [class.is-checked]="isDutySelected(duty.id)">
+                        <input 
+                          type="checkbox" 
+                          [checked]="isDutySelected(duty.id)" 
+                          (change)="toggleDutySelection(duty.id)" 
+                        />
+                        <div class="duty-info">
+                          <span class="duty-title">{{ duty.name }}</span>
+                          <span class="duty-meta">@if (duty.category && duty.category !== 'Οπλίτης' && duty.category !== 'Στρατιώτης') { {{ duty.category }} • }{{ duty.armsRequired }}</span>
+                        </div>
+                      </label>
+                    }
+                  </div>
+                } @else {
+                  <div class="exempt-alert-message">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="12" y1="8" x2="12" y2="12"/>
+                      <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span>Ο στρατιώτης έχει εξαιρεθεί από όλες τις υπηρεσίες. Δεν θα συμμετέχει στον προγραμματισμό και τυχόν νέες υπηρεσίες που θα δημιουργηθούν αργότερα δεν θα προστεθούν σε αυτόν.</span>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- Right Column: Personal Soldier Calendar (Duties, ΕΥ, ΕΑ, Leaves) -->
+            <div class="soldier-calendar-column">
+              @if (editingPersonId()) {
+                <div class="soldier-calendar-card">
+                  <div class="calendar-card-header">
+                    <div class="calendar-header-titles">
+                      <div class="calendar-card-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                          <line x1="16" y1="2" x2="16" y2="6"/>
+                          <line x1="8" y1="2" x2="8" y2="6"/>
+                          <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        Ατομικό Ημερολόγιο Στρατιώτη
+                      </div>
+                      <div class="calendar-card-subtitle">Πρόγραμμα Υπηρεσιών, Ε.Υ., Ε.Α. & Άδειες</div>
+                    </div>
+
+                    <div class="calendar-month-controls">
+                      <button type="button" class="btn btn-secondary btn-icon-sm" (click)="prevSoldierMonth()" title="Προηγούμενος Μήνας">
+                        &lsaquo;
+                      </button>
+                      <span class="calendar-month-text">{{ soldierCalMonthLabel() }}</span>
+                      <button type="button" class="btn btn-secondary btn-icon-sm" (click)="nextSoldierMonth()" title="Επόμενος Μήνας">
+                        &rsaquo;
+                      </button>
+                      <button type="button" class="btn btn-secondary btn-xs cal-today-btn" (click)="goToSoldierToday()" title="Μετάβαση στον τρέχοντα μήνα">
+                        Σήμερα
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Calendar Month Stats Summary -->
+                  <div class="calendar-stats-bar">
+                    <div class="cal-stat-chip duty-stat" title="Υπηρεσίες στον επιλεγμένο μήνα">
+                      <span class="stat-dot duty-dot"></span>
+                      <span class="stat-lbl">Υπηρεσίες μήνα:</span>
+                      <strong>{{ soldierCalMonthDutyCount() }}</strong>
+                    </div>
+                    <div class="cal-stat-chip leave-stat" title="Ημέρες απαλλαγών ή αδειών στον επιλεγμένο μήνα">
+                      <span class="stat-dot leave-dot"></span>
+                      <span class="stat-lbl">ΕΥ / ΕΑ / Άδειες:</span>
+                      <strong>{{ soldierCalMonthLeaveCount() }}ημ.</strong>
+                    </div>
+                    <div class="cal-stat-chip total-stat" title="Συνολικές υπηρεσίες ιστορικού">
+                      <span class="stat-lbl">Σύνολο Υπηρεσιών:</span>
+                      <strong>{{ formModel.dutyScore }}</strong>
+                    </div>
+                  </div>
+
+                  <!-- Calendar Weekday Header -->
+                  <div class="calendar-grid-header">
+                    <div class="cal-th">ΔΕΥ</div>
+                    <div class="cal-th">ΤΡΙ</div>
+                    <div class="cal-th">ΤΕΤ</div>
+                    <div class="cal-th">ΠΕΜ</div>
+                    <div class="cal-th">ΠΑΡ</div>
+                    <div class="cal-th weekend">ΣΑΒ</div>
+                    <div class="cal-th weekend">ΚΥΡ</div>
+                  </div>
+
+                  <!-- Calendar Grid Cells -->
+                  <div class="calendar-grid">
+                    @for (cell of soldierCalendarDays(); track cell.dateStr) {
+                      <div 
+                        class="calendar-cell" 
+                        [class.other-month]="!cell.isCurrentMonth"
+                        [class.is-today]="cell.isToday"
+                        [class.is-weekend]="cell.isWeekend"
+                        [class.has-events]="cell.duties.length > 0 || cell.leaves.length > 0"
+                      >
+                        <div class="cell-top">
+                          <span class="day-number">{{ cell.dayNumber }}</span>
+                          @if (cell.isToday) {
+                            <span class="today-indicator" title="Σήμερα">•</span>
+                          }
+                        </div>
+
+                        <div class="cell-events">
+                          <!-- Duties -->
+                          @for (d of cell.duties; track d.dutyName) {
+                            <div 
+                              class="cal-event-pill cal-pill-duty" 
+                              [title]="'Υπηρεσία: ' + d.dutyName + (d.hoursNote ? ' (' + d.hoursNote + ')' : '')"
+                            >
+                              <span class="event-icon">🛡️</span>
+                              <span class="event-name">{{ d.shortName }}</span>
+                            </div>
+                          }
+
+                          <!-- Leaves & Exemptions -->
+                          @for (l of cell.leaves; track l.type + l.shortCode) {
+                            <div 
+                              class="cal-event-pill" 
+                              [ngClass]="l.badgeClass"
+                              [title]="l.type + (l.reason ? ': ' + l.reason : '')"
+                            >
+                              <span class="event-code">{{ l.shortCode }}</span>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+
+                  <!-- Legend -->
+                  <div class="calendar-legend">
+                    <span class="legend-item"><span class="legend-swatch duty"></span> Υπηρεσία</span>
+                    <span class="legend-item"><span class="legend-swatch ey"></span> Ε.Υ. (Ελεύθερος Υπηρεσίας)</span>
+                    <span class="legend-item"><span class="legend-swatch ea"></span> Ε.Α. (Ελεύθερος Ασκήσεων)</span>
+                    <span class="legend-item"><span class="legend-swatch leave"></span> Άδεια</span>
+                    <span class="legend-item"><span class="legend-swatch" style="background: #1D4ED8;"></span> Έξοδος Σ/Κ</span>
+                  </div>
+                </div>
+              } @else {
+                <!-- Placeholder for new soldier -->
+                <div class="soldier-calendar-placeholder">
+                  <div class="placeholder-icon">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                      <line x1="16" y1="2" x2="16" y2="6"/>
+                      <line x1="8" y1="2" x2="8" y2="6"/>
+                      <line x1="3" y1="10" x2="21" y2="10"/>
+                      <path d="M8 14h.01"/>
+                      <path d="M12 14h.01"/>
+                      <path d="M16 14h.01"/>
+                      <path d="M8 18h.01"/>
+                      <path d="M12 18h.01"/>
+                    </svg>
+                  </div>
+                  <h3 class="placeholder-title">Προσωπικό Ημερολόγιο Στρατιώτη</h3>
+                  <p class="placeholder-desc">
+                    Το ατομικό ημερολόγιο καταγράφει αναλυτικά όλες τις ανατεθειμένες υπηρεσίες, τις απαλλαγές (Ε.Υ., Ε.Α., Ε.Ο.) και τις άδειες του στρατιώτη.
+                  </p>
+                  <div class="placeholder-hint">
+                    Θα ενεργοποιηθεί αυτόματα μόλις ολοκληρώσετε την προσθήκη του στρατιώτη στη Δύναμη.
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer modal-footer-split">
+          @if (editingPersonId()) {
+            <button type="button" class="btn btn-danger btn-delete-person" (click)="deleteCurrentPerson()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+              Διαγραφή
+            </button>
+          } @else {
+            <div></div>
+          }
+          <div class="modal-footer-actions">
+            <button type="button" class="btn btn-secondary" (click)="closeModal()">Ακύρωση</button>
+            <button type="button" class="btn btn-primary" (click)="savePerson()">
+              {{ editingPersonId() ? 'Ενημέρωση' : 'Προσθήκη' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- CSV Bulk Import Modal -->
+  @if (isCsvModalOpen()) {
+    <div class="modal-overlay" (click)="closeCsvModal()">
+      <div class="modal-content csv-modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Μαζική Εισαγωγή Στρατιωτών (CSV)
+          </h2>
+          <button class="close-btn" (click)="closeCsvModal()" title="Κλείσιμο παραθύρου">&times;</button>
+        </div>
+
+        <div class="modal-body csv-modal-body">
+          <!-- Step 1 & Instructions -->
+          <div class="csv-guidance-card">
+            <div class="guidance-header">
+              <div class="guidance-step-badge">Οδηγίες Χρήσης</div>
+              <h3 class="guidance-title">Πώς να προετοιμάσετε το αρχείο CSV για μαζική εισαγωγή:</h3>
+            </div>
+            
+            <div class="guidance-steps">
+              <div class="guidance-step-item">
+                <span class="step-num">1</span>
+                <div class="step-content">
+                  <strong>Κατεβάστε το κενό πρότυπο αρχείο:</strong>
+                  <p>Περιλαμβάνει τις κατάλληλες επικεφαλίδες στη σωστή μορφοποίηση για το Excel.</p>
+                  <button type="button" class="btn btn-secondary btn-sm download-template-btn" (click)="downloadCsvTemplate()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Λήψη Πρότυπου Αρχείου (CSV Template)
+                  </button>
+                </div>
+              </div>
+
+              <div class="guidance-step-item">
+                <span class="step-num">2</span>
+                <div class="step-content">
+                  <strong>Συμπληρώστε τα στοιχεία των στρατιωτών:</strong>
+                  <ul class="guidance-fields-list">
+                    <li><strong>Ονοματεπώνυμο:</strong> <span class="badge-required">(Υποχρεωτικό)</span> Εάν είναι κενό, η εγγραφή αγνοείται. Μετατρέπεται αυτόματα σε κεφαλαία χωρίς τόνους.</li>
+                    <li><strong>ΑΣΜ:</strong> <span class="badge-required">(Υποχρεωτικό)</span> Αριθμός Μητρώου ή ΕΣΣΟ (π.χ. <code>2024 Δ / 09144</code>). Εάν είναι κενό, η εγγραφή αγνοείται.</li>
+                    <li><strong>ΟΠΛΟ:</strong> Σύντομο όπλο: <code>ΠΖ</code>, <code>ΤΘ</code>, <code>ΠΒ</code>, <code>ΜΧ</code>, <code>ΔΒ</code>, <code>ΑΣ</code>, <code>ΤΧ</code>, <code>ΕΜ</code>, <code>ΥΠ</code>, <code>ΥΓ</code> (προεπιλογή: <code>ΠΖ</code>).</li>
+                    <li><strong>ΘΑΛΑΜΟΣ:</strong> π.χ. <code>ΘΑΛΑΜΟΣ 1</code>, <code>101</code> (προαιρετικό).</li>
+                    <li><strong>ΚΡΕΒΑΤΙ:</strong> π.χ. <code>1</code>, <code>12</code> (προαιρετικό).</li>
+                    <li><strong>ΙΚΑΝΟΤΗΤΑ:</strong> <code>Ι1</code>, <code>Ι2</code>, <code>Ι3</code> ή <code>Ι4</code> (εάν είναι κενό, ορίζεται αυτόματα σε <strong>Ι1</strong>).</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="guidance-step-item">
+                <span class="step-num">3</span>
+                <div class="step-content">
+                  <strong>Ανεβάστε το συμπληρωμένο αρχείο:</strong>
+                  <p>Υποστηρίζονται διαχωριστικά ελληνικό ερωτηματικό (<code>;</code>) ή κόμμα (<code>,</code>).</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- File Drop Zone -->
+          <div 
+            class="csv-dropzone" 
+            [class.is-dragover]="isDraggingFile()"
+            (dragover)="onCsvDragOver($event)"
+            (dragleave)="onCsvDragLeave($event)"
+            (drop)="onCsvDrop($event)"
+          >
+            <input 
+              type="file" 
+              #csvFileInput 
+              accept=".csv, .xlsx, .xls, text/csv, text/plain, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
+              (change)="onCsvFileSelected($event)" 
+              style="display: none;" 
+            />
+            
+            <div class="dropzone-inner">
+              <div class="dropzone-icon">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="12" y1="18" x2="12" y2="12"/>
+                  <line x1="9" y1="15" x2="15" y2="15"/>
+                </svg>
+              </div>
+              <div class="dropzone-text">
+                <strong>Σύρετε και αφήστε το αρχείο CSV ή Excel (.xlsx, .xls) εδώ</strong>
+                <span>ή κάντε κλικ για επιλογή από τον υπολογιστή</span>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" (click)="csvFileInput.click()">
+                Επιλογή Αρχείου (CSV / Excel)
+              </button>
+              @if (csvFileName()) {
+                <div class="selected-file-badge">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  <span>{{ csvFileName() }}</span>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Error Alert -->
+          @if (csvErrorMessage()) {
+            <div class="csv-error-alert">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span>{{ csvErrorMessage() }}</span>
+            </div>
+          }
+
+          <!-- Preview Table of parsed data -->
+          @if (csvParsedRows().length > 0) {
+            <!-- Conflict Resolution Strategy Selector (when conflicts detected) -->
+            @if (conflictsCount() > 0) {
+              <div class="csv-conflict-box">
+                <div class="conflict-header">
+                  <div class="conflict-badge">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                      <line x1="12" y1="9" x2="12" y2="13"/>
+                      <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    Εντοπίστηκαν {{ conflictsCount() }} συγκρούσεις Α.Σ.Μ.
+                  </div>
+                  <span class="conflict-desc">
+                    Υπάρχουν εγγραφές με Α.Σ.Μ. που υπάρχει ήδη στη Δύναμη. Επιλέξτε τι θέλετε να κάνετε:
+                  </span>
+                </div>
+
+                <div class="conflict-strategies">
+                  <button 
+                    type="button" 
+                    class="btn conflict-strat-btn"
+                    [class.active]="globalConflictStrategy() === 'UPDATE'"
+                    (click)="setGlobalConflictStrategy('UPDATE')"
+                    title="Αντικατάσταση των στοιχείων του υπάρχοντος στρατιώτη με τα νέα από το CSV"
+                  >
+                    <span class="radio-dot"></span>
+                    <div class="strat-text">
+                      <strong>Ενημέρωση Υπαρχόντων</strong>
+                      <span>Αντικατάσταση στοιχείων με τα νέα του CSV</span>
+                    </div>
+                  </button>
+
+                  <button 
+                    type="button" 
+                    class="btn conflict-strat-btn"
+                    [class.active]="globalConflictStrategy() === 'SKIP'"
+                    (click)="setGlobalConflictStrategy('SKIP')"
+                    title="Αγνόηση των συγκρούσεων και εισαγωγή μόνο των νέων στρατιωτών"
+                  >
+                    <span class="radio-dot"></span>
+                    <div class="strat-text">
+                      <strong>Παράλειψη Συγκρούσεων</strong>
+                      <span>Εισαγωγή μόνο των εντελώς νέων Α.Σ.Μ.</span>
+                    </div>
+                  </button>
+
+                  <button 
+                    type="button" 
+                    class="btn conflict-strat-btn"
+                    [class.active]="globalConflictStrategy() === 'INSERT'"
+                    (click)="setGlobalConflictStrategy('INSERT')"
+                    title="Προσθήκη ως νέων εγγραφών (διατήρηση και των δύο)"
+                  >
+                    <span class="radio-dot"></span>
+                    <div class="strat-text">
+                      <strong>Προσθήκη ως Νέων</strong>
+                      <span>Διατήρηση και των δύο εγγραφών</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            }
+
+            <div class="csv-preview-container">
+              <div class="csv-preview-header">
+                <div class="preview-counts">
+                  <span class="preview-stat-item total">
+                    Σύνολο: <strong>{{ csvParsedRows().length }}</strong>
+                  </span>
+                  @if (toInsertCount() > 0) {
+                    <span class="preview-stat-item valid">
+                      Νέοι: <strong>{{ toInsertCount() }}</strong>
+                    </span>
+                  }
+                  @if (toUpdateCount() > 0) {
+                    <span class="preview-stat-item update">
+                      Ενημερώσεις: <strong>{{ toUpdateCount() }}</strong>
+                    </span>
+                  }
+                  @if (toSkipCount() > 0) {
+                    <span class="preview-stat-item skip">
+                      Παραλείψεις: <strong>{{ toSkipCount() }}</strong>
+                    </span>
+                  }
+                  @if (csvInvalidCount() > 0) {
+                    <span class="preview-stat-item invalid">
+                      Σφάλματα: <strong>{{ csvInvalidCount() }}</strong>
+                    </span>
+                  }
+                </div>
+                <div class="preview-note">
+                  Μπορείτε να αλλάξετε την ενέργεια ανά γραμμή στη στήλη «Κατάσταση / Ενέργεια»:
+                </div>
+              </div>
+
+              <div class="csv-table-scroll">
+                <table class="data-table csv-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 36px;">#</th>
+                      <th style="min-width: 170px;">Κατάσταση / Ενέργεια</th>
+                      <th>Ονοματεπώνυμο *</th>
+                      <th>ΑΣΜ *</th>
+                      <th>ΟΠΛΟ</th>
+                      <th>Θάλαμος</th>
+                      <th>Κρεβάτι</th>
+                      <th>Ικανότητα</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of csvParsedRows(); track row.rowNumber) {
+                      <tr 
+                        [class.invalid-csv-row]="!row.isValid"
+                        [class.conflict-csv-row]="row.hasConflict && row.isValid"
+                        [class.skipped-csv-row]="row.conflictAction === 'SKIP'"
+                      >
+                        <td><span class="text-dim">{{ row.rowNumber }}</span></td>
+                        <td>
+                          @if (!row.isValid) {
+                            <span class="csv-status-pill invalid" [title]="row.errorMessage">✕ {{ row.errorMessage }}</span>
+                          } @else if (row.hasConflict) {
+                            <div class="conflict-cell">
+                              <span class="csv-status-pill conflict" [title]="'Ήδη καταχωρημένος: ' + row.conflictPersonName">
+                                ⚠ {{ row.conflictPersonName }}
+                              </span>
+                              <select 
+                                class="form-select csv-row-action-select" 
+                                [value]="row.conflictAction" 
+                                (change)="setRowConflictAction(row, $any($event.target).value)"
+                              >
+                                <option value="UPDATE">Ενημέρωση</option>
+                                <option value="SKIP">Παράλειψη</option>
+                                <option value="INSERT">Προσθήκη νέου</option>
+                              </select>
+                            </div>
+                          } @else {
+                            <span class="csv-status-pill valid" title="Νέος στρατιώτης προς εισαγωγή">✓ Έγκυρο</span>
+                          }
+                        </td>
+                        <td>
+                          <strong>{{ row.fullName || '(ΛΕΙΠΕΙ)' }}</strong>
+                        </td>
+                        <td>
+                          @if (row.asm) {
+                            <span class="asm-tag">{{ row.asm }}</span>
+                          } @else {
+                            <span class="text-danger-asm">(ΛΕΙΠΕΙ)</span>
+                          }
+                        </td>
+                        <td><span class="corps-tag">{{ row.specialty }}</span></td>
+                        <td>{{ row.barracksRoom || '-' }}</td>
+                        <td>{{ row.bedNumber || '-' }}</td>
+                        <td><span class="fitness-tag" [attr.data-fit]="row.fitnessProfile">{{ row.fitnessProfile }}</span></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="modal-footer modal-footer-split">
+          <button type="button" class="btn btn-secondary" (click)="closeCsvModal()">
+            Ακύρωση
+          </button>
+          <button 
+            type="button" 
+            class="btn btn-primary" 
+            [disabled]="(toInsertCount() + toUpdateCount()) === 0"
+            (click)="confirmCsvImport()"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            @if (toInsertCount() > 0 && toUpdateCount() > 0) {
+              Εισαγωγή ({{ toInsertCount() }} νέοι & {{ toUpdateCount() }} ενημερώσεις)
+            } @else if (toUpdateCount() > 0) {
+              Ενημέρωση ({{ toUpdateCount() }} στρατιώτες)
+            } @else {
+              Εισαγωγή ({{ toInsertCount() }} νέοι στρατιώτες)
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Bulk Delete Confirmation Modal -->
+  @if (isBulkDeleteModalOpen()) {
+    <div class="modal-overlay" (click)="closeBulkDeleteModal()">
+      <div class="modal-content modal-sm confirm-modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header confirm-header-danger">
+          <div class="confirm-title-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <h2>Επιβεβαίωση Μαζικής Διαγραφής</h2>
+          </div>
+          <button class="close-btn" (click)="closeBulkDeleteModal()">&times;</button>
+        </div>
+        <div class="modal-body confirm-modal-body">
+          <p>
+            Πρόκειται να διαγράψετε οριστικά <strong>{{ selectedCount() }}</strong> στρατιώτες από τη Δύναμη.
+          </p>
+          <p class="text-danger-note">
+            Η ενέργεια αυτή είναι μη αναστρέψιμη. Όλες οι καταχωρήσεις και το ιστορικό υπηρεσιών των επιλεγμένων στρατιωτών θα αφαιρεθούν.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeBulkDeleteModal()">Ακύρωση</button>
+          <button type="button" class="btn btn-danger" (click)="executeBulkDelete()">
+            Οριστική Διαγραφή ({{ selectedCount() }})
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Bulk Room Assignment Modal -->
+  @if (isBulkRoomModalOpen()) {
+    <div class="modal-overlay" (click)="closeBulkRoomModal()">
+      <div class="modal-content modal-sm" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            Μαζική Ανάθεση Θαλάμου
+          </h2>
+          <button class="close-btn" (click)="closeBulkRoomModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-3 text-muted">
+            Ορίστε νέο θάλαμο για τους <strong>{{ selectedCount() }}</strong> επιλεγμένους στρατιώτες:
+          </p>
+          <div class="form-group">
+            <label class="form-label">Νέος Θάλαμος</label>
+            <input 
+              type="text" 
+              class="form-control" 
+              placeholder="π.χ. 1.1, 1.2..."
+              [value]="bulkRoomTarget()"
+              (input)="bulkRoomTarget.set($any($event.target).value)"
+            />
+          </div>
+          @if (uniqueRooms().length > 0) {
+            <div class="quick-room-suggestions mt-3">
+              <span class="suggestion-label">Υπάρχοντες θάλαμοι:</span>
+              <div class="suggestion-chips">
+                @for (r of uniqueRooms(); track r.room) {
+                  <button type="button" class="suggestion-chip" (click)="bulkRoomTarget.set(r.room)">
+                    {{ r.room }}
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeBulkRoomModal()">Ακύρωση</button>
+          <button type="button" class="btn btn-primary" (click)="executeBulkRoomChange()">
+            Αποθήκευση
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Bulk Corps Assignment Modal -->
+  @if (isBulkCorpsModalOpen()) {
+    <div class="modal-overlay" (click)="closeBulkCorpsModal()">
+      <div class="modal-content modal-sm" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            Μαζική Αλλαγή Όπλου / Σώματος
+          </h2>
+          <button class="close-btn" (click)="closeBulkCorpsModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-3 text-muted">
+            Επιλέξτε νέο Όπλο/Σώμα για τους <strong>{{ selectedCount() }}</strong> επιλεγμένους στρατιώτες:
+          </p>
+          <div class="form-group">
+            <label class="form-label">Όπλο / Σώμα</label>
+            <select class="form-select" [value]="bulkCorpsTarget()" (change)="bulkCorpsTarget.set($any($event.target).value)">
+              @for (c of corps; track c) {
+                <option [value]="c">{{ c }}</option>
+              }
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeBulkCorpsModal()">Ακύρωση</button>
+          <button type="button" class="btn btn-primary" (click)="executeBulkCorpsChange()">
+            Αποθήκευση
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

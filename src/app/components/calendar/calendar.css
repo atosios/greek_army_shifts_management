@@ -1,0 +1,1037 @@
+/* ============================================================ */
+/* CALENDAR COMPONENT STYLES - GREEK ARMY SHIFTS MANAGEMENT     */
+/* ============================================================ */
+
+.calendar-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-bottom: 2.5rem;
+  animation: fadeIn 0.18s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Card base */
+.card {
+  background: #FFFFFF;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* 1. Date Navigation & Actions Control Bar (Identical to Shift Scheduler) */
+.scheduler-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  padding: 0.65rem 1rem;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.control-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.control-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-today-schedule {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+  height: 32px;
+  padding: 0 0.85rem;
+  font-size: 0.8125rem;
+  border-radius: 4px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+/* Date Navigator: [ < ] [ 📅 μήνας / έτος ] [ > ] [ Σήμερα ] */
+.date-navigation-group {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.btn-icon-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 4px;
+  color: #475569;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-icon-nav:hover {
+  background: #F8FAFC;
+  color: #0F172A;
+  border-color: #94A3B8;
+}
+
+.single-date-box {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 32px;
+  padding: 0 0.85rem;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.single-date-box:hover {
+  border-color: #94A3B8;
+  background: #F8FAFC;
+}
+
+.calendar-icon {
+  color: #64748B;
+  flex-shrink: 0;
+}
+
+.date-ddmmyyyy-text {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #0F172A;
+  letter-spacing: 0.02em;
+}
+
+.btn-today {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.45rem 0.75rem;
+  height: 32px;
+  border-radius: 4px;
+  background: #F8FAFC;
+  border: 1px solid #CBD5E1;
+  color: #334155;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.15s ease;
+}
+
+.btn-today:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+/* 4. Calendar Main Grid Card */
+.calendar-grid-card {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.calendar-grid-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: #F8FAFC;
+  border-bottom: 2px solid #E2E8F0;
+}
+
+.weekday-col-header {
+  padding: 0.65rem 0.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  border-right: 1px solid #E2E8F0;
+  letter-spacing: 0.02em;
+}
+
+.weekday-col-header:last-child {
+  border-right: none;
+}
+
+.weekday-col-header.is-friday {
+  color: #1E3A8A;
+  background: #EFF6FF;
+}
+
+.weekday-col-header.is-weekend {
+  color: #9A3412;
+  background: #FFF7ED;
+}
+
+.weekday-col-header .w-short {
+  display: none;
+}
+
+/* Days Grid Cells */
+.calendar-grid-cells {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: #E2E8F0;
+  gap: 1px;
+}
+
+.calendar-day-cell {
+  background: #FFFFFF;
+  min-height: 110px;
+  padding: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+  outline: none;
+}
+
+.calendar-day-cell:hover {
+  background: #F8FAFC;
+  box-shadow: inset 0 0 0 2px #3B82F6;
+  z-index: 2;
+}
+
+.calendar-day-cell.other-month {
+  background: #F8FAFC;
+  opacity: 0.45;
+}
+
+.calendar-day-cell.other-month:hover {
+  opacity: 0.8;
+}
+
+.calendar-day-cell.is-dimmed {
+  opacity: 0.3;
+}
+
+.calendar-day-cell.is-weekend {
+  background: #FCFBF9;
+}
+
+.calendar-day-cell.is-today {
+  background: #EFF6FF;
+  border-top: 3px solid #2563EB;
+}
+
+.calendar-day-cell.is-finalized {
+  border-left: 3px solid #16A34A;
+}
+
+/* Cell Top Bar */
+.cell-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+
+.day-number-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.day-number {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0F172A;
+  line-height: 1;
+}
+
+.calendar-day-cell.is-today .day-number {
+  color: #1D4ED8;
+}
+
+.today-tag {
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #1D4ED8;
+  background: #DBEAFE;
+  padding: 0.05rem 0.25rem;
+  border-radius: 3px;
+  letter-spacing: 0.02em;
+}
+
+.cell-badges-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.status-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  line-height: 1.2;
+}
+
+.finalized-pill {
+  background: #DCFCE7;
+  color: #15803D;
+  border: 1px solid #86EFAC;
+}
+
+.draft-pill {
+  background: #E0F2FE;
+  color: #0369A1;
+  border: 1px solid #BAE6FD;
+}
+
+/* Cell Duties Body */
+.cell-duties-body {
+  margin: 0.4rem 0;
+  flex: 1;
+}
+
+.duties-chips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.cell-duty-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  background: #F1F5F9;
+  font-size: 0.6875rem;
+  border: 1px solid #E2E8F0;
+  color: #334155;
+  transition: all 0.1s ease;
+}
+
+.cell-duty-chip.is-fully-manned {
+  background: #F0FDF4;
+  border-color: #DCFCE7;
+  color: #166534;
+}
+
+.cell-duty-chip.has-empty {
+  background: #FEF2F2;
+  border-color: #FEE2E2;
+  color: #991B1B;
+}
+
+.chip-short {
+  font-weight: 700;
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip-count {
+  font-size: 0.625rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.cell-more-duties {
+  font-size: 0.625rem;
+  color: #64748B;
+  font-weight: 600;
+  padding-left: 0.2rem;
+}
+
+.cell-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #CBD5E1;
+  font-size: 0.85rem;
+}
+
+/* Cell Bottom Bar */
+.cell-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+}
+
+.cell-leave-badge {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #9A3412;
+  background: #FFEDD5;
+  border: 1px solid #FED7AA;
+  border-radius: 3px;
+  padding: 0.05rem 0.3rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.cell-weekend-plan-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.dot-sat, .dot-sun {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.dot-sat {
+  background: #3B82F6;
+}
+
+.dot-sun {
+  background: #10B981;
+}
+
+/* ============================================================ */
+/* DAY PREVIEW MODAL STYLES                                     */
+/* ============================================================ */
+
+.modal-backdrop.preview-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 1rem;
+}
+
+.preview-modal-card {
+  background: #FFFFFF;
+  border-radius: 8px;
+  max-width: 760px;
+  width: 100%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  border: 1px solid #CBD5E1;
+  animation: modalScale 0.15s ease-out;
+}
+
+@keyframes modalScale {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.25rem;
+  background: #FAFAFA;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.preview-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.preview-date-badge {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  padding: 0.25rem 0.55rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+}
+
+.preview-date-num {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1E293B;
+  line-height: 1.1;
+}
+
+.preview-date-month {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #64748B;
+  margin-top: 0.1rem;
+}
+
+.preview-title-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.preview-header .modal-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #0F172A;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.preview-status-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.finalized-tag {
+  background: #F0FDF4;
+  color: #15803D;
+  border: 1px solid #BBF7D0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  line-height: 1.2;
+}
+
+.draft-tag {
+  background: #F8FAFC;
+  color: #475569;
+  border: 1px solid #CBD5E1;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+.empty-tag {
+  background: #F8FAFC;
+  color: #94A3B8;
+  border: 1px solid #E2E8F0;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+.weekend-tag {
+  background: #FFFBEB;
+  color: #B45309;
+  border: 1px solid #FDE68A;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  color: #94A3B8;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.2rem 0.35rem;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.modal-close-btn:hover {
+  color: #0F172A;
+  background: #F1F5F9;
+}
+
+/* Modal Body */
+.preview-body {
+  padding: 1rem 1.25rem;
+  max-height: 70vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  background: #FFFFFF;
+}
+
+.preview-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.preview-stat-pill {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  padding: 0.5rem 0.6rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.preview-stat-pill .stat-num {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1E293B;
+  line-height: 1.2;
+}
+
+.preview-stat-pill .stat-lbl {
+  font-size: 0.6875rem;
+  color: #64748B;
+  font-weight: 500;
+}
+
+/* Leaves Section (matching scheduler alert bar) */
+.preview-leaves-section {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 6px;
+  padding: 0.55rem 0.85rem;
+  color: #92400E;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.leaves-header-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.leaves-icon {
+  color: #D97706;
+  flex-shrink: 0;
+}
+
+.leaves-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #92400E;
+  margin: 0;
+}
+
+.preview-leaves-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.preview-leave-chip {
+  background: #FFFFFF;
+  border: 1px solid #FCD34D;
+  color: #92400E;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+}
+
+/* Duties Breakdown Section */
+.preview-duties-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.section-heading-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.section-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin: 0;
+}
+
+.section-subtitle {
+  font-size: 0.72rem;
+  color: #94A3B8;
+  font-weight: 400;
+}
+
+.preview-duties-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+/* Single Duty Card (matching scheduler duty-group-card) */
+.preview-duty-card {
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #FFFFFF;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.duty-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  background: #FAFAFA;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.duty-badge-sm {
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: #F1F5F9;
+  color: #334155;
+  border: 1px solid #CBD5E1;
+  padding: 0.12rem 0.45rem;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
+.duty-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1E293B;
+}
+
+.slots-pill {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: #64748B;
+  font-weight: 400;
+}
+
+.duty-grouped-shifts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: #FFFFFF;
+}
+
+/* Grouped Shift Item (matching shift-box in scheduler) */
+.grouped-shift-item {
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  background: #FFFFFF;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.15s ease;
+}
+
+.grouped-shift-item:hover {
+  border-color: #CBD5E1;
+}
+
+/* Shift Header (Time & metadata) */
+.shift-time-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.75rem;
+  background: #F8FAFC;
+  border-bottom: 1px solid #F1F5F9;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.shift-time-info {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.shift-idx-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #475569;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  padding: 0.05rem 0.4rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.shift-title-tag {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #334155;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  padding: 0.05rem 0.45rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.shift-hours-badge {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #334155;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  padding: 0.05rem 0.45rem;
+  border-radius: 3px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.shift-header-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #475569;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  padding: 0.05rem 0.4rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.shift-header-right .people-icon {
+  color: #94A3B8;
+}
+
+.shift-header-right .people-count-text {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Assigned Soldiers (matching scheduler person picker layout) */
+.shift-soldiers-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.45rem;
+  padding: 0.55rem 0.75rem;
+  background: #FFFFFF;
+}
+
+.soldier-slot-pill {
+  height: 32px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0 0.55rem;
+  border: 1px solid #CBD5E1;
+  border-radius: 4px;
+  background: #FFFFFF;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+}
+
+.soldier-slot-pill.is-empty {
+  border: 1px dashed #CBD5E1;
+  background: #FAFAFA;
+}
+
+.soldier-slot-pill.has-error {
+  border-color: #FECDD3;
+  background: #FFFBFB;
+}
+
+.soldier-rank {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: #475569;
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.soldier-name {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #0F172A;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.soldier-empty-txt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #94A3B8;
+  font-style: normal;
+}
+
+.empty-icon-svg {
+  color: #94A3B8;
+  flex-shrink: 0;
+}
+
+.slot-warning-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  margin-left: auto;
+  flex-shrink: 0;
+  cursor: help;
+  transition: all 0.15s ease;
+  background: #FEE2E2;
+  color: #DC2626;
+  border: 1px solid #FECDD3;
+}
+
+.slot-warning-indicator.is-warning {
+  background: #FFEDD5;
+  color: #C2410C;
+  border: 1px solid #FDBA74;
+}
+
+.slot-warning-indicator.is-error {
+  background: #FEE2E2;
+  color: #DC2626;
+  border: 1px solid #FECDD3;
+}
+
+.warning-icon-svg {
+  flex-shrink: 0;
+}
+
+/* No duties placeholder */
+.preview-no-duties {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.2rem 1rem;
+  text-align: center;
+  color: #64748B;
+  background: #FAFAFA;
+  border-radius: 6px;
+  border: 1px dashed #CBD5E1;
+}
+
+.preview-no-duties p {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.8125rem;
+  color: #64748B;
+}
+
+/* Modal Footer */
+.preview-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  padding: 0.75rem 1.25rem;
+  background: #FAFAFA;
+  border-top: 1px solid #E2E8F0;
+}
+
+.btn-open-scheduler {
+  background: #2563EB;
+  color: #FFFFFF;
+  border: 1px solid #1D4ED8;
+  font-weight: 500;
+  font-size: 0.8125rem;
+  padding: 0.4rem 0.95rem;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease;
+}
+
+.btn-open-scheduler:hover {
+  background: #1D4ED8;
+}
+
+/* ============================================================ */
+/* RESPONSIVE DESIGN                                            */
+/* ============================================================ */
+
+@media (max-width: 900px) {
+  .calendar-day-cell {
+    min-height: 90px;
+    padding: 0.35rem;
+  }
+
+  .weekday-col-header .w-full {
+    display: none;
+  }
+
+  .weekday-col-header .w-short {
+    display: inline;
+  }
+
+  .chip-short {
+    max-width: 45px;
+  }
+
+  .preview-stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .calendar-header-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .calendar-nav-controls {
+    justify-content: space-between;
+  }
+
+  .month-metrics-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .metric-filter-wrap {
+    margin-left: 0;
+  }
+
+  .calendar-day-cell {
+    min-height: 70px;
+  }
+
+  .chip-short {
+    display: none;
+  }
+}

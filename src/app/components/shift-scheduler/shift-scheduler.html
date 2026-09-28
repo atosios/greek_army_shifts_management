@@ -1,0 +1,708 @@
+<div class="scheduler-page">
+  <!-- 1. Page Header (Standard Executive UI) -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Έκδοση Υπηρεσιών</h1>
+      <p class="page-subtitle">Ημερήσιος προγραμματισμός, έκδοση διαταγής και αυτόματη κατανομή σκοπιών & βαρδιών
+        μονάδας.</p>
+    </div>
+    <div class="header-actions">
+      <!-- Button: Εκκαθάριση (minimal icon button without text) -->
+      <button class="btn btn-clear-duties-minimal" [disabled]="isCurrentScheduleFinalized()" (click)="clearAllDutiesForCurrentDay()"
+        [title]="isCurrentScheduleFinalized() ? 'Το πρόγραμμα έχει οριστικοποιηθεί. Πατήστε «Επαναφορά» για επεξεργασία.' : 'Εκκαθάριση όλων των στρατιωτών από τις θέσεις της ημέρας'">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 6h18" />
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          <line x1="10" y1="11" x2="10" y2="17" />
+          <line x1="14" y1="11" x2="14" y2="17" />
+        </svg>
+      </button>
+
+      <!-- Button: Οριστικοποίηση / Status Badge & Επαναφορά -->
+      @if (!isCurrentScheduleFinalized()) {
+      <button class="btn btn-finalize" (click)="openFinalizeModal()"
+        title="Οριστικοποίηση προγράμματος και υπολογισμός μορίων των στρατιωτών">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 11l3 3L22 4" />
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+        </svg>
+        <span>Οριστικοποίηση</span>
+      </button>
+      } @else {
+      <span class="finalized-status-pill" title="Το πρόγραμμα έχει οριστικοποιηθεί και τα μόρια έχουν υπολογιστεί">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+        <span>Οριστικοποιημένο</span>
+      </span>
+
+      <button class="btn btn-reset-finalize" (click)="openResetFinalizeModal()"
+        title="Ακύρωση οριστικοποίησης, επαναφορά μορίων και ξεκλείδωμα θέσεων">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+          <path d="M3 3v5h5" />
+        </svg>
+        <span>Επαναφορά</span>
+      </button>
+      }
+    </div>
+  </div>
+
+  <!-- 2. Date Navigation & Actions Bar -->
+  <div class="card scheduler-control-bar">
+    <!-- Left: Navigation Arrows with Single Date in Between -->
+    <div class="control-bar-left">
+      <div class="date-navigation-group">
+        <button class="btn btn-secondary btn-icon-nav" (click)="navigateDay(-1)" title="Προηγούμενη Ημέρα">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+
+        <div class="single-date-box" (click)="datePickerInput.showPicker()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            class="calendar-icon">
+            <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+          <span class="date-ddmmyyyy-text">{{ formatDateDdMmYyyy(selectedDate()) }}</span>
+          <input #datePickerInput type="date" class="single-date-picker-overlay" [value]="selectedDate()"
+            (change)="changeDate($any($event.target).value)" />
+        </div>
+
+        <button class="btn btn-secondary btn-icon-nav" (click)="navigateDay(1)" title="Επόμενη Ημέρα">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+
+        <a routerLink="/calendar" class="btn btn-secondary btn-icon-nav" title="Προβολή Μηνιαίου Ημερολογίου">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+            <path d="M8 14h.01"/>
+            <path d="M12 14h.01"/>
+            <path d="M16 14h.01"/>
+          </svg>
+        </a>
+
+        <!-- Name of the day next to the date and arrows -->
+        <span class="day-of-week-text">{{ getDayNameGreek(selectedDate()) }}</span>
+      </div>
+    </div>
+
+    <!-- Right: 'Εξοδούχοι Σ/Κ' (on Fri/Sat/Sun) + 'Προσθήκη Υπηρεσίας' on the far right -->
+    <div class="control-bar-right">
+      @if (isFriday() || isWeekend()) {
+      <a routerLink="/weekend-off" class="btn btn-secondary btn-sm btn-weekend-link"
+        [class.btn-weekend-required]="isFriday() && !isWeekendPlanSetForSelectedDate()"
+        title="Διαχείριση και κατανομή εξόδων Σαββατοκύριακου">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+        <span>Εξοδούχοι Σ/Κ</span>
+        @if (isFriday() && !isWeekendPlanSetForSelectedDate()) {
+        <span class="weekend-required-dot" title="Απαιτείται ορισμός εξοδούχων">!</span>
+        }
+      </a>
+      }
+
+      @if (isFriday() && !isWeekendPlanSetForSelectedDate()) {
+      <div class="weekend-off-missing-note" title="Πρέπει να ορίσετε τους εξοδούχους Σ/Κ πριν την αυτόματη παραγωγή">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <span>Ορίστε πρώτα τους Εξοδούχους Σ/Κ</span>
+      </div>
+      }
+
+      <!-- Single plus icon + text -->
+      <button class="btn btn-secondary btn-sm btn-add-duty-trigger" [disabled]="isCurrentScheduleFinalized()" (click)="openAddDutyModal()"
+        [title]="isCurrentScheduleFinalized() ? 'Το πρόγραμμα έχει οριστικοποιηθεί. Πατήστε «Επαναφορά» για προσθήκη υπηρεσιών.' : 'Διαχείριση υπηρεσιών για τη σημερινή διαταγή'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+        <span>Προσθήκη Υπηρεσίας</span>
+      </button>
+
+      @if (isSaturday() || isSunday()) {
+      <div class="weekend-auto-gen-note" title="Το Σαββατοκύριακο προγραμματίζεται ενιαία από την Παρασκευή">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="16" x2="12" y2="12" />
+          <line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
+        <span>Οι υπηρεσίες Σ/Κ παράγονται με την Παρασκευή</span>
+      </div>
+      } @else {
+      <button class="btn btn-primary btn-sm btn-auto-generate" 
+        [disabled]="isCurrentScheduleFinalized() || (isFriday() && !isWeekendPlanSetForSelectedDate())" 
+        (click)="onAutoGenerateClicked()"
+        [title]="isCurrentScheduleFinalized() ? 'Το πρόγραμμα έχει οριστικοποιηθεί. Πατήστε «Επαναφορά» για επεξεργασία.' : (isFriday() && !isWeekendPlanSetForSelectedDate()) ? 'Δεν επιτρέπεται η αυτόματη παραγωγή: Πρέπει πρώτα να ορίσετε τους εξοδούχους Σαββατοκύριακου στη σελίδα «Εξοδούχοι Σ/Κ».' : 'Αυτόματη παραγωγή υπηρεσιών με τον αλγόριθμο δίκαιης κατανομής'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10" />
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+        </svg>
+        <span>Αυτόματη Παραγωγή Υπηρεσιών</span>
+      </button>
+      }
+    </div>
+  </div>
+
+  <!-- Availability & Leaves Alert Bar -->
+  @if (leavesOnDate().length > 0) {
+  <div class="leaves-alert-bar card">
+    <div class="alert-icon">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path
+          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+    </div>
+    <div class="alert-content">
+      <span class="leaves-alert-title">Απόντες σε Άδεια / Ελεύθεροι Υπηρεσίας ({{ leavesOnDate().length }}):</span>
+      <div class="leaves-chips">
+        @for (l of leavesOnDate(); track l.id) {
+        <span class="leave-chip">{{ l.personName }} ({{ l.type }})</span>
+        }
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Duties Roster List -->
+  @if (currentSchedule(); as sched) {
+  <div class="duties-roster-list">
+    @if (sched.duties.length === 0) {
+    <div class="card empty-roster-card">
+      <div class="empty-state-content">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+          class="empty-icon">
+          <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+        <h3>Δεν έχουν οριστεί υπηρεσίες για αυτή την ημέρα</h3>
+        <p>Μπορείτε να προσθέσετε υπηρεσίες από το κουμπί "Προσθήκη Υπηρεσίας" ή να εκτελέσετε αυτόματη παραγωγή.</p>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="openAddDutyModal()">
+          Προσθήκη Υπηρεσίας
+        </button>
+      </div>
+    </div>
+    }
+
+    @for (duty of sched.duties; track duty.dutyTypeId; let dIdx = $index) {
+    <div class="card duty-group-card">
+      <!-- Duty Group Header: Title, Category & Remove on Far Right Top -->
+      <div class="duty-group-header">
+        <div class="duty-group-title-wrap">
+          <span class="duty-badge-lg">{{ duty.shortName }}</span>
+          <span class="duty-fullname">{{ duty.dutyName }}</span>
+          @if (duty.category && duty.category !== 'Οπλίτης' && duty.category !== 'Στρατιώτης') {
+            <span class="duty-cat-tag">{{ duty.category }}</span>
+          }
+          <span class="duty-coverage-pill">{{ duty.slots.length }} θέσεις</span>
+        </div>
+
+        <!-- Remove Duty from Day with safety dialog -->
+        @if (!isCurrentScheduleFinalized()) {
+        <button type="button" class="btn-duty-remove" (click)="requestRemoveDutyFromDay(dIdx)"
+          title="Αφαίρεση {{ duty.dutyName }} από τη σημερινή διαταγή">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          </svg>
+          <span>Αφαίρεση</span>
+        </button>
+        }
+      </div>
+
+      <!-- Shifts Grid: Each box is a time shift -->
+      <div class="shifts-grid">
+        @for (shift of getGroupedShiftsForDuty(duty); track shift.shiftNumber) {
+        <div class="shift-box">
+          <!-- Shift Box Header: 2 Rows -->
+          <div class="shift-box-header">
+            <!-- 1st Row: Far left #1 + position subtitle (if any) ... Far right person icon & number of people -->
+            <div class="shift-header-row-1">
+              <div class="shift-header-left">
+                <span class="shift-number-badge">#{{ shift.shiftNumber }}</span>
+                @if (shift.locationSubtitle) {
+                <span class="shift-position-subtitle" [class.is-cover]="shift.locationSubtitle.includes('Κάλυψη')">{{
+                  shift.locationSubtitle }}</span>
+                }
+              </div>
+
+              <div class="shift-header-right"
+                title="{{ shift.peopleCount }} {{ shift.peopleCount > 1 ? 'άτομα' : 'άτομο' }}">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  class="people-icon">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                <span class="people-count-text">{{ shift.peopleCount }}</span>
+              </div>
+            </div>
+
+            <!-- 2nd Row: Times - smaller and in badges -->
+            <div class="shift-header-row-2">
+              <div class="shift-time-badges-wrap">
+                @for (badge of shift.intervalBadges; track $index) {
+                <span class="shift-time-badge">{{ badge }}</span>
+                }
+                @for (cBadge of shift.complementaryBadges; track $index) {
+                <span class="shift-time-badge is-complementary" title="Συμπληρωματικές ώρες άλλης ημέρας για ολοκλήρωση 3ωρου κύκλου">{{ cBadge }}</span>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Shift Box Body: 1 or multiple search-capable person slots -->
+          <div class="shift-box-body">
+            @for (slotItem of shift.slots; track slotItem.slotIndexInDuty; let pIdx = $index) {
+            <div class="shift-slot-row">
+              <div class="shift-slot-input-row">
+                <div class="shift-person-container"
+                  title="{{ shift.peopleCount }} {{ shift.peopleCount > 1 ? 'άτομα' : 'άτομο' }}">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    class="people-icon">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </div>
+
+                <!-- Search-capable Person Input / Dropdown -->
+                <div class="searchable-picker-anchor">
+                  <button type="button" class="person-picker-trigger" [class.is-empty]="!slotItem.slot.personId"
+                    [class.is-locked]="isCurrentScheduleFinalized()"
+                    [disabled]="isCurrentScheduleFinalized()"
+                    [class.is-open]="isPickerOpen(dIdx, slotItem.slotIndexInDuty)"
+                    [class.has-conflict]="isSlotConflict(slotItem.slot)"
+                    [class.has-warning]="isSlotConflictWarning(slotItem.slot)"
+                    [class.has-error]="isSlotConflictError(slotItem.slot)"
+                    (click)="togglePersonPicker(dIdx, slotItem.slotIndexInDuty, $event)"
+                    [title]="isCurrentScheduleFinalized() ? 'Το πρόγραμμα έχει οριστικοποιηθεί. Πατήστε «Επαναφορά» για επεξεργασία.' : 'Κάντε κλικ για επιλογή στρατιώτη'">
+                    @if (slotItem.slot.personId) {
+                    <div class="selected-person-info">
+                      <span class="person-rank-tag">{{ slotItem.slot.rankShort }}</span>
+                      <span class="person-name-text">{{ slotItem.slot.personName }}</span>
+                    </div>
+                    } @else {
+                    <div class="empty-person-placeholder">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        class="picker-search-icon">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                      </svg>
+                      <span>Επιλογή στρατιώτη...</span>
+                    </div>
+                    }
+
+                    <div class="picker-trigger-right">
+                      @if (isSlotConflict(slotItem.slot)) {
+                      <div class="slot-warning-indicator"
+                        [class.is-warning]="isSlotConflictWarning(slotItem.slot)"
+                        [class.is-error]="isSlotConflictError(slotItem.slot)"
+                        (click)="$event.stopPropagation()">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"
+                          class="warning-icon-svg">
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="12" y1="8" x2="12" y2="12" />
+                          <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <div class="slot-warning-tooltip" role="tooltip">
+                          <div class="tooltip-title" [class.is-warning]="isSlotConflictWarning(slotItem.slot)" [class.is-error]="isSlotConflictError(slotItem.slot)">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                              <circle cx="12" cy="12" r="10" />
+                              <line x1="12" y1="8" x2="12" y2="12" />
+                              <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                            <span>{{ isSlotConflictWarning(slotItem.slot) ? 'Προειδοποίηση' : 'Σφάλμα / Κώλυμα' }}</span>
+                          </div>
+                          <div class="tooltip-message">{{ slotItem.slot.conflictWarning }}</div>
+                        </div>
+                      </div>
+                      }
+
+                      @if (isCurrentScheduleFinalized()) {
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"
+                        class="picker-lock-icon" title="Κλειδωμένη θέση (Οριστικοποιημένο πρόγραμμα)">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                      } @else {
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        class="picker-chevron">
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                      }
+                    </div>
+                  </button>
+
+                  <!-- Search Dropdown Popover -->
+                  @if (isPickerOpen(dIdx, slotItem.slotIndexInDuty)) {
+                  <div class="person-picker-dropdown" (click)="$event.stopPropagation()">
+                    <div class="picker-search-header">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        class="search-input-icon">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                      </svg>
+                      <input type="text" class="picker-search-input" placeholder="Αναζήτηση ονόματος ή βαθμού..."
+                        [value]="personSearchQuery()" (input)="personSearchQuery.set($any($event.target).value)"
+                        autofocus />
+                      @if (personSearchQuery()) {
+                      <button type="button" class="btn-clear-search" (click)="personSearchQuery.set('')">&times;</button>
+                      }
+                    </div>
+
+                    <div class="picker-options-list">
+                      <!-- Clear Option -->
+                      <div class="picker-option clear-option"
+                        (click)="selectPersonForSlot(dIdx, slotItem.slotIndexInDuty, null)">
+                        <span class="clear-icon">&times;</span>
+                        <span class="clear-text">Κενή Θέση (Αποδέσμευση)</span>
+                      </div>
+
+                      @for (p of filteredPersonnelForPicker(); track p.id) {
+                      <div class="picker-option" [class.is-selected]="p.id === slotItem.slot.personId"
+                        (click)="selectPersonForSlot(dIdx, slotItem.slotIndexInDuty, p.id)">
+                        <span class="option-rank">{{ p.rankShort }}</span>
+                        <span class="option-name">{{ p.fullName }}</span>
+
+                        @if (getPersonBadgeNote(p.id); as note) {
+                        <span class="option-note-badge" [class.badge-leave]="note.isLeave"
+                          [class.badge-served]="note.isServed" [class.badge-trick]="note.isWeekendTrick">
+                          {{ note.text }}
+                        </span>
+                        }
+
+                        <span class="option-score">{{ p.dutyScore || 0 }} μ.</span>
+                      </div>
+                      }
+
+                      @if (filteredPersonnelForPicker().length === 0) {
+                      <div class="picker-empty-results">
+                        @if (personSearchQuery()) {
+                          Δεν βρέθηκαν στρατιώτες με "{{ personSearchQuery() }}"
+                        } @else {
+                          Δεν υπάρχουν διαθέσιμοι στρατιώτες
+                        }
+                      </div>
+                      }
+                    </div>
+                  </div>
+                  }
+                </div>
+              </div>
+            </div>
+            }
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+    }
+  </div>
+  }
+</div>
+
+<!-- ============================================================ -->
+<!-- MODAL: Add / Manage Duty Types with Clickable Badges -->
+<!-- ============================================================ -->
+@if (isAddDutyModalOpen()) {
+<div class="modal-backdrop" (click)="closeAddDutyModal()">
+  <div class="modal-card modal-manage-duties" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <h2 class="modal-title">Επιλογή Υπηρεσιών Ημέρας</h2>
+        <p class="modal-subtitle">Επιλέξτε ή αποεπιλέξτε υπηρεσίες για τη σημερινή διαταγή ({{
+          formatDateDdMmYyyy(selectedDate()) }}).</p>
+      </div>
+      <button type="button" class="modal-close-btn" (click)="closeAddDutyModal()">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="duty-badges-selector-grid">
+        @for (d of activeDuties(); track d.id) {
+        <div class="duty-select-badge-card" [class.is-selected]="isDutySelectedInModal(d.id)"
+          (click)="toggleDutySelectionInModal(d.id)">
+          <div class="badge-card-top">
+            <span class="duty-short-pill">{{ d.shortName }}</span>
+            <span class="duty-slots-count">{{ d.slots || 1 }} θέσεις</span>
+          </div>
+          <div class="badge-card-name">{{ d.name }}</div>
+          @if (d.category && d.category !== 'Οπλίτης' && d.category !== 'Στρατιώτης') {
+            <div class="badge-card-category">{{ d.category }}</div>
+          }
+        </div>
+        }
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" (click)="closeAddDutyModal()">Ακύρωση</button>
+      <button type="button" class="btn btn-primary" (click)="confirmDutyModalChanges()">
+        Επιβεβαίωση
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ============================================================ -->
+<!-- SAFETY CONFIRMATION DIALOG: For Any Duty Removals -->
+<!-- ============================================================ -->
+@if (safetyRemovalModal(); as safety) {
+<div class="modal-backdrop safety-backdrop" (click)="cancelSafetyRemoval()">
+  <div class="modal-card safety-modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-header safety-header">
+      <div class="safety-title-wrap">
+        <div class="safety-warning-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="modal-title">Επιβεβαίωση Αφαίρεσης</h2>
+          <p class="modal-subtitle">Προσοχή: Αφαίρεση καθηκόντων από τη σημερινή διαταγή</p>
+        </div>
+      </div>
+      <button type="button" class="modal-close-btn" (click)="cancelSafetyRemoval()">&times;</button>
+    </div>
+
+    <div class="modal-body safety-body">
+      <p>Είστε βέβαιοι ότι θέλετε να αφαιρέσετε {{ safety.dutyNames.length === 1 ? 'την παρακάτω υπηρεσία' : 'τις
+        παρακάτω υπηρεσίες' }} από τη σημερινή διαταγή;</p>
+
+      <ul class="safety-removal-list">
+        @for (name of safety.dutyNames; track name) {
+        <li><strong>{{ name }}</strong></li>
+        }
+      </ul>
+
+      <div class="safety-note">
+        ⚠️ Τυχόν στρατιώτες που έχουν ήδη ανατεθεί σε αυτές τις υπηρεσίες θα αποδεσμευτούν αυτόματα.
+      </div>
+    </div>
+
+    <div class="modal-footer safety-footer">
+      <button type="button" class="btn btn-secondary" (click)="cancelSafetyRemoval()">Ακύρωση</button>
+      <button type="button" class="btn btn-danger" (click)="safety.execute()">
+        Ναι, Αφαίρεση
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ============================================================ -->
+<!-- FINALIZATION CONFIRMATION MODAL -->
+<!-- ============================================================ -->
+@if (finalizeModal(); as modal) {
+<div class="modal-backdrop finalize-backdrop" (click)="closeFinalizeModal()">
+  <div class="modal-card finalize-modal-card" (click)="$event.stopPropagation()">
+    <!-- Header -->
+    <div class="modal-header finalize-header">
+      <div class="finalize-title-wrap">
+        <div class="finalize-icon-badge">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+            <path d="M9 11l3 3L22 4" />
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="modal-title">Οριστικοποίηση Προγράμματος</h2>
+          <p class="modal-subtitle">{{ modal.formattedDate }}</p>
+        </div>
+      </div>
+      <button type="button" class="modal-close-btn" (click)="closeFinalizeModal()">&times;</button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body finalize-body">
+      <!-- Summary stats bar -->
+      <div class="finalize-stats-grid">
+        <div class="finalize-stat-card">
+          <span class="stat-number">{{ modal.totalSlots }}</span>
+          <span class="stat-label">Συνολικές Θέσεις</span>
+        </div>
+        <div class="finalize-stat-card" [class.is-complete]="modal.assignedSlots === modal.totalSlots">
+          <span class="stat-number">{{ modal.assignedSlots }}/{{ modal.totalSlots }}</span>
+          <span class="stat-label">Επανδρωμένες</span>
+        </div>
+        <div class="finalize-stat-card highlight-stat">
+          <span class="stat-number">{{ modal.assignedPersonnelCount }}</span>
+          <span class="stat-label">Στρατιώτες με Υπηρεσία</span>
+        </div>
+      </div>
+
+      <!-- Errors Section (if any) -->
+      @if (modal.errors.length > 0) {
+      <div class="finalize-alert-box alert-error">
+        <div class="alert-box-header">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <strong>Εντοπίστηκαν {{ modal.errors.length }} {{ modal.errors.length === 1 ? 'σφάλμα / κενή θέση' : 'σφάλματα / κενές θέσεις' }}</strong>
+        </div>
+        <div class="alert-box-content">
+          <ul class="finalize-issues-list error-list">
+            @for (err of modal.errors; track $index) {
+            <li>
+              <div class="issue-pos-info">
+                <span class="issue-duty">{{ err.dutyName }}</span>
+                <span class="issue-slot">Θέση #{{ err.slotIndex }}</span>
+                @if (err.hoursNote) {
+                  <span class="issue-hours">({{ err.hoursNote }})</span>
+                }
+              </div>
+              <div class="issue-desc">
+                <span class="issue-person">{{ err.personName }}:</span>
+                <span class="issue-reason error-text">{{ err.reason }}</span>
+              </div>
+            </li>
+            }
+          </ul>
+          <p class="alert-advice">
+            Συνιστάται η επίλυση των σφαλμάτων πριν την οριστικοποίηση. Εάν προχωρήσετε, μόρια θα πιστωθούν μόνο στους στρατιώτες που έχουν τοποθετηθεί.
+          </p>
+        </div>
+      </div>
+      }
+
+      <!-- Warnings Section (if any) -->
+      @if (modal.warnings.length > 0) {
+      <div class="finalize-alert-box alert-warning">
+        <div class="alert-box-header">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          <strong>{{ modal.warnings.length }} {{ modal.warnings.length === 1 ? 'Προειδοποίηση' : 'Προειδοποιήσεις' }}</strong>
+        </div>
+        <div class="alert-box-content">
+          <ul class="finalize-issues-list warning-list">
+            @for (warn of modal.warnings; track $index) {
+            <li>
+              <div class="issue-pos-info">
+                <span class="issue-duty">{{ warn.dutyName }}</span>
+                <span class="issue-slot">Θέση #{{ warn.slotIndex }}</span>
+              </div>
+              <div class="issue-desc">
+                <span class="issue-person">{{ warn.personName }}:</span>
+                <span class="issue-reason warning-text">{{ warn.reason }}</span>
+              </div>
+            </li>
+            }
+          </ul>
+        </div>
+      </div>
+      }
+
+      <!-- Clean State (no errors, no warnings) -->
+      @if (modal.errors.length === 0 && modal.warnings.length === 0) {
+      <div class="finalize-alert-box alert-success">
+        <div class="alert-box-header">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+          <strong>Όλα τα πόστα έχουν συμπληρωθεί έγκυρα!</strong>
+        </div>
+        <p class="alert-box-text">
+          Δεν εντοπίστηκαν συγκρούσεις, άδειες ή κενές θέσεις. Το πρόγραμμα είναι πλήρως έτοιμο για οριστικοποίηση.
+        </p>
+      </div>
+      }
+
+      <!-- Action Confirmation Explanation -->
+      <div class="finalize-confirm-prompt">
+        <p class="prompt-main">Είστε βέβαιοι ότι θέλετε να προχωρήσετε στην οριστικοποίηση;</p>
+        <p class="prompt-sub">
+          Με την επικύρωση, <strong>θα αποδοθούν τα μόρια υπηρεσίας (βάσει συντελεστή/βαρύτητας κάθε θέσης)</strong> στους <strong>{{ modal.assignedPersonnelCount }}</strong> στρατιώτες και το πρόγραμμα θα κλειδωθεί. Μπορείτε να το επαναφέρετε ανά πάσα στιγμή πατώντας «Επαναφορά».
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer finalize-footer">
+      <button type="button" class="btn btn-secondary" (click)="closeFinalizeModal()">Ακύρωση</button>
+      <button type="button" class="btn btn-success btn-finalize-action" (click)="confirmFinalizeSchedule()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+        Οριστικοποίηση & Υπολογισμός Μορίων
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ============================================================ -->
+<!-- RESET / UNDO FINALIZATION MODAL -->
+<!-- ============================================================ -->
+@if (resetFinalizeModal()) {
+<div class="modal-backdrop reset-finalize-backdrop" (click)="closeResetFinalizeModal()">
+  <div class="modal-card reset-finalize-modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-header reset-header">
+      <div class="safety-title-wrap">
+        <div class="reset-warning-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="modal-title">Επαναφορά Οριστικοποίησης</h2>
+          <p class="modal-subtitle">Ακύρωση οριστικοποίησης και επαναφορά μορίων</p>
+        </div>
+      </div>
+      <button type="button" class="modal-close-btn" (click)="closeResetFinalizeModal()">&times;</button>
+    </div>
+
+    <div class="modal-body reset-body">
+      <p>Είστε βέβαιοι ότι θέλετε να ακυρώσετε την οριστικοποίηση για τις <strong>{{ formatDateDdMmYyyy(selectedDate()) }}</strong>;</p>
+      
+      <div class="reset-consequences-card">
+        <div class="consequence-item">
+          <span class="bullet-icon">↺</span>
+          <span><strong>Επαναϋπολογισμός Μορίων:</strong> Θα αφαιρεθούν τα μόρια υπηρεσίας που αποδόθηκαν στους στρατιώτες αυτής της ημέρας (βάσει της βαρύτητας των θέσεων).</span>
+        </div>
+        <div class="consequence-item">
+          <span class="bullet-icon">🔓</span>
+          <span><strong>Ξεκλείδωμα Θέσεων:</strong> Όλα τα πόστα θα καταστούν ξανά διαθέσιμα για επεξεργασία, αλλαγή στρατιωτών ή νέα αυτόματη παραγωγή.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer reset-footer">
+      <button type="button" class="btn btn-secondary" (click)="closeResetFinalizeModal()">Ακύρωση</button>
+      <button type="button" class="btn btn-warning btn-reset-action" (click)="confirmResetFinalizeSchedule()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+          <path d="M3 3v5h5" />
+        </svg>
+        Ναι, Επαναφορά σε Πρόχειρο
+      </button>
+    </div>
+  </div>
+</div>
+}

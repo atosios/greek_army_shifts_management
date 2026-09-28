@@ -1,0 +1,705 @@
+<div class="duties-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Υπηρεσίες & Πόστα Μονάδας</h1>
+      <p class="page-subtitle">Διαμόρφωση ενεργών καθηκόντων (Οπλοφύλακας, Θαλαμοφύλακας, Εστιατόρια, Αρτοκλίβανος κλπ), αριθμού ατόμων ανά 24ωρο και ωραρίων υπηρεσίας.</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary" (click)="restoreDefaults()" title="Επαναφορά προεπιλεγμένων υπηρεσιών (ΘΦ, Καθαριότητες, Εστιατόρια, Αρτοκλίβανος)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="1 4 1 10 7 10"/>
+          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+        </svg>
+        Επαναφορά Προεπιλογών
+      </button>
+      <button class="btn btn-primary" (click)="openAddModal()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Προσθήκη Νέου Πόστου
+      </button>
+    </div>
+  </div>
+
+
+
+  <!-- Duty Types Grid -->
+  <div class="duties-grid">
+    @for (duty of dutyTypes(); track duty.id; let idx = $index) {
+      <div 
+        class="card duty-card" 
+        [class.inactive-duty]="!duty.active"
+        [class.is-dragging]="draggedDutyIndex() === idx"
+        [class.is-drag-over]="dragOverDutyIndex() === idx"
+        draggable="true"
+        (dragstart)="onDutyDragStart(idx, $event)"
+        (dragover)="onDutyDragOver(idx, $event)"
+        (dragleave)="onDutyDragLeave(idx, $event)"
+        (drop)="onDutyDrop(idx, $event)"
+        (dragend)="onDutyDragEnd($event)"
+      >
+        <!-- 1st Row: Short name & drag handle on left, actions on far right -->
+        <div class="duty-card-row-1">
+          <div class="duty-card-left-group">
+            <span class="duty-drag-grip" title="Σύρετε για να αλλάξετε τη σειρά εμφάνισης των καρτών">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
+                <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+                <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
+              </svg>
+            </span>
+            <span class="duty-short-badge">{{ duty.shortName }}</span>
+
+          </div>
+
+          <div class="duty-actions">
+            <button class="btn btn-secondary btn-sm" (click)="duplicateDuty(duty)" title="Αντιγραφή / Δημιουργία Αντιγράφου">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+            <button class="btn btn-secondary btn-sm" (click)="openEditModal(duty)" title="Επεξεργασία">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <button class="btn btn-secondary btn-sm" (click)="deleteDuty(duty)" title="Διαγραφή">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2nd Row: Full name on left, badges ('Ένοπλος'/etc.) & user count on far right -->
+        <div class="duty-card-row-2">
+          <div class="duty-title-group">
+            <h3 class="duty-name">{{ duty.name }}</h3>
+          </div>
+          <div class="duty-badges-group">
+            <span class="badge" [class.badge-success]="duty.armsRequired === 'Ένοπλος'" [class.badge-warning]="duty.armsRequired === 'Άοπλος'" [class.badge-info]="duty.armsRequired === 'Οποιοσδήποτε'">
+              {{ duty.armsRequired }}
+            </span>
+            <span class="duty-user-count" title="Αριθμός ατόμων (ανά 24ωρο): {{ duty.slots }}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              <span>{{ duty.slots }}</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Shift Schedule & Intervals Block (Identical UI for all duty types) -->
+        <div class="duty-intervals-panel">
+          <div class="intervals-panel-title">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span>Τύπος Ωραρίου</span>
+            <span class="preset-tag">
+              {{ isDutyRolling(duty) ? 'Πρότυπο εναλλασσόμενο' : (isDutyRestaurant(duty) ? 'Πρότυπο Εστιατορίων' : 'Προσαρμοσμένο') }}
+            </span>
+          </div>
+
+          <div class="rolling-groups-summary">
+            @for (pos of getDutyDistinctPositions(duty); track $index) {
+              <div class="rolling-group-row">
+                <span class="grp-user-count" [title]="pos.count + (pos.count === 1 ? ' άτομο' : ' άτομα')">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                  <span>{{ pos.count }}</span>
+                </span>
+                <span class="grp-times">{{ formatIntervals(pos.intervals) }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+
+
+        @if ((duty.allowedRanks && duty.allowedRanks.length > 0) || duty.requiredSpecialty || (duty.weight !== undefined && duty.weight !== null && duty.weight !== 1)) {
+          <div class="duty-meta-list">
+            @if (duty.allowedRanks && duty.allowedRanks.length > 0) {
+              <div class="meta-row">
+                <span class="meta-title">Βαθμοί:</span>
+                <div class="ranks-pill-group">
+                  @for (r of duty.allowedRanks; track r) {
+                    <span class="rank-tag">{{ r }}</span>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (duty.requiredSpecialty) {
+              <div class="meta-row">
+                <span class="meta-title">Ειδικότητα:</span>
+                <span class="badge badge-warning">{{ duty.requiredSpecialty }}</span>
+              </div>
+            }
+
+            @if (duty.weight !== undefined && duty.weight !== null && duty.weight !== 1) {
+              <div class="meta-row">
+                <span class="meta-title">Συντελεστής:</span>
+                @if (duty.weight === 0) {
+                  <span class="weight-tag zero-weight">0 μόρια (Χωρίς μοριοδότηση)</span>
+                } @else {
+                  <span class="weight-tag">&times;{{ duty.weight }} μόρια</span>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <div class="duty-card-footer">
+          <button 
+            class="active-toggle-btn" 
+            [class.is-active]="duty.active" 
+            (click)="toggleActive(duty)">
+            {{ duty.active ? 'ΕΝΕΡΓΟ ΠΟΣΤΟ' : 'ΑΝΕΝΕΡΓΟ' }}
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Add/Edit Duty Modal -->
+  @if (isModalOpen()) {
+    <div class="modal-overlay" (click)="closeModal()">
+      <div class="modal-content modal-lg" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            {{ editingDutyId() ? 'Επεξεργασία Υπηρεσίας' : 'Νέο Πόστο / Υπηρεσία' }}
+          </h2>
+          <button class="close-btn" (click)="closeModal()">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="form-grid">
+            <!-- Row 1: Name & Short Name in 2 columns -->
+            <div class="form-row-2col">
+              <div class="form-group">
+                <label class="form-label font-bold">Ονομασία Υπηρεσίας *</label>
+                <input type="text" class="form-control" [(ngModel)]="formModel.name" placeholder="π.χ. Οπλοφύλακας, Θαλαμοφύλακας" />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label font-bold">Σύντμηση *</label>
+                <input type="text" class="form-control" [(ngModel)]="formModel.shortName" placeholder="π.χ. Οπλοφύλακας" />
+              </div>
+            </div>
+
+            <!-- Row 2: Arms Required & Number of People in ONE row -->
+            <div class="form-row-2col">
+              <div class="form-group">
+                <label class="form-label font-bold">Κατάσταση Οπλισμού</label>
+                <select class="form-select" [(ngModel)]="formModel.armsRequired">
+                  <option value="Ένοπλος">Ένοπλος</option>
+                  <option value="Άοπλος">Άοπλος</option>
+                  <option value="Οποιοσδήποτε">Οποιοσδήποτε</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label font-bold">
+                  Σύνολο Ατόμων (ανά 24ωρο)
+                </label>
+                <div class="readonly-slots-display">
+                  <div class="readonly-slots-left">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    <span class="readonly-slots-number">{{ formModel.slots }}</span>
+                    <span class="readonly-slots-label">{{ formModel.slots === 1 ? 'άτομο' : 'άτομα' }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 5. Time Schedule Option (Only 2 types: Πρότυπο εναλλασσόμενο or Custom) -->
+            <div class="form-group full-width preset-selection-box">
+              <label class="form-label font-bold">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                Επιλογή Τύπου Ωραρίου:
+              </label>
+              <select 
+                class="form-select preset-select" 
+                [ngModel]="formModel.timePresetType" 
+                (ngModelChange)="onPresetChange($event)">
+                @for (preset of presetDescriptions; track preset.value) {
+                  <option [value]="preset.value">{{ preset.label }}</option>
+                }
+              </select>
+              @if (isRollingSelected()) {
+                <div class="preset-help-text">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                  </svg>
+                  <span>4 θέσεις 2-6 (14:00-14:00). Περιλαμβάνει αυτόματες εναλλαγές βαρδιών Σ/Κ για την κάλυψη των απαλλαγών (έξοδος 12:00 Σαββάτου &amp; 10:00 Κυριακής).</span>
+                </div>
+              }
+            </div>
+
+
+
+            <!-- POSITIONS & TIME SCHEDULE EDITOR -->
+            <div class="form-group full-width intervals-editor-container">
+              <div class="intervals-editor-header">
+                <div>
+                  <h4 class="intervals-editor-title">
+                    @if (isRollingSelected()) {
+                      4 Χρονικές Θέσεις (Κυλιόμενος Κύκλος από 14:00)
+                    } @else {
+                      Προσαρμοσμένες Θέσεις &amp; Ωράρια
+                    }
+                  </h4>
+                  <p class="intervals-editor-subtitle">
+                    Καθορίστε τις θέσεις, τον αριθμό ατόμων ανά θέση και τα διαστήματα υπηρεσίας (Από &ndash; Έως). Μπορείτε να σύρετε τις κάρτες θέσεων για αλλαγή σειράς.
+                  </p>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" (click)="addPosition()">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Προσθήκη Θέσης
+                </button>
+              </div>
+
+              <!-- Positions Grid -->
+              <div class="rolling-groups-grid">
+                @for (pos of positions; track pos.positionIndex; let pIdx = $index) {
+                  <div 
+                    class="rolling-group-card"
+                    [class.is-dragging]="draggedPosIndex() === pIdx"
+                    [class.is-drag-over]="dragOverPosIndex() === pIdx"
+                    draggable="true"
+                    (dragstart)="onPosDragStart(pIdx, $event)"
+                    (dragover)="onPosDragOver(pIdx, $event)"
+                    (dragleave)="onPosDragLeave(pIdx, $event)"
+                    (drop)="onPosDrop(pIdx, $event)"
+                    (dragend)="onPosDragEnd($event)"
+                  >
+                    <div class="rolling-group-card-header">
+                      <div class="slot-editor-title-row">
+                        <span class="pos-drag-grip" title="Σύρετε για να αλλάξετε τη σειρά της θέσης">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/>
+                            <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+                            <circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/>
+                          </svg>
+                        </span>
+                        <span class="grp-num-badge">#{{ pos.positionIndex }}</span>
+                        <input 
+                          type="text" 
+                          class="form-control slot-label-input" 
+                          [(ngModel)]="pos.label" 
+                          (ngModelChange)="onPositionLabelChange()"
+                          placeholder="π.χ. 1η Θέση (προαιρετικό)" 
+                        />
+                        
+                        <!-- Interactive People Stepper per Position -->
+                        <div class="grp-people-stepper" [title]="'Αριθμός ατόμων για τη θέση #' + pos.positionIndex + (pos.label ? ' (' + pos.label + ')' : '')">
+                          <span class="grp-stepper-label">Άτομα:</span>
+                          <div class="stepper-controls">
+                            <button 
+                              type="button" 
+                              class="stepper-btn" 
+                              (click)="adjustPositionPeople(pos, -1)" 
+                              [disabled]="(pos.peopleCount || 1) <= 1"
+                              title="Μείωση ατόμων">&minus;</button>
+                            <input 
+                              type="number" 
+                              class="stepper-val-input" 
+                              [ngModel]="pos.peopleCount || 1" 
+                              (ngModelChange)="setPositionPeople(pos, $event)" 
+                              min="1" 
+                              max="24"
+                            />
+                            <button 
+                              type="button" 
+                              class="stepper-btn" 
+                              (click)="adjustPositionPeople(pos, 1)" 
+                              [disabled]="(pos.peopleCount || 1) >= 24"
+                              title="Αύξηση ατόμων">&plus;</button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="slot-header-actions">
+                        <span class="grp-intervals-count">{{ pos.intervals.length }} {{ pos.intervals.length === 1 ? 'διάστημα' : 'διαστήματα' }}</span>
+                        @if (positions.length > 1) {
+                          <button 
+                            type="button" 
+                            class="slot-remove-btn" 
+                            (click)="removePosition(pIdx)" 
+                            [title]="'Διαγραφή θέσης #' + pos.positionIndex + (pos.label ? ' (' + pos.label + ')' : '')">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <line x1="18" y1="6" x2="6" y2="18"/>
+                              <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                          </button>
+                        }
+                      </div>
+                    </div>
+
+                    <!-- Intervals for this position -->
+                    <div class="slot-intervals-grid">
+                      @for (interval of pos.intervals; track $index; let intIdx = $index) {
+                        <div class="interval-time-row">
+                          <span class="interval-number">#{{ intIdx + 1 }}</span>
+                          
+                          <div class="time-clock-group">
+                            <span class="time-label">Από:</span>
+                            <button 
+                              type="button" 
+                              class="time-badge-btn" 
+                              (click)="openClockPicker(interval, 'from', 'Ώρα Έναρξης (' + pos.label + ')')"
+                              title="Επιλογή ώρας (άνοιγμα ρολογιού)">
+                              <span class="time-badge-val">{{ interval.from || '08:00' }}</span>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                              </svg>
+                            </button>
+                          </div>
+
+                          <span class="time-separator">&rarr;</span>
+
+                          <div class="time-clock-group">
+                            <span class="time-label">Έως:</span>
+                            <button 
+                              type="button" 
+                              class="time-badge-btn" 
+                              (click)="openClockPicker(interval, 'to', 'Ώρα Λήξης (' + pos.label + ')')"
+                              title="Επιλογή ώρας (άνοιγμα ρολογιού)">
+                              <span class="time-badge-val">{{ interval.to || '14:00' }}</span>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                              </svg>
+                            </button>
+                          </div>
+
+                          <button 
+                            type="button" 
+                            class="interval-remove-btn" 
+                            (click)="removeIntervalFromPosition(pos, intIdx)"
+                            title="Αφαίρεση ωραρίου">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <line x1="18" y1="6" x2="6" y2="18"/>
+                              <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                          </button>
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Plus Button to add interval to this position -->
+                    <div class="slot-add-interval-wrap">
+                      <button 
+                        type="button" 
+                        class="btn-add-interval" 
+                        (click)="addIntervalToPosition(pos)">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                          <line x1="12" y1="5" x2="12" y2="19"/>
+                          <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Προσθήκη Ωραρίου
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- Advanced Collapsible Section (Optional Fields) -->
+            <div class="form-group full-width advanced-collapsible-wrapper">
+              <button 
+                type="button" 
+                class="advanced-toggle-btn" 
+                (click)="toggleAdvanced()">
+                <div class="toggle-btn-left">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="toggle-chevron" [class.rotated]="isAdvancedOpen()">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                  <span class="toggle-btn-title">Προηγμένες Ρυθμίσεις (Προαιρετικά)</span>
+                </div>
+                <span class="toggle-status-badge">
+                  {{ isAdvancedOpen() ? 'Απόκρυψη' : 'Βαθμοί, Ειδικότητα, Μόρια, Περιγραφή' }}
+                </span>
+              </button>
+
+              @if (isAdvancedOpen()) {
+                <div class="advanced-collapsible-body">
+                  <!-- 1. Δικαιούμενοι Βαθμοί -->
+                  <div class="form-group full-width">
+                    <div class="ranks-header-bar">
+                      <label class="form-label font-bold">
+                        Δικαιούμενοι Βαθμοί
+                        <span class="optional-pill">(Προαιρετικό - κενό = χωρίς περιορισμό βαθμού)</span>
+                      </label>
+                      <div class="quick-rank-selects">
+                        <button type="button" class="btn btn-secondary btn-sm" (click)="selectSoldierRanksOnly()">Στρατιώτες</button>
+                        <button type="button" class="btn btn-secondary btn-sm" (click)="selectOfficerRanksOnly()">Αξιωματικοί</button>
+                        <button type="button" class="btn btn-secondary btn-sm" (click)="selectAllRanks()">Όλοι</button>
+                        <button type="button" class="btn btn-secondary btn-sm" (click)="clearAllRanks()">Καθαρισμός</button>
+                      </div>
+                    </div>
+                    <div class="ranks-checkbox-grid">
+                      @for (r of allRanks; track r.short) {
+                        <label class="rank-checkbox-label">
+                          <input 
+                            type="checkbox" 
+                            [checked]="formModel.allowedRanks.includes(r.short)" 
+                            (change)="toggleRankSelection(r.short)"
+                          />
+                          <span>{{ r.short }}</span>
+                        </label>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- 2. Ειδικότητα & Βαρύτητα / Μόρια in one row -->
+                  <div class="form-row-2col">
+                    <div class="form-group">
+                      <label class="form-label font-bold">
+                        Απαιτούμενη Ειδικότητα
+                        <span class="optional-pill">(Προαιρετικό)</span>
+                      </label>
+                      <input type="text" class="form-control" [(ngModel)]="formModel.requiredSpecialty" placeholder="Χωρίς περιορισμό (π.χ. Οδηγός, Μάγειρας)" />
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label font-bold">
+                        Βαρύτητα / Μόρια
+                        <span class="optional-pill">(Προαιρετικό)</span>
+                      </label>
+                      <input type="number" class="form-control" [(ngModel)]="formModel.weight" min="0" max="5" step="0.5" placeholder="1" />
+                      <span class="form-hint" style="font-size: 0.72rem; color: #64748B; margin-top: 0.2rem; display: block;">Ορίστε 0 για υπηρεσίες χωρίς μοριοδότηση.</span>
+                    </div>
+                  </div>
+
+                  <!-- 3. Περιγραφή Καθηκόντων -->
+                  <div class="form-group full-width">
+                    <label class="form-label font-bold">
+                      Περιγραφή Καθηκόντων
+                      <span class="optional-pill">(Προαιρετικό)</span>
+                    </label>
+                    <textarea class="form-control" [(ngModel)]="formModel.description" rows="2" placeholder="Προαιρετική σύντομη περιγραφή καθηκόντων..."></textarea>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="closeModal()">Ακύρωση</button>
+          <button class="btn btn-primary" (click)="saveDuty()">
+            {{ editingDutyId() ? 'Ενημέρωση Πόστου' : 'Προσθήκη Πόστου' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Clock Selector Modal -->
+  @if (isClockOpen()) {
+    <div class="clock-modal-backdrop" (click)="cancelClockPicker()">
+      <div class="clock-modal-card" (click)="$event.stopPropagation()">
+        <!-- Header -->
+        <div class="clock-modal-header">
+          <div class="clock-modal-title-row">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span class="clock-modal-title">{{ clockTarget()?.title || 'Επιλογή Ώρας' }}</span>
+          </div>
+          <button type="button" class="clock-close-btn" (click)="cancelClockPicker()" title="Κλείσιμο">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Top: Digital Readout & Manual Typing -->
+        <div class="clock-display-section">
+          <div class="clock-digital-box">
+            <div 
+              class="clock-digit-unit" 
+              [class.active]="clockMode() === 'hours'" 
+              (click)="focusHourInput(hourInput)">
+              <input 
+                #hourInput
+                type="text" 
+                inputmode="numeric"
+                maxlength="2"
+                class="clock-digit-input"
+                [value]="hourInputStr()"
+                (focus)="onHourInputFocus($event)"
+                (input)="onHourInput($event, minuteInput)"
+                (blur)="onHourBlur($event)"
+                aria-label="Ώρα"
+              />
+              <span class="digit-lbl">Ώρα</span>
+            </div>
+
+            <span class="clock-digit-divider">:</span>
+
+            <div 
+              class="clock-digit-unit" 
+              [class.active]="clockMode() === 'minutes'" 
+              (click)="focusMinuteInput(minuteInput)">
+              <input 
+                #minuteInput
+                type="text" 
+                inputmode="numeric"
+                maxlength="2"
+                class="clock-digit-input"
+                [value]="minuteInputStr()"
+                (focus)="onMinuteInputFocus($event)"
+                (input)="onMinuteInput($event)"
+                (blur)="onMinuteBlur($event)"
+                aria-label="Λεπτά"
+              />
+              <span class="digit-lbl">Λεπτά</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Middle: Circular Dial -->
+        <div class="clock-dial-container">
+          <svg 
+            class="clock-face-svg" 
+            viewBox="0 0 260 260"
+            (pointerdown)="onClockPointerDown($event)"
+            (pointermove)="onClockPointerMove($event)"
+            (pointerup)="onClockPointerUp($event)">
+            
+            <!-- Dial Face Background & Rim -->
+            <circle cx="130" cy="130" r="126" class="clock-dial-bg" />
+            <circle cx="130" cy="130" r="126" class="clock-dial-border" />
+
+            <!-- Minute Ticks -->
+            @for (tick of clockTicks; track $index) {
+              <line 
+                [attr.x1]="tick.x1" 
+                [attr.y1]="tick.y1" 
+                [attr.x2]="tick.x2" 
+                [attr.y2]="tick.y2" 
+                [class.tick-major]="tick.isMajor" 
+                [class.tick-minor]="!tick.isMajor" 
+              />
+            }
+
+            <!-- Center Pivot Base -->
+            <circle cx="130" cy="130" r="5" class="clock-center-pin" />
+
+            <!-- HOURS DIAL -->
+            @if (clockMode() === 'hours') {
+              <circle cx="130" cy="130" r="58" class="clock-ring-guide" />
+
+              <line 
+                x1="130" 
+                y1="130" 
+                [attr.x2]="clockHandX" 
+                [attr.y2]="clockHandY" 
+                class="clock-hand-line" 
+              />
+              <circle 
+                [attr.cx]="clockHandX" 
+                [attr.cy]="clockHandY" 
+                r="15" 
+                class="clock-hand-highlight" 
+              />
+
+              @for (item of hourClockNumbers; track item.value) {
+                <text 
+                  [attr.x]="item.x" 
+                  [attr.y]="item.y + 5" 
+                  class="clock-number-text"
+                  [class.inner-ring-text]="item.isInner"
+                  [class.selected]="clockHour() === item.value">
+                  {{ item.label }}
+                </text>
+              }
+            }
+
+            <!-- MINUTES DIAL -->
+            @if (clockMode() === 'minutes') {
+              <line 
+                x1="130" 
+                y1="130" 
+                [attr.x2]="clockMinuteHandX" 
+                [attr.y2]="clockMinuteHandY" 
+                class="clock-hand-line" 
+              />
+              <circle 
+                [attr.cx]="clockMinuteHandX" 
+                [attr.cy]="clockMinuteHandY" 
+                r="15" 
+                class="clock-hand-highlight" 
+              />
+
+              @for (item of minuteClockNumbers; track item.value) {
+                <text 
+                  [attr.x]="item.x" 
+                  [attr.y]="item.y + 5" 
+                  class="clock-number-text"
+                  [class.selected]="clockMinute() === item.value">
+                  {{ item.label }}
+                </text>
+              }
+
+              @if (clockMinute() % 5 !== 0) {
+                <text 
+                  [attr.x]="clockMinuteHandX" 
+                  [attr.y]="clockMinuteHandY + 4" 
+                  class="clock-minute-bubble-text">
+                  {{ formatTwoDigits(clockMinute()) }}
+                </text>
+              }
+            }
+
+            <!-- Center Cap Pin -->
+            <circle cx="130" cy="130" r="3" class="clock-center-cap" />
+          </svg>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="clock-modal-footer">
+          <button type="button" class="btn-clock-cancel" (click)="cancelClockPicker()">
+            Ακύρωση
+          </button>
+          <button type="button" class="btn-clock-confirm" (click)="confirmClockPicker()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Επιβεβαίωση ({{ formatTwoDigits(clockHour()) }}:{{ formatTwoDigits(clockMinute()) }})
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
