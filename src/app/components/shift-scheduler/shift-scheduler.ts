@@ -11,7 +11,8 @@ import {
   Personnel, 
   DutyType,
   getLeaveTypeMeta,
-  formatGreekDate 
+  formatGreekDate,
+  formatLocalDate 
 } from '../../models/shift.model';
 import { formatIntervalsToString, getDutySlotsForDate, getDayHandoverNote, isSlotConflictingWithDayOff } from '../../data/time-presets';
 
@@ -203,10 +204,10 @@ export class ShiftSchedulerComponent {
         // Specific cover constraints:
         // Friday cover 12-14: must not have Saturday off
         if (day === 5 && isSlot12to14 && isSatOff) return false;
-        // Saturday cover 10-12: must have Saturday off (not Sunday off)
+        // Saturday cover 10-12: must not have Sunday off
         if (day === 6 && isSlot10to12 && isSunOff) return false;
-        // Saturday cover 12-14: must have Sunday off (not Saturday off)
-        if (day === 6 && isSlot12to14 && isSatOff) return false;
+        // Saturday cover 12-14: must not have Sunday off
+        if (day === 6 && isSlot12to14 && isSunOff) return false;
       }
 
       // 5. Duty type eligibility (arms, rank, specialty, eligibleDutyIds)
@@ -258,7 +259,7 @@ export class ShiftSchedulerComponent {
   getDefaultTargetDate(): string {
     const d = new Date();
     d.setDate(d.getDate() + 1); // Rosters are typically prepared for tomorrow
-    return d.toISOString().slice(0, 10);
+    return formatLocalDate(d);
   }
 
   formatDateDdMmYyyy(dateStr: string): string {
@@ -272,7 +273,8 @@ export class ShiftSchedulerComponent {
 
   getDayNameGreek(dateStr: string): string {
     if (!dateStr) return '';
-    const d = new Date(dateStr);
+    const parts = dateStr.split('-').map(Number);
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
     const days = ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'];
     return days[d.getDay()];
   }
@@ -289,9 +291,9 @@ export class ShiftSchedulerComponent {
   }
 
   navigateDay(delta: number) {
-    const current = new Date(this.selectedDate());
-    current.setDate(current.getDate() + delta);
-    this.changeDate(current.toISOString().slice(0, 10));
+    const parts = this.selectedDate().split('-').map(Number);
+    const current = new Date(parts[0], parts[1] - 1, parts[2] + delta);
+    this.changeDate(formatLocalDate(current));
   }
 
   loadOrCreateSchedule() {
@@ -313,7 +315,9 @@ export class ShiftSchedulerComponent {
             for (let i = duty.slots.length; i < targetCount; i++) {
               const def = slotDefs[i];
               let hoursNote = ad.type === '24ωρη' ? '08:00 - 08:00' : `Βάρδια ${i + 1}`;
-              if (def) {
+              if (ad.timePresetType === 'STANDBY' || ad.name.toLowerCase().includes('επιφυλακ')) {
+                hoursNote = def?.label || 'Επιφυλακή';
+              } else if (def) {
                 const str = formatIntervalsToString(def.intervals);
                 hoursNote = def.label ? (def.label.includes(str) ? def.label : `${def.label}: ${str}`) : str;
               }
@@ -335,14 +339,19 @@ export class ShiftSchedulerComponent {
           duty.dutyName = ad.name;
           duty.shortName = ad.shortName;
           duty.category = ad.category;
-          const todayStr = new Date().toISOString().slice(0, 10);
+          const todayStr = formatLocalDate(new Date());
           if (date >= todayStr || duty.weight === undefined || duty.weight === null) {
             duty.weight = ad.weight !== undefined && ad.weight !== null ? ad.weight : 1;
           }
           duty.slots.forEach((s, idx) => {
             s.slotIndex = idx + 1;
             const def = slotDefs[idx];
-            if (def) {
+            if (ad.timePresetType === 'STANDBY' || ad.name.toLowerCase().includes('επιφυλακ')) {
+              s.hoursNote = def?.label || 'Επιφυλακή';
+              if (def?.intervals) {
+                s.intervals = [...def.intervals];
+              }
+            } else if (def) {
               const str = formatIntervalsToString(def.intervals);
               const note = def.label ? (def.label.includes(str) ? def.label : `${def.label}: ${str}`) : str;
               s.hoursNote = this.stripGroupText(note);
@@ -367,7 +376,9 @@ export class ShiftSchedulerComponent {
           for (let i = 0; i < slotsCount; i++) {
             const def = slotDefs[i];
             let hoursNote = ad.type === '24ωρη' ? '08:00 - 08:00' : `Βάρδια ${i + 1}`;
-            if (def) {
+            if (ad.timePresetType === 'STANDBY' || ad.name.toLowerCase().includes('επιφυλακ')) {
+              hoursNote = def?.label || 'Επιφυλακή';
+            } else if (def) {
               const str = formatIntervalsToString(def.intervals);
               hoursNote = def.label ? (def.label.includes(str) ? def.label : `${def.label}: ${str}`) : str;
             }
@@ -410,7 +421,9 @@ export class ShiftSchedulerComponent {
       for (let i = 0; i < slotsCount; i++) {
         const slotDef = slotDefs[i];
         let hoursNote = duty.type === '24ωρη' ? '08:00 - 08:00' : `Βάρδια ${i + 1}`;
-        if (slotDef) {
+        if (duty.timePresetType === 'STANDBY' || duty.name.toLowerCase().includes('επιφυλακ')) {
+          hoursNote = slotDef?.label || 'Επιφυλακή';
+        } else if (slotDef) {
           const str = formatIntervalsToString(slotDef.intervals);
           if (slotDef.label) {
             hoursNote = (slotDef.label.includes(str) || (slotDef.intervals?.length > 0 && slotDef.label.includes(slotDef.intervals[0].from)))
@@ -498,6 +511,21 @@ export class ShiftSchedulerComponent {
     });
 
     return groups;
+  }
+
+  /**
+   * Returns a CSS class indicating layout width for the duty card in the scheduler roster.
+   * Duties with 3+ shifts span full width, 2 shifts span medium width, 1 shift spans compact width.
+   */
+  getDutyCardWidthClass(duty: DutyAssignment): string {
+    const shiftCount = this.getGroupedShiftsForDuty(duty).length;
+    if (shiftCount >= 3) {
+      return 'duty-card-wide';
+    } else if (shiftCount === 2) {
+      return 'duty-card-medium';
+    } else {
+      return 'duty-card-compact';
+    }
   }
 
   /**
@@ -615,6 +643,10 @@ export class ShiftSchedulerComponent {
   }
 
   private extractIntervalBadges(slot: ShiftSlotAssignment, dutyDef?: DutyType): string[] {
+    if (dutyDef?.timePresetType === 'STANDBY' || dutyDef?.name.toLowerCase().includes('επιφυλακ') || slot.hoursNote?.includes('Επιφυλακή') || slot.hoursNote?.includes('Χωρίς ωράριο')) {
+      return ['Επιφυλακή'];
+    }
+
     const nextDayShort = this.getNextDayShort(this.selectedDate());
     const is14 = this.isDuty14Cycle(dutyDef, slot);
     const isCover = this.isSlot12to14(slot) || this.isSlot10to12(slot) || (slot.hoursNote?.includes('Κάλυψη') ?? false);
@@ -1094,9 +1126,7 @@ export class ShiftSchedulerComponent {
         const friRestSlots = currentDuty.slots.filter(s => s.intervals?.some(i => i.from === '16:00' && i.to === '22:00'));
         const subIdx = friRestSlots.indexOf(slot);
         if (subIdx >= 0) {
-          const monDate = new Date(dates.friday);
-          monDate.setDate(monDate.getDate() + 3);
-          const mondayStr = monDate.toISOString().slice(0, 10);
+          const mondayStr = this.scheduler.addDays(dates.friday, 3);
           this.updateOtherDaySlot(mondayStr, dutyTypeId, 'MON_REST_MORNING', subIdx, person);
         }
       } else if (day === 1) {
@@ -1104,9 +1134,7 @@ export class ShiftSchedulerComponent {
         const monMorningSlots = currentDuty.slots.filter(s => s.intervals?.some(i => i.from === '05:20' && i.to === '16:00') && s.intervals.length === 1);
         const subIdx = monMorningSlots.indexOf(slot);
         if (subIdx >= 0) {
-          const friDate = new Date(currentDate);
-          friDate.setDate(friDate.getDate() - 3);
-          const friStr = friDate.toISOString().slice(0, 10);
+          const friStr = this.scheduler.addDays(currentDate, -3);
           this.updateOtherDaySlot(friStr, dutyTypeId, 'FRI_REST_EVENING', subIdx, person);
         }
       }
@@ -1119,20 +1147,9 @@ export class ShiftSchedulerComponent {
                       dutyDef.name.includes('Οπλοφύλακας');
     if (!isRolling) return;
 
-    // Case 1: Friday 12:00-14:00 Cover <=> Saturday Position 4 Incomplete
-    if (day === 5) {
-      if (this.isSlot12to14(slot)) {
-        const coverSlots = currentDuty.slots.filter(s => this.isSlot12to14(s));
-        const subIdx = coverSlots.indexOf(slot);
-        this.updateOtherDaySlot(dates.saturday, dutyTypeId, 'SAT_POS_4_INCOMPLETE', subIdx, person);
-      }
-    } else if (day === 6) {
+    if (day === 6) {
       // Saturday
-      if (this.isSlotSaturdayPos4Incomplete(slot)) {
-        const pos4Slots = currentDuty.slots.filter(s => this.isSlotSaturdayPos4Incomplete(s));
-        const subIdx = pos4Slots.indexOf(slot);
-        this.updateOtherDaySlot(dates.friday, dutyTypeId, 'FRI_COVER_12_14', subIdx, person);
-      } else if (this.isSlot10to12(slot)) {
+      if (this.isSlot10to12(slot)) {
         // Saturday 10:00-12:00 Sunday Cover <=> Sunday Position 3
         const cover10Slots = currentDuty.slots.filter(s => this.isSlot10to12(s));
         const subIdx = cover10Slots.indexOf(slot);

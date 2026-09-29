@@ -1,15 +1,54 @@
-import { AppData } from '../models/shift.model';
+import { AppData, HigherPersonnel } from '../models/shift.model';
 import { generateGreekArmy26Slots } from './time-presets';
+import { DEFAULT_EMBLEM_BASE64 } from './default-emblem';
+
+export const DEFAULT_HIGHER_PERSONNEL: HigherPersonnel[] = [
+  {
+    id: 'hp-1',
+    roleTitle: 'ΔΙΟΙΚΗΤΗΣ ΜΟΙΡΑΣ',
+    fullName: 'ΖΑΒΙΤΣΑΝΟΣ ΔΗΜΗΤΡΙΟΣ',
+    rank: 'ΑΝΧΗΣ (ΠΒ)'
+  },
+  {
+    id: 'hp-2',
+    roleTitle: 'ΔΚΤΗΣ ΠΥΡΧΙΑΣ',
+    fullName: 'ΛΙΝΑΡΔΟΣ ΜΑΡΙΟΣ',
+    rank: 'ΥΠΛΓΟΣ (ΠΖ)'
+  },
+  {
+    id: 'hp-3',
+    roleTitle: 'ΑΛΧΙΑΣ ΠΥΡΧΙΑΣ',
+    fullName: 'ΤΕΡΖΟΓΛΟΥ ΕΥΜΟΡΦΙΑ',
+    rank: 'ΑΝΘΛΓΟΣ (ΠΒ)'
+  },
+  {
+    id: 'hp-4',
+    roleTitle: 'ΑΞΙΩΜΑΤΙΚΟΣ ΕΠΙΧΕΙΡΗΣΕΩΝ',
+    fullName: 'ΚΩΝΣΤΑΝΤΙΝΟΥ ΔΗΜΗΤΡΙΟΣ',
+    rank: 'ΤΧΗΣ (ΠΖ)'
+  },
+  {
+    id: 'hp-5',
+    roleTitle: 'ΑΞΙΩΜΑΤΙΚΟΣ ΥΠΗΡΕΣΙΑΣ',
+    fullName: 'ΔΗΜΗΤΡΙΑΔΗΣ ΝΙΚΟΛΑΟΣ',
+    rank: 'ΑΝΘΛΓΟΣ (ΠΖ)'
+  }
+];
 
 export const DEFAULT_APP_DATA: AppData = {
   unitInfo: {
     name: '535 Μ/Κ ΤΠ',
     location: 'Σιδηρόκαστρο',
     division: '16η Μ/Κ ΜΠ',
-    commanderName: 'Αντισυνταγματάρχης (ΠΖ) Παπαδόπουλος Γεώργιος',
-    dutyOfficerSignatureTitle: 'Ο Αξιωματικός Επιχειρήσεων',
-    dutyOfficerName: 'Ταγματάρχης (ΠΖ) Κωνσταντίνου Δημήτριος'
+    commanderTitle: 'ΔΙΟΙΚΗΤΗΣ ΜΟΙΡΑΣ',
+    commanderName: 'ΖΑΒΙΤΣΑΝΟΣ ΔΗΜΗΤΡΙΟΣ\nΑΝΧΗΣ (ΠΒ)',
+    dutyOfficerSignatureTitle: 'ΔΚΤΗΣ ΠΥΡΧΙΑΣ',
+    dutyOfficerName: 'ΛΙΝΑΡΔΟΣ ΜΑΡΙΟΣ\nΥΠΛΓΟΣ (ΠΖ)',
+    supervisorSignatureTitle: 'ΑΛΧΙΑΣ ΠΥΡΧΙΑΣ',
+    supervisorName: 'ΤΕΡΖΟΓΛΟΥ ΕΥΜΟΡΦΙΑ\nΑΝΘΛΓΟΣ (ΠΒ)',
+    emblemUrl: DEFAULT_EMBLEM_BASE64
   },
+  higherPersonnel: DEFAULT_HIGHER_PERSONNEL,
   personnel: [
     {
       id: 'p-1',
@@ -93,6 +132,7 @@ export const DEFAULT_APP_DATA: AppData = {
       specialty: 'ΠΖ',
       fitnessProfile: 'Ι1',
       status: 'Ένοπλος',
+      specialRole: 'ΜΟΝΙΜΟΣ ΕΣΤΙΑΤΟΡΙΑ',
       barracksRoom: 'ΘΑΛΑΜΟΣ 1',
       bedNumber: '5',
       dutyScore: 4,
@@ -111,6 +151,7 @@ export const DEFAULT_APP_DATA: AppData = {
       specialty: 'ΠΖ',
       fitnessProfile: 'Ι1',
       status: 'Ένοπλος',
+      specialRole: 'ΜΟΝΙΜΟΣ ΚΨΜ',
       barracksRoom: 'ΘΑΛΑΜΟΣ 1',
       bedNumber: '6',
       dutyScore: 4,
@@ -129,6 +170,7 @@ export const DEFAULT_APP_DATA: AppData = {
       specialty: 'ΠΖ',
       fitnessProfile: 'Ι1',
       status: 'Ένοπλος',
+      specialRole: 'ΥΠΕΥΘΥΝΟΣ ΥΛΙΚΟΥ ΚΑΘΑΡΙΟΤΗΤΑΣ',
       barracksRoom: 'ΘΑΛΑΜΟΣ 1',
       bedNumber: '7',
       dutyScore: 5,
@@ -147,6 +189,7 @@ export const DEFAULT_APP_DATA: AppData = {
       specialty: 'ΠΖ',
       fitnessProfile: 'Ι1',
       status: 'Ένοπλος',
+      specialRole: 'ΓΡΑΦΕΑΣ',
       barracksRoom: 'ΘΑΛΑΜΟΣ 1',
       bedNumber: '8',
       dutyScore: 6,
@@ -729,6 +772,31 @@ export const DEFAULT_APP_DATA: AppData = {
       description: 'Παραγωγή, ψήσιμο άρτου μονάδας και προετοιμασία: 06:50 έως 14:00 επομένης.',
       hasSpecialWeekendSwaps: true,
       active: true
+    },
+    {
+      id: 'duty-epifylaki',
+      name: 'Επιφυλακή',
+      shortName: 'Επιφ',
+      category: 'Στρατιώτης',
+      allowedRanks: ['ΣΤΡ', 'ΥΠΔΚΑΣ', 'ΔΚΑΣ'],
+      armsRequired: 'Οποιοσδήποτε',
+      slots: 1,
+      type: 'Ημερήσια',
+      timePresetType: 'STANDBY',
+      shiftHours: 'Χωρίς ωράριο (Επιφυλακή)',
+      slotDefinitions: [
+        {
+          slotIndex: 1,
+          groupIndex: 1,
+          groupName: 'Επιφυλακή',
+          label: 'Επιφυλακή',
+          intervals: []
+        }
+      ],
+      weight: 1,
+      description: 'Επιφυλακή εντός μονάδας για αντικατάσταση σε περίπτωση ανάγκης ή κωλύματος.',
+      hasSpecialWeekendSwaps: false,
+      active: true
     }
   ],
   leaves: [
@@ -753,6 +821,7 @@ export const DEFAULT_APP_DATA: AppData = {
       status: 'Ενεργή'
     }
   ],
+  soldierRecords: [],
   schedules: []
 };
 

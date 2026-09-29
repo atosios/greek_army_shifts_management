@@ -1,6 +1,7 @@
 import { Injectable, signal, computed } from '@angular/core';
-import { AppData, Personnel, DutyType, Leave, DailySchedule, WeekendPlan, UnitInfo, toGreekCaps, formatGreekDate, getCorpsShort } from '../models/shift.model';
-import { DEFAULT_APP_DATA, normalizeRank } from '../data/default-data';
+import { AppData, Personnel, HigherPersonnel, SignatureSlot, DutyType, Leave, SoldierRecord, SoldierRecordType, DailySchedule, WeekendPlan, UnitInfo, toGreekCaps, formatGreekDate, getCorpsShort, formatLocalDate } from '../models/shift.model';
+import { DEFAULT_APP_DATA, DEFAULT_HIGHER_PERSONNEL, normalizeRank } from '../data/default-data';
+import { DEFAULT_EMBLEM_BASE64 } from '../data/default-emblem';
 import { getDutySlotsForDate, formatIntervalsToString, stripGroupText } from '../data/time-presets';
 
 declare global {
@@ -41,10 +42,22 @@ export class StorageService {
 
   // Computed signals
   readonly personnel = computed(() => this.appData().personnel);
+  readonly higherPersonnel = computed<HigherPersonnel[]>(() => {
+    const hp = this.appData().higherPersonnel;
+    if (hp && hp.length > 0) return hp;
+    return DEFAULT_HIGHER_PERSONNEL;
+  });
   readonly dutyTypes = computed(() => this.appData().dutyTypes);
   readonly leaves = computed(() => this.appData().leaves);
+  readonly soldierRecords = computed<SoldierRecord[]>(() => this.appData().soldierRecords || []);
   readonly schedules = computed(() => this.appData().schedules);
-  readonly unitInfo = computed(() => this.appData().unitInfo);
+  readonly unitInfo = computed(() => {
+    const info = this.appData().unitInfo;
+    return {
+      ...info,
+      emblemUrl: info?.emblemUrl || DEFAULT_EMBLEM_BASE64
+    };
+  });
   readonly weekendPlans = computed(() => this.appData().weekendPlans || {});
 
   readonly activePersonnel = computed(() => 
@@ -140,6 +153,22 @@ export class StorageService {
               personName: toGreekCaps(l.personName)
             }));
           }
+          if (loadedData.soldierRecords) {
+            loadedData.soldierRecords = loadedData.soldierRecords.map(r => ({
+              ...r,
+              personName: toGreekCaps(r.personName)
+            }));
+          } else {
+            loadedData.soldierRecords = [];
+          }
+          if (!loadedData.unitInfo) {
+            loadedData.unitInfo = { ...DEFAULT_APP_DATA.unitInfo };
+          } else if (!loadedData.unitInfo.emblemUrl) {
+            loadedData.unitInfo.emblemUrl = DEFAULT_EMBLEM_BASE64;
+          }
+          if (!loadedData.higherPersonnel || loadedData.higherPersonnel.length === 0) {
+            loadedData.higherPersonnel = DEFAULT_HIGHER_PERSONNEL;
+          }
           this.appData.set(loadedData);
           this.notify('Φορτώθηκαν δεδομένα επιτυχώς από το αρχείο USB/Δίσκου', 'success');
           return;
@@ -221,6 +250,22 @@ export class StorageService {
             ...l,
             personName: toGreekCaps(l.personName)
           }));
+        }
+        if (parsed.soldierRecords) {
+          parsed.soldierRecords = parsed.soldierRecords.map((r: any) => ({
+            ...r,
+            personName: toGreekCaps(r.personName)
+          }));
+        } else {
+          parsed.soldierRecords = [];
+        }
+        if (!parsed.unitInfo) {
+          parsed.unitInfo = { ...DEFAULT_APP_DATA.unitInfo };
+        } else if (!parsed.unitInfo.emblemUrl) {
+          parsed.unitInfo.emblemUrl = DEFAULT_EMBLEM_BASE64;
+        }
+        if (!parsed.higherPersonnel || parsed.higherPersonnel.length === 0) {
+          parsed.higherPersonnel = DEFAULT_HIGHER_PERSONNEL;
         }
         this.appData.set(parsed);
         this.saveData();
@@ -471,6 +516,7 @@ export class StorageService {
             ...existing,
             fullName: toGreekCaps(pData.fullName.trim()),
             asm: toGreekCaps((pData.asm || '').trim()),
+            phone: pData.phone !== undefined && pData.phone.trim() ? pData.phone.trim() : existing.phone,
             specialty: getCorpsShort(pData.specialty),
             fitnessProfile,
             status,
@@ -479,7 +525,8 @@ export class StorageService {
             weaponNumber: status === 'Άοπλος' ? '-' : (pData.weaponNumber ? toGreekCaps(pData.weaponNumber.trim()) : existing.weaponNumber || ''),
             exemptFromAllDuties,
             eligibleDutyIds,
-            dutyScore: pData.dutyScore !== undefined && pData.dutyScore > 0 ? pData.dutyScore : existing.dutyScore,
+            dutyScore: pData.dutyScore !== undefined && pData.dutyScore >= 0 ? pData.dutyScore : existing.dutyScore,
+            lastDutyDate: pData.lastDutyDate ? pData.lastDutyDate : existing.lastDutyDate,
             notes: pData.notes ? pData.notes.trim() : existing.notes
           };
           updatedCount++;
@@ -493,6 +540,7 @@ export class StorageService {
         rankShort: 'ΣΤΡ',
         category: 'Κληρωτός',
         specialty: getCorpsShort(pData.specialty),
+        phone: pData.phone ? pData.phone.trim() : '',
         barracksRoom: pData.barracksRoom ? toGreekCaps(pData.barracksRoom.trim()) : '',
         bedNumber: pData.bedNumber ? toGreekCaps(pData.bedNumber.trim()) : '',
         weaponNumber: status === 'Άοπλος' ? '-' : (pData.weaponNumber ? toGreekCaps(pData.weaponNumber.trim()) : ''),
@@ -503,6 +551,7 @@ export class StorageService {
         eligibleDutyIds,
         id: `p-${Date.now()}-${index}-${Math.floor(Math.random() * 1000)}`,
         dutyScore: pData.dutyScore ?? 0,
+        lastDutyDate: pData.lastDutyDate ? pData.lastDutyDate : undefined,
         weekendDutyScore: 0,
         active: true
       });
@@ -580,8 +629,9 @@ export class StorageService {
       // 1. Remove from personnel roster
       const updatedPersonnel = prev.personnel.filter(p => !idSet.has(p.id));
 
-      // 2. Remove leaves
+      // 2. Remove leaves and soldier records
       const updatedLeaves = prev.leaves.filter(l => !idSet.has(l.personId));
+      const updatedSoldierRecords = (prev.soldierRecords || []).filter(r => !idSet.has(r.personId));
 
       // 3. Remove from upcoming duties (date >= todayStr), keeping past schedules untouched
       const updatedSchedules = prev.schedules.map(sched => {
@@ -673,6 +723,7 @@ export class StorageService {
         ...prev,
         personnel: updatedPersonnel,
         leaves: updatedLeaves,
+        soldierRecords: updatedSoldierRecords,
         schedules: updatedSchedules,
         weekendPlans: updatedWeekendPlans
       };
@@ -756,7 +807,7 @@ export class StorageService {
   }
 
   updateDutyType(id: string, updates: Partial<DutyType>) {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = formatLocalDate(new Date());
 
     this.appData.update(prev => {
       const oldDuty = prev.dutyTypes.find(d => d.id === id);
@@ -897,7 +948,7 @@ export class StorageService {
   }
 
   deleteDutyType(id: string) {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = formatLocalDate(new Date());
     this.appData.update(prev => {
       const updatedSchedules = prev.schedules.map(sched => {
         if (sched.date >= todayStr && sched.duties) {
@@ -973,6 +1024,64 @@ export class StorageService {
     }));
     this.saveData();
     this.notify('Η άδεια/απαλλαγή διαγράφηκε', 'warning');
+  }
+
+  // --- Soldier Records (Αιτήματα & Ποινές) Actions ---
+  addSoldierRecord(record: Omit<SoldierRecord, 'id' | 'createdAt'>) {
+    const newRecord: SoldierRecord = {
+      ...record,
+      id: `sr-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      personName: toGreekCaps(record.personName.trim()),
+      reason: record.reason.trim(),
+      notes: record.notes ? record.notes.trim() : '',
+      createdAt: new Date().toISOString()
+    };
+
+    this.appData.update(prev => ({
+      ...prev,
+      soldierRecords: [newRecord, ...(prev.soldierRecords || [])]
+    }));
+    this.saveData();
+    const typeLabel = newRecord.type === 'ΑΙΤΗΜΑ' ? 'Το αίτημα' : 'Η ποινή';
+    this.notify(`${typeLabel} καταχωρήθηκε επιτυχώς για ${newRecord.personName}`, 'success');
+  }
+
+  updateSoldierRecord(id: string, updates: Partial<SoldierRecord>) {
+    this.appData.update(prev => ({
+      ...prev,
+      soldierRecords: (prev.soldierRecords || []).map(r => {
+        if (r.id !== id) return r;
+        return {
+          ...r,
+          ...updates,
+          personName: updates.personName ? toGreekCaps(updates.personName.trim()) : r.personName,
+          reason: updates.reason !== undefined ? updates.reason.trim() : r.reason,
+          notes: updates.notes !== undefined ? updates.notes.trim() : r.notes
+        };
+      })
+    }));
+    this.saveData();
+    this.notify('Τα στοιχεία της εγγραφής ενημερώθηκαν', 'success');
+  }
+
+  deleteSoldierRecord(id: string) {
+    this.appData.update(prev => ({
+      ...prev,
+      soldierRecords: (prev.soldierRecords || []).filter(r => r.id !== id)
+    }));
+    this.saveData();
+    this.notify('Η εγγραφή διαγράφηκε', 'warning');
+  }
+
+  deleteSoldierRecordsBulk(ids: string[]) {
+    if (!ids || ids.length === 0) return;
+    const idSet = new Set(ids);
+    this.appData.update(prev => ({
+      ...prev,
+      soldierRecords: (prev.soldierRecords || []).filter(r => !idSet.has(r.id))
+    }));
+    this.saveData();
+    this.notify(`Διαγράφηκαν ${ids.length} εγγραφές`, 'warning');
   }
 
   // --- Schedule Actions ---
@@ -1077,6 +1186,72 @@ export class StorageService {
     }));
     this.saveData();
     this.notify('Τα στοιχεία της Μονάδας ενημερώθηκαν', 'success');
+  }
+
+  // --- Higher Personnel (Στελέχη / Υπογραφές) ---
+  addHigherPersonnel(person: Omit<HigherPersonnel, 'id'>) {
+    const newPerson: HigherPersonnel = {
+      ...person,
+      id: `hp-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      fullName: toGreekCaps(person.fullName.trim()),
+      roleTitle: toGreekCaps(person.roleTitle.trim()),
+      rank: person.rank.trim()
+    };
+    this.appData.update(prev => ({
+      ...prev,
+      higherPersonnel: [...(prev.higherPersonnel || DEFAULT_HIGHER_PERSONNEL), newPerson]
+    }));
+    this.saveData();
+    this.notify(`Προστέθηκε στο ανώτερο προσωπικό: ${newPerson.fullName}`, 'success');
+  }
+
+  updateHigherPersonnel(id: string, updates: Partial<HigherPersonnel>) {
+    this.appData.update(prev => {
+      const list = prev.higherPersonnel || DEFAULT_HIGHER_PERSONNEL;
+      const updated = list.map(p => {
+        if (p.id !== id) return p;
+        return {
+          ...p,
+          ...updates,
+          fullName: updates.fullName ? toGreekCaps(updates.fullName.trim()) : p.fullName,
+          roleTitle: updates.roleTitle ? toGreekCaps(updates.roleTitle.trim()) : p.roleTitle,
+          rank: updates.rank ? updates.rank.trim() : p.rank
+        };
+      });
+      return {
+        ...prev,
+        higherPersonnel: updated
+      };
+    });
+    this.saveData();
+    this.notify('Το στέλεχος ενημερώθηκε επιτυχώς', 'success');
+  }
+
+  deleteHigherPersonnel(id: string) {
+    this.appData.update(prev => ({
+      ...prev,
+      higherPersonnel: (prev.higherPersonnel || DEFAULT_HIGHER_PERSONNEL).filter(p => p.id !== id)
+    }));
+    this.saveData();
+    this.notify('Το στέλεχος διαγράφηκε', 'warning');
+  }
+
+  saveScheduleSignatures(dateStr: string, signatures: SignatureSlot[]) {
+    this.appData.update(prev => {
+      const schedules = [...prev.schedules];
+      const idx = schedules.findIndex(s => s.date === dateStr);
+      if (idx >= 0) {
+        schedules[idx] = {
+          ...schedules[idx],
+          signatures
+        };
+      }
+      return {
+        ...prev,
+        schedules
+      };
+    });
+    this.saveData();
   }
 
   // --- Reset to Default Seed Data ---

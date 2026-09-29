@@ -217,7 +217,17 @@
             </div>
           </th>
 
-          <!-- Col 4: ΟΠΛΟ -->
+          <!-- Col 4: Τηλέφωνο -->
+          <th class="sortable-th" (click)="toggleSort('phone')" title="Ταξινόμηση κατά Τηλέφωνο Επικοινωνίας">
+            <div class="th-content">
+              <span>Τηλέφωνο</span>
+              <span class="sort-icon" [class.active]="sortColumn() === 'phone'">
+                {{ sortColumn() === 'phone' ? (sortDirection() === 'asc' ? '▲' : '▼') : '⇅' }}
+              </span>
+            </div>
+          </th>
+
+          <!-- Col 5: ΟΠΛΟ -->
           <th class="sortable-th" (click)="toggleSort('corps')" title="Ταξινόμηση κατά Όπλο/Σώμα">
             <div class="th-content">
               <span>ΟΠΛΟ</span>
@@ -314,7 +324,22 @@
 
             <!-- Col 2: Ονοματεπώνυμο -->
             <td>
-              <strong class="person-fullname">{{ p.fullName }}</strong>
+              <div class="name-with-role">
+                <strong class="person-fullname">{{ p.fullName }}</strong>
+                @if (p.specialRole) {
+                  <span class="special-role-info" 
+                        tabindex="0" 
+                        role="note" 
+                        (click)="$event.stopPropagation()" 
+                        [title]="'Ειδικός Ρόλος: ' + p.specialRole">
+                    <span class="info-icon-badge" aria-hidden="true">i</span>
+                    <span class="special-role-tooltip" role="tooltip">
+                      <span class="tooltip-label">Ειδικός Ρόλος</span>
+                      <span class="tooltip-role-name">{{ p.specialRole }}</span>
+                    </span>
+                  </span>
+                }
+              </div>
               @if (!p.active) {
                 <span class="inactive-pill">ΑΝΕΝΕΡΓΟΣ</span>
               }
@@ -326,17 +351,31 @@
             <!-- Col 3: Α.Σ.Μ. -->
             <td><span class="asm-tag">{{ p.asm || '-' }}</span></td>
 
-            <!-- Col 4: ΟΠΛΟ (Shortname only) -->
+            <!-- Col 4: Τηλέφωνο -->
+            <td class="phone-cell">
+              @if (p.phone) {
+                <span class="phone-tag">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="phone-tag-icon">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                  </svg>
+                  <span>{{ p.phone }}</span>
+                </span>
+              } @else {
+                <span class="text-muted-dash">-</span>
+              }
+            </td>
+
+            <!-- Col 5: ΟΠΛΟ (Shortname only) -->
             <td>
               <span class="corps-tag">{{ getCorpsShort(p.specialty) }}</span>
             </td>
 
-            <!-- Col 5: Ικανότητα -->
+            <!-- Col 6: Ικανότητα -->
             <td class="text-center">
               <span class="fitness-tag" [attr.data-fit]="p.fitnessProfile || 'Ι1'">{{ p.fitnessProfile || 'Ι1' }}</span>
             </td>
 
-            <!-- Col 6: Οπλισμός -->
+            <!-- Col 7: Οπλισμός -->
             <td class="text-center">
               <span class="badge" 
                 [class.badge-success]="p.status === 'Ένοπλος'"
@@ -378,7 +417,7 @@
           </tr>
         } @empty {
           <tr>
-            <td colspan="11" class="text-center py-4">
+            <td colspan="12" class="text-center py-4">
               <div class="empty-state">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="empty-icon">
                   <circle cx="11" cy="11" r="8"/>
@@ -593,134 +632,234 @@
           <div class="soldier-modal-layout">
             <!-- Left Column: Form Details -->
             <div class="soldier-form-column">
-              <!-- Row 1: Ονοματεπώνυμο, ΑΣΜ, ΟΠΛΟ -->
-              <div class="form-row-custom row-1-grid">
-                <div class="form-group row-1-name">
-                  <label class="form-label">Ονοματεπώνυμο *</label>
-                  <input 
-                    type="text" 
-                    class="form-control uppercase-name-input" 
-                    [value]="formModel.fullName" 
-                    (input)="onFullNameInput($event)"
-                    (blur)="onFullNameBlur()"
-                    placeholder="π.χ. ΠΑΠΑΔΟΠΟΥΛΟΣ ΓΕΩΡΓΙΟΣ" 
-                    autocomplete="off"
-                    spellcheck="false"
-                  />
-                </div>
 
-                <div class="form-group row-1-asm">
-                  <label class="form-label">ΑΣΜ</label>
-                  <input 
-                    type="text" 
-                    class="form-control uppercase-asm-input" 
-                    [value]="formModel.asm" 
-                    (input)="onAsmInput($event)"
-                    placeholder="π.χ. 2024 Δ / 09144" 
-                    autocomplete="off"
-                    spellcheck="false"
-                  />
+              <!-- Section 1: Στοιχεία Ταυτότητας & Επικοινωνίας -->
+              <div class="form-section-card">
+                <div class="form-section-header">
+                  <div class="form-section-title">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span>Ταυτότητα & Επικοινωνία</span>
+                  </div>
                 </div>
+                <div class="form-section-body">
+                  <!-- Ονοματεπώνυμο -->
+                  <div class="form-group mb-custom">
+                    <label class="form-label">Ονοματεπώνυμο *</label>
+                    <input 
+                      type="text" 
+                      class="form-control uppercase-name-input" 
+                      [value]="formModel.fullName" 
+                      (input)="onFullNameInput($event)"
+                      (blur)="onFullNameBlur()"
+                      placeholder="π.χ. ΠΑΠΑΔΟΠΟΥΛΟΣ ΓΕΩΡΓΙΟΣ" 
+                      autocomplete="off"
+                      spellcheck="false"
+                    />
+                  </div>
 
-                <div class="form-group row-1-corps">
-                  <label class="form-label">ΟΠΛΟ</label>
-                  <select class="form-select" [(ngModel)]="formModel.specialty">
-                    @for (c of corps; track c) {
-                      <option [value]="c">{{ c }}</option>
+                  <!-- 3 Balanced Columns: ΑΣΜ, Τηλέφωνο, ΟΠΛΟ -->
+                  <div class="form-grid-3">
+                    <div class="form-group">
+                      <label class="form-label">Α.Σ.Μ.</label>
+                      <input 
+                        type="text" 
+                        class="form-control uppercase-asm-input" 
+                        [value]="formModel.asm" 
+                        (input)="onAsmInput($event)"
+                        placeholder="π.χ. 2024 Δ / 09144" 
+                        autocomplete="off"
+                        spellcheck="false"
+                      />
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label">Τηλέφωνο</label>
+                      <div class="input-with-icon">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="field-icon">
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                        </svg>
+                        <input 
+                          type="tel" 
+                          class="form-control with-icon-input" 
+                          [(ngModel)]="formModel.phone"
+                          placeholder="π.χ. 698 123 4567" 
+                          autocomplete="off"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label">ΟΠΛΟ / Σώμα</label>
+                      <select class="form-select" [(ngModel)]="formModel.specialty">
+                        @for (c of corps; track c) {
+                          <option [value]="c">{{ c }}</option>
+                        }
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section 2: Στρατιωτική Κατάσταση & Οπλισμός -->
+              <div class="form-section-card">
+                <div class="form-section-header">
+                  <div class="form-section-title">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="22" y1="12" x2="18" y2="12"/>
+                      <line x1="6" y1="12" x2="2" y2="12"/>
+                      <line x1="12" y1="6" x2="12" y2="2"/>
+                      <line x1="12" y1="22" x2="12" y2="18"/>
+                    </svg>
+                    <span>Στρατιωτική Κατάσταση & Οπλισμός</span>
+                  </div>
+                </div>
+                <div class="form-section-body">
+                  <div class="form-grid-3">
+                    <div class="form-group">
+                      <label class="form-label">Ικανότητα</label>
+                      <select class="form-select" [ngModel]="formModel.fitnessProfile" (ngModelChange)="onFitnessChange($event)">
+                        <option value="Ι1">Ι1 (Πλήρης)</option>
+                        <option value="Ι2">Ι2</option>
+                        <option value="Ι3">Ι3</option>
+                        <option value="Ι4">Ι4</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label">
+                        Οπλισμός
+                        @if (formModel.fitnessProfile === 'Ι1' || formModel.fitnessProfile === 'Ι2') {
+                          <span class="label-hint">(Υποχρ. Ένοπλος)</span>
+                        }
+                      </label>
+                      <select 
+                        class="form-select" 
+                        [ngModel]="formModel.status"
+                        (ngModelChange)="onStatusChange($event)"
+                        [disabled]="formModel.fitnessProfile === 'Ι1' || formModel.fitnessProfile === 'Ι2'"
+                      >
+                        <option value="Ένοπλος">Ένοπλος</option>
+                        <option value="Άοπλος">Άοπλος</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label">
+                        Αριθμός Όπλου
+                        @if (formModel.status === 'Άοπλος') {
+                          <span class="label-hint">(Άοπλος: -)</span>
+                        }
+                      </label>
+                      <input 
+                        type="text" 
+                        class="form-control uppercase-asm-input" 
+                        [value]="formModel.status === 'Άοπλος' ? '-' : formModel.weaponNumber"
+                        (input)="onWeaponNumberInput($event)"
+                        [disabled]="formModel.status === 'Άοπλος'"
+                        placeholder="π.χ. 124859" 
+                        autocomplete="off"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section 3: Διαμονή & Σημειώσεις -->
+              <div class="form-section-card">
+                <div class="form-section-header">
+                  <div class="form-section-title">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                      <polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
+                    <span>Διαμονή & Σημειώσεις</span>
+                  </div>
+                </div>
+                <div class="form-section-body">
+                  <div class="form-grid-2">
+                    <div class="form-group">
+                      <label class="form-label">Θάλαμος</label>
+                      <input 
+                        type="text" 
+                        class="form-control uppercase-name-input" 
+                        [value]="formModel.barracksRoom"
+                        (input)="onRoomInput($event)"
+                        placeholder="π.χ. 1.1" 
+                        autocomplete="off"
+                      />
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label">Κρεβάτι</label>
+                      <input 
+                        type="text" 
+                        class="form-control uppercase-name-input" 
+                        [value]="formModel.bedNumber"
+                        (input)="onBedInput($event)"
+                        placeholder="π.χ. 6" 
+                        autocomplete="off"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="form-group mt-custom">
+                    <label class="form-label">Παρατηρήσεις / Σημειώσεις</label>
+                    <input type="text" class="form-control" [(ngModel)]="formModel.notes" placeholder="π.χ. Δίπλωμα Γ' κατηγορίας, ειδικές παρατηρήσεις..." />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section 4: Ειδικός Ρόλος / Μόνιμη Τοποθέτηση -->
+              <div class="form-section-card special-role-card">
+                <div class="form-section-header">
+                  <div class="form-section-title">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                    <span>Ειδικός Ρόλος / Μόνιμη Τοποθέτηση</span>
+                  </div>
+                  @if (formModel.specialRole) {
+                    <button type="button" class="btn-clear-role" (click)="setSpecialRolePreset('')" title="Καθαρισμός ειδικού ρόλου">&times; Καθαρισμός</button>
+                  }
+                </div>
+                <div class="form-section-body">
+                  <div class="role-preset-chips">
+                    @for (role of specialRoles; track role) {
+                      <button 
+                        type="button" 
+                        class="role-chip-btn" 
+                        [class.is-selected]="formModel.specialRole === role"
+                        (click)="setSpecialRolePreset(role)"
+                      >
+                        {{ role }}
+                      </button>
                     }
-                  </select>
+                  </div>
+                  <div class="role-custom-input-row">
+                    <input 
+                      type="text" 
+                      class="form-control form-control-sm uppercase-name-input" 
+                      [value]="formModel.specialRole"
+                      (input)="onSpecialRoleInput($event)"
+                      placeholder="Ή πληκτρολογήστε προσαρμοσμένο ρόλο (π.χ. ΜΟΝΙΜΟΣ ΚΨΜ, ΓΡΑΦΕΑΣ...)" 
+                      autocomplete="off"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <!-- Row 2: Θάλαμος, Κρεβάτι -->
-              <div class="form-row-custom row-2-grid">
-                <div class="form-group">
-                  <label class="form-label">Θάλαμος</label>
-                  <input 
-                    type="text" 
-                    class="form-control uppercase-name-input" 
-                    [value]="formModel.barracksRoom"
-                    (input)="onRoomInput($event)"
-                    placeholder="π.χ. 1.1" 
-                    autocomplete="off"
-                  />
-                </div>
-
-                <div class="form-group">
-                  <label class="form-label">Κρεβάτι</label>
-                  <input 
-                    type="text" 
-                    class="form-control uppercase-name-input" 
-                    [value]="formModel.bedNumber"
-                    (input)="onBedInput($event)"
-                    placeholder="π.χ. 6" 
-                    autocomplete="off"
-                  />
-                </div>
-
-              </div>
-
-              <!-- Row 3: Ικανότητα, Οπλισμός, Αριθμος Οπλου (if ενοπλος) else disabled and '-' -->
-              <div class="form-row-custom row-3-grid">
-                <div class="form-group">
-                  <label class="form-label">Ικανότητα</label>
-                  <select class="form-select" [ngModel]="formModel.fitnessProfile" (ngModelChange)="onFitnessChange($event)">
-                    <option value="Ι1">Ι1</option>
-                    <option value="Ι2">Ι2</option>
-                    <option value="Ι3">Ι3</option>
-                    <option value="Ι4">Ι4</option>
-                  </select>
-                </div>
-
-                <div class="form-group">
-                  <label class="form-label">
-                    Οπλισμός
-                    @if (formModel.fitnessProfile === 'Ι1' || formModel.fitnessProfile === 'Ι2') {
-                      <span class="label-hint">(Ένοπλος)</span>
-                    }
-                  </label>
-                  <select 
-                    class="form-select" 
-                    [ngModel]="formModel.status"
-                    (ngModelChange)="onStatusChange($event)"
-                    [disabled]="formModel.fitnessProfile === 'Ι1' || formModel.fitnessProfile === 'Ι2'"
-                  >
-                    <option value="Ένοπλος">Ένοπλος</option>
-                    <option value="Άοπλος">Άοπλος</option>
-                  </select>
-                </div>
-
-                <div class="form-group">
-                  <label class="form-label">
-                    Αριθμός Όπλου
-                    @if (formModel.status === 'Άοπλος') {
-                      <span class="label-hint">(Άοπλος: -)</span>
-                    }
-                  </label>
-                  <input 
-                    type="text" 
-                    class="form-control uppercase-asm-input" 
-                    [value]="formModel.status === 'Άοπλος' ? '-' : formModel.weaponNumber"
-                    (input)="onWeaponNumberInput($event)"
-                    [disabled]="formModel.status === 'Άοπλος'"
-                    placeholder="π.χ. 124859" 
-                    autocomplete="off"
-                  />
-                </div>
-              </div>
-
-              <!-- Row 4: Παρατηρήσεις / Σημειώσεις -->
-              <div class="form-group">
-                <label class="form-label">Παρατηρήσεις / Σημειώσεις</label>
-                <input type="text" class="form-control" [(ngModel)]="formModel.notes" placeholder="π.χ. Δίπλωμα Γ' κατηγορίας" />
-              </div>
-
-              <!-- Duty Eligibility Section -->
-              <div class="duties-eligibility-card">
-                <div class="duties-eligibility-header">
-                  <div>
-                    <div class="duties-section-title">Επιλέξιμος για τις παρακάτω υπηρεσίες:</div>
-                    <div class="duties-subtitle">Επιλέξτε τις υπηρεσίες που δύναται να εκτελέσει ο στρατιώτης (προεπιλογή: όλες επιλεγμένες).</div>
+              <!-- Section 5: Επιλεξιμότητα Υπηρεσιών -->
+              <div class="form-section-card duties-eligibility-card">
+                <div class="form-section-header">
+                  <div class="form-section-title">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    <span>Επιλεξιμότητα Υπηρεσιών</span>
                   </div>
                   <div class="duties-quick-actions">
                     <button type="button" class="btn btn-secondary btn-xs" (click)="selectAllDuties()" [disabled]="formModel.exemptFromAllDuties">
@@ -732,46 +871,51 @@
                   </div>
                 </div>
 
-                <div class="exempt-toggle-box">
-                  <label class="exempt-checkbox-label">
-                    <input 
-                      type="checkbox" 
-                      [ngModel]="formModel.exemptFromAllDuties" 
-                      (ngModelChange)="onExemptFromAllChange($event)" 
-                    />
-                    <span class="exempt-label-text">
-                      <strong>Δεν εκτελεί καμία υπηρεσία</strong> (πλήρης απαλλαγή υπηρεσιών)
-                    </span>
-                  </label>
-                </div>
+                <div class="form-section-body">
+                  <div class="duties-subtitle">Επιλέξτε τις υπηρεσίες που δύναται να εκτελέσει ο στρατιώτης (προεπιλογή: όλες επιλεγμένες).</div>
 
-                @if (!formModel.exemptFromAllDuties) {
-                  <div class="duties-checkbox-grid">
-                    @for (duty of storage.dutyTypes(); track duty.id) {
-                      <label class="duty-check-item" [class.is-checked]="isDutySelected(duty.id)">
-                        <input 
-                          type="checkbox" 
-                          [checked]="isDutySelected(duty.id)" 
-                          (change)="toggleDutySelection(duty.id)" 
-                        />
-                        <div class="duty-info">
-                          <span class="duty-title">{{ duty.name }}</span>
-                          <span class="duty-meta">@if (duty.category && duty.category !== 'Οπλίτης' && duty.category !== 'Στρατιώτης') { {{ duty.category }} • }{{ duty.armsRequired }}</span>
-                        </div>
-                      </label>
-                    }
+                  <div class="exempt-toggle-box">
+                    <label class="exempt-checkbox-label">
+                      <input 
+                        type="checkbox" 
+                        [ngModel]="formModel.exemptFromAllDuties" 
+                        (ngModelChange)="onExemptFromAllChange($event)" 
+                      />
+                      <span class="exempt-label-text">
+                        <strong>Δεν εκτελεί καμία υπηρεσία</strong> (πλήρης απαλλαγή υπηρεσιών)
+                      </span>
+                    </label>
                   </div>
-                } @else {
-                  <div class="exempt-alert-message">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <circle cx="12" cy="12" r="10"/>
-                      <line x1="12" y1="8" x2="12" y2="12"/>
-                      <line x1="12" y1="16" x2="12.01" y2="16"/>
-                    </svg>
-                    <span>Ο στρατιώτης έχει εξαιρεθεί από όλες τις υπηρεσίες. Δεν θα συμμετέχει στον προγραμματισμό και τυχόν νέες υπηρεσίες που θα δημιουργηθούν αργότερα δεν θα προστεθούν σε αυτόν.</span>
-                  </div>
-                }
+
+                  @if (!formModel.exemptFromAllDuties) {
+                    <div class="duties-checkbox-grid">
+                      @for (duty of storage.dutyTypes(); track duty.id) {
+                        <label class="duty-check-item" [class.is-checked]="isDutySelected(duty.id)">
+                          <input 
+                            type="checkbox" 
+                            [checked]="isDutySelected(duty.id)" 
+                            (change)="toggleDutySelection(duty.id)" 
+                          />
+                          <div class="duty-info">
+                            <span class="duty-title">{{ duty.name }}</span>
+                            <span class="duty-meta">@if (duty.category && duty.category !== 'Οπλίτης' && duty.category !== 'Στρατιώτης') { {{ duty.category }} • }{{ duty.armsRequired }}</span>
+                          </div>
+                        </label>
+                      }
+                    </div>
+                  } @else {
+                    <div class="exempt-alert-message">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                      </svg>
+                      <span>Ο στρατιώτης έχει εξαιρεθεί από όλες τις υπηρεσίες. Δεν θα συμμετέχει στον προγραμματισμό και τυχόν νέες υπηρεσίες που θα δημιουργηθούν αργότερα δεν θα προστεθούν σε αυτόν.</span>
+                    </div>
+                  }
+                </div>
               </div>
+
             </div>
 
             <!-- Right Column: Personal Soldier Calendar (Duties, ΕΥ, ΕΑ, Leaves) -->
@@ -986,12 +1130,16 @@
                 <div class="step-content">
                   <strong>Συμπληρώστε τα στοιχεία των στρατιωτών:</strong>
                   <ul class="guidance-fields-list">
-                    <li><strong>Ονοματεπώνυμο:</strong> <span class="badge-required">(Υποχρεωτικό)</span> Εάν είναι κενό, η εγγραφή αγνοείται. Μετατρέπεται αυτόματα σε κεφαλαία χωρίς τόνους.</li>
-                    <li><strong>ΑΣΜ:</strong> <span class="badge-required">(Υποχρεωτικό)</span> Αριθμός Μητρώου ή ΕΣΣΟ (π.χ. <code>2024 Δ / 09144</code>). Εάν είναι κενό, η εγγραφή αγνοείται.</li>
+                    <li><strong>ΟΝΟΜΑΤΕΠΩΝΥΜΟ:</strong> <span class="badge-required">(Υποχρεωτικό)</span> Εάν είναι κενό, η εγγραφή αγνοείται.</li>
+                    <li><strong>Α.Σ.Μ.:</strong> <span class="badge-required">(Υποχρεωτικό)</span> Αριθμός Μητρώου ή ΕΣΣΟ (π.χ. <code>2024 Δ / 09144</code>). Εάν είναι κενό, η εγγραφή αγνοείται.</li>
+                    <li><strong>ΤΗΛΕΦΩΝΟ:</strong> π.χ. <code>6981234567</code> (προαιρετικό).</li>
                     <li><strong>ΟΠΛΟ:</strong> Σύντομο όπλο: <code>ΠΖ</code>, <code>ΤΘ</code>, <code>ΠΒ</code>, <code>ΜΧ</code>, <code>ΔΒ</code>, <code>ΑΣ</code>, <code>ΤΧ</code>, <code>ΕΜ</code>, <code>ΥΠ</code>, <code>ΥΓ</code> (προεπιλογή: <code>ΠΖ</code>).</li>
-                    <li><strong>ΘΑΛΑΜΟΣ:</strong> π.χ. <code>ΘΑΛΑΜΟΣ 1</code>, <code>101</code> (προαιρετικό).</li>
-                    <li><strong>ΚΡΕΒΑΤΙ:</strong> π.χ. <code>1</code>, <code>12</code> (προαιρετικό).</li>
                     <li><strong>ΙΚΑΝΟΤΗΤΑ:</strong> <code>Ι1</code>, <code>Ι2</code>, <code>Ι3</code> ή <code>Ι4</code> (εάν είναι κενό, ορίζεται αυτόματα σε <strong>Ι1</strong>).</li>
+                    <li><strong>ΟΠΛΙΣΜΟΣ:</strong> <code>Ένοπλος</code> ή <code>Άοπλος</code> (αν Ι1/Ι2, ορίζεται υποχρεωτικά ως <strong>Ένοπλος</strong>).</li>
+                    <li><strong>ΘΑΛΑΜΟΣ:</strong> π.χ. <code>1.1</code> (προαιρετικό).</li>
+                    <li><strong>ΚΡΕΒΑΤΙ:</strong> π.χ. <code>6</code> (προαιρετικό).</li>
+                    <li><strong>ΥΠΗΡΕΣΙΕΣ:</strong> Αριθμός εκτελεσμένων υπηρεσιών (προαιρετικό, προεπιλογή: <code>0</code>).</li>
+                    <li><strong>ΤΕΛΕΥΤΑΙΑ ΥΠΗΡΕΣΙΑ:</strong> Ημερομηνία τελευταίας υπηρεσίας, π.χ. <code>2026-09-20</code> ή <code>20/09/2026</code> (προαιρετικό).</li>
                   </ul>
                 </div>
               </div>
@@ -1166,10 +1314,14 @@
                       <th style="min-width: 170px;">Κατάσταση / Ενέργεια</th>
                       <th>Ονοματεπώνυμο *</th>
                       <th>ΑΣΜ *</th>
+                      <th>Τηλέφωνο</th>
                       <th>ΟΠΛΟ</th>
+                      <th>Ικανότητα</th>
+                      <th>Οπλισμός</th>
                       <th>Θάλαμος</th>
                       <th>Κρεβάτι</th>
-                      <th>Ικανότητα</th>
+                      <th>Υπηρεσίες</th>
+                      <th>Τελ. Υπηρεσία</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1212,10 +1364,26 @@
                             <span class="text-danger-asm">(ΛΕΙΠΕΙ)</span>
                           }
                         </td>
+                        <td>
+                          @if (row.phone) {
+                            <span class="phone-tag">{{ row.phone }}</span>
+                          } @else {
+                            <span class="text-dim">-</span>
+                          }
+                        </td>
                         <td><span class="corps-tag">{{ row.specialty }}</span></td>
+                        <td><span class="fitness-tag" [attr.data-fit]="row.fitnessProfile">{{ row.fitnessProfile }}</span></td>
+                        <td>
+                          <span class="badge" 
+                            [class.badge-success]="row.status === 'Ένοπλος'"
+                            [class.badge-warning]="row.status === 'Άοπλος'">
+                            {{ row.status }}
+                          </span>
+                        </td>
                         <td>{{ row.barracksRoom || '-' }}</td>
                         <td>{{ row.bedNumber || '-' }}</td>
-                        <td><span class="fitness-tag" [attr.data-fit]="row.fitnessProfile">{{ row.fitnessProfile }}</span></td>
+                        <td class="text-center"><strong>{{ row.dutyScore }}</strong></td>
+                        <td>{{ row.lastDutyDate ? formatGreekDate(row.lastDutyDate) : '-' }}</td>
                       </tr>
                     }
                   </tbody>

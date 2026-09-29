@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { StorageService } from '../../services/storage.service';
 import { SchedulerService } from '../../services/scheduler.service';
-import { DailySchedule, DutyAssignment, Leave, WeekendPlan, formatGreekDate } from '../../models/shift.model';
+import { DailySchedule, DutyAssignment, Leave, WeekendPlan, formatGreekDate, formatLocalDate } from '../../models/shift.model';
 
 export interface CalendarDayCell {
   dateStr: string;            // 'YYYY-MM-DD'
@@ -69,6 +69,7 @@ export class CalendarComponent {
   router = inject(Router);
 
   readonly formatGreekDate = formatGreekDate;
+  readonly formatLocalDate = formatLocalDate;
 
   readonly greekMonths = [
     'Ιανουάριος', 'Φεβρουάριος', 'Μάρτιος', 'Απρίλιος', 'Μάιος', 'Ιούνιος',
@@ -90,7 +91,7 @@ export class CalendarComponent {
   // Preview Modal state
   selectedPreviewDate = signal<string | null>(null);
 
-  readonly todayDateStr = new Date().toISOString().slice(0, 10);
+  readonly todayDateStr = formatLocalDate(new Date());
 
   // Month and Year label
   readonly monthYearLabel = computed(() => {
@@ -130,14 +131,14 @@ export class CalendarComponent {
     for (let i = startDayOfWeek - 1; i >= 0; i--) {
       const dNum = daysInPrevMonth - i;
       const prevDate = new Date(year, month - 1, dNum);
-      const dateStr = prevDate.toISOString().slice(0, 10);
+      const dateStr = formatLocalDate(prevDate);
       cells.push(this.buildDayCell(dateStr, dNum, false, today, schedulesMap, allLeaves));
     }
 
     // 2. Fill days of current month
     for (let dNum = 1; dNum <= daysInMonth; dNum++) {
       const currDate = new Date(year, month, dNum);
-      const dateStr = currDate.toISOString().slice(0, 10);
+      const dateStr = formatLocalDate(currDate);
       cells.push(this.buildDayCell(dateStr, dNum, true, today, schedulesMap, allLeaves));
     }
 
@@ -146,7 +147,7 @@ export class CalendarComponent {
     if (remaining < 7) {
       for (let dNum = 1; dNum <= remaining; dNum++) {
         const nextDate = new Date(year, month + 1, dNum);
-        const dateStr = nextDate.toISOString().slice(0, 10);
+        const dateStr = formatLocalDate(nextDate);
         cells.push(this.buildDayCell(dateStr, dNum, false, today, schedulesMap, allLeaves));
       }
     }
@@ -169,7 +170,8 @@ export class CalendarComponent {
     schedulesMap: Map<string, DailySchedule>,
     allLeaves: Leave[]
   ): CalendarDayCell {
-    const d = new Date(dateStr);
+    const parts = dateStr.split('-').map(Number);
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
     const dayOfWeek = d.getDay();
     const isSaturday = dayOfWeek === 6;
     const isSunday = dayOfWeek === 0;

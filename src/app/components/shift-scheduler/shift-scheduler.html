@@ -204,7 +204,9 @@
     }
 
     @for (duty of sched.duties; track duty.dutyTypeId; let dIdx = $index) {
-    <div class="card duty-group-card">
+    <div class="card duty-group-card"
+         [ngClass]="getDutyCardWidthClass(duty)"
+         [class.has-active-picker]="activePickerSlot()?.dutyIdx === dIdx">
       <!-- Duty Group Header: Title, Category & Remove on Far Right Top -->
       <div class="duty-group-header">
         <div class="duty-group-title-wrap">

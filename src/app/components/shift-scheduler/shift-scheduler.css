@@ -306,12 +306,14 @@
 
 /* 3. Duties Roster Cards */
 .duties-roster-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
   gap: 1rem;
+  align-items: start;
 }
 
 .empty-roster-card {
+  grid-column: 1 / -1;
   padding: 2.5rem 1.5rem;
   text-align: center;
   border: 1px dashed #CBD5E1;
@@ -345,11 +347,49 @@
 
 /* Duty Group Card */
 .duty-group-card {
+  grid-column: 1 / -1;
   border: 1px solid #E2E8F0;
   background: #FFFFFF;
   border-radius: 6px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
   overflow: visible;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.duty-group-card.has-active-picker {
+  z-index: 50;
+}
+
+.duty-group-card.duty-card-wide {
+  grid-column: 1 / -1;
+}
+
+.duty-group-card.duty-card-medium {
+  grid-column: span 6;
+}
+
+.duty-group-card.duty-card-compact {
+  grid-column: span 6;
+}
+
+@media (min-width: 1480px) {
+  .duty-group-card.duty-card-compact {
+    grid-column: span 4;
+  }
+}
+
+@media (max-width: 900px) {
+  .duties-roster-list {
+    grid-template-columns: 1fr;
+  }
+  .duty-group-card,
+  .duty-group-card.duty-card-wide,
+  .duty-group-card.duty-card-medium,
+  .duty-group-card.duty-card-compact {
+    grid-column: 1 / -1;
+  }
 }
 
 .duty-group-header {
@@ -432,7 +472,7 @@
 /* Shifts Grid */
 .shifts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(295px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 0.75rem;
   padding: 0.85rem 1rem 1rem;
 }
@@ -591,6 +631,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+  flex: 1;
 }
 
 .shift-slot-row {

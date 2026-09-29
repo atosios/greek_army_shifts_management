@@ -164,6 +164,12 @@
   color: #FBBF24;
 }
 
+.nav-badge.requests {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #93C5FD;
+}
+
 /* Sidebar Footer */
 .sidebar-footer {
   padding: 0.85rem;

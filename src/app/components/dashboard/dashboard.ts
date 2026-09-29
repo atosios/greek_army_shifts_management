@@ -4,7 +4,7 @@ import { RouterModule } from '@angular/router';
 import { StorageService } from '../../services/storage.service';
 import { SchedulerService } from '../../services/scheduler.service';
 import { ExcelExportService } from '../../services/excel-export.service';
-import { formatGreekDate } from '../../models/shift.model';
+import { formatGreekDate, formatLocalDate } from '../../models/shift.model';
 
 @Component({
   selector: 'app-dashboard',
@@ -19,11 +19,11 @@ export class DashboardComponent {
   excelService = inject(ExcelExportService);
 
   readonly formatGreekDate = formatGreekDate;
-  readonly todayStr = new Date().toISOString().slice(0, 10);
+  readonly todayStr = formatLocalDate(new Date());
   readonly tomorrowStr = (() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
-    return d.toISOString().slice(0, 10);
+    return formatLocalDate(d);
   })();
 
   readonly unit = this.storage.unitInfo;

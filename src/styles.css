@@ -76,7 +76,9 @@
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.07);
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -97,13 +99,16 @@ body {
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: var(--bg-subtle);
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--cool-slate);
   border-radius: var(--radius-full);
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--steel-blue-gray);
 }
@@ -165,6 +170,7 @@ body {
   border-color: var(--deep-iron);
   box-shadow: var(--shadow-xs);
 }
+
 .btn-primary:hover {
   background: #1A1E22;
   border-color: #1A1E22;
@@ -176,6 +182,7 @@ body {
   border-color: var(--border-medium);
   box-shadow: var(--shadow-xs);
 }
+
 .btn-secondary:hover {
   background: var(--bg-card-hover);
   color: var(--text-primary);
@@ -187,6 +194,7 @@ body {
   color: #FFFFFF;
   border-color: #0F766E;
 }
+
 .btn-success:hover {
   background: #115E59;
 }
@@ -196,6 +204,7 @@ body {
   color: #FFFFFF;
   border-color: #D97706;
 }
+
 .btn-warning:hover {
   background: #B45309;
 }
@@ -205,6 +214,7 @@ body {
   color: #FFFFFF;
   border-color: #E11D48;
 }
+
 .btn-danger:hover {
   background: #BE123C;
 }
@@ -257,7 +267,8 @@ body {
   border-color: var(--status-info-border);
 }
 
-.badge-military, .badge-corporate {
+.badge-military,
+.badge-corporate {
   background: #EEF2F6;
   color: var(--steel-blue-gray);
   border-color: #D1D6DC;
@@ -285,7 +296,8 @@ body {
   letter-spacing: 0.04em;
 }
 
-.form-control, .form-select {
+.form-control,
+.form-select {
   background: #FFFFFF;
   border: 1px solid var(--border-medium);
   color: var(--text-primary);
@@ -297,7 +309,8 @@ body {
   width: 100%;
 }
 
-.form-control:focus, .form-select:focus {
+.form-control:focus,
+.form-select:focus {
   outline: none;
   border-color: var(--steel-blue-gray);
   box-shadow: 0 0 0 2px rgba(74, 79, 85, 0.15);
@@ -425,84 +438,515 @@ body {
 }
 
 /* Utilities */
-.text-muted { color: var(--text-muted); }
-.text-dim { color: var(--text-light); }
-.text-danger { color: var(--status-danger); }
-.text-primary { color: var(--midnight-charcoal); }
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-dim {
+  color: var(--text-light);
+}
+
+.text-danger {
+  color: var(--status-danger);
+}
+
+.text-primary {
+  color: var(--midnight-charcoal);
+}
 
 /* Official Print Styles */
 @media print {
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  html,
   body {
     background: #FFFFFF !important;
     color: #000000 !important;
-    font-size: 10pt !important;
+    font-size: 9.5pt !important;
     line-height: 1.2 !important;
     margin: 0 !important;
     padding: 0 !important;
+    width: 297mm !important;
   }
 
-  .no-print, 
-  nav, 
-  header, 
-  .sidebar, 
+  .no-print,
+  nav,
+  header,
+  footer,
+  .sidebar,
   .top-bar,
-  .btn, 
-  .notification-toast {
+  .app-footer-bar,
+  .btn,
+  .notification-toast,
+  .sheet-page-label,
+  .print-action-bar,
+  .page-continuation-cue {
     display: none !important;
   }
 
-  .print-sheet {
-    display: block !important;
-    width: 100% !important;
+  .main-wrapper,
+  .content-body,
+  .print-page-wrapper,
+  .print-stage {
+    margin: 0 !important;
     padding: 0 !important;
+    width: 297mm !important;
+    max-width: 297mm !important;
+    zoom: 1 !important;
+    transform: none !important;
+    display: block !important;
+    overflow: visible !important;
+    background: #FFFFFF !important;
+  }
+
+  .print-sheet {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-around !important;
+    width: 297mm !important;
+    min-width: 297mm !important;
+    max-width: 297mm !important;
+    height: 210mm !important;
+    min-height: 210mm !important;
+    max-height: 210mm !important;
+    padding: 8mm 9mm 9mm 9mm !important;
     margin: 0 !important;
     background: #FFFFFF !important;
-    color: #000000 !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-sizing: border-box !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    overflow: hidden !important;
+    font-family: 'Segoe UI', Arial, sans-serif !important;
   }
 
-  .print-table {
+  .print-sheet:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .print-emblem-header {
+    /* border-bottom: 1.5pt solid #0f172a !important; */
+    padding-bottom: 3px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .emblem-img {
+    height: 50px !important;
+    max-width: 65px !important;
+  }
+
+  .header-unit-location {
+    font-size: 9pt !important;
+    font-weight: 800 !important;
+    color: #475569 !important;
+    line-height: 1.15 !important;
+  }
+
+  .header-division {
+    font-size: 7.8pt !important;
+    font-weight: 500 !important;
+    color: #64748b !important;
+    line-height: 1.15 !important;
+  }
+
+  .header-date {
+    font-size: 12.5pt !important;
+    font-weight: 600 !important;
+    color: #0f172a !important;
+    margin-top: 2px !important;
+    margin-bottom: 1px !important;
+    line-height: 1.2 !important;
+  }
+
+  .header-subtitle {
+    font-size: 8pt !important;
+    font-weight: 600 !important;
+    color: #334155 !important;
+    display: inline-block !important;
+    padding-bottom: 1px !important;
+  }
+
+  /* XLSX Sheet Table Print Rules */
+  .xlsx-sheet-table {
     width: 100% !important;
     border-collapse: collapse !important;
-    margin-top: 10px !important;
-    margin-bottom: 15px !important;
+    table-layout: fixed !important;
+    border: 1.25pt solid #0f172a !important;
+    margin: 0 !important;
+    background-color: #ffffff !important;
+    font-family: inherit !important;
   }
 
-  .print-table th, 
-  .print-table td {
-    border: 1pt solid #000000 !important;
-    padding: 4px 6px !important;
-    color: #000000 !important;
-    font-size: 9pt !important;
-    background: transparent !important;
+  .col-border-right {
+    border-right: 1.25pt solid #0f172a !important;
   }
 
-  .print-table th {
-    font-weight: bold !important;
-    text-transform: uppercase !important;
-    background-color: #F0F0F0 !important;
+  .border-top-thick {
+    border-top: 1.25pt solid #0f172a !important;
+  }
+
+  .xlsx-header-row th,
+  .xlsx-header-subrow th {
+    background-color: #e2e8f0 !important;
+    border: 0.75pt solid #94a3b8 !important;
+    color: #0f172a !important;
+    font-size: 7.5pt !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    padding: 2.5px 2px !important;
+    line-height: 1.2 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  .print-header {
-    text-align: center !important;
-    margin-bottom: 15px !important;
+  .header-extra-guards-tag {
+    font-size: 6.5pt !important;
+    font-weight: 700 !important;
+    color: #2563eb !important;
   }
 
-  .print-signature-row {
+  .xlsx-data-row td {
+    border: 0.75pt solid #94a3b8 !important;
+    background-color: #ffffff !important;
+    padding: 0 !important;
+    color: #0f172a !important;
+  }
+
+  .times-cell {
+    padding: 0 !important;
+  }
+
+  .time-line {
     display: flex !important;
-    justify-content: space-between !important;
-    margin-top: 30px !important;
+    align-items: center !important;
+    border-bottom: 0.5pt solid #cbd5e1 !important;
+    min-height: 17px !important;
+  }
+
+  .time-line:last-child {
+    border-bottom: none !important;
+  }
+
+  .d-date {
+    width: 48% !important;
+    border-right: 0.5pt solid #cbd5e1 !important;
+    text-align: center !important;
+    font-size: 7pt !important;
+    font-weight: 600 !important;
+    color: #475569 !important;
+  }
+
+  .d-time {
+    width: 52% !important;
+    text-align: center !important;
+    font-size: 7.5pt !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+  }
+
+  .names-cell {
+    padding: 2px 3px !important;
+    text-align: center !important;
+  }
+
+  .restaurant-slots-container {
+    width: 100% !important;
+  }
+
+  .restaurant-grid-2col {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    column-gap: 3px !important;
+    row-gap: 1.5px !important;
+    align-items: center !important;
+    width: 100% !important;
+  }
+
+  .restaurant-grid-2col .soldier-line {
+    font-size: 7.2pt !important;
+    padding: 0 1px !important;
+  }
+
+  .soldier-line {
+    font-size: 8pt !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    line-height: 1.25 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    color: #0f172a !important;
+  }
+
+  .bold-name {
+    font-weight: 700 !important;
+    font-size: 8pt !important;
+  }
+
+  .empty-text {
+    color: #94a3b8 !important;
+    font-weight: 400 !important;
+    font-size: 7.5pt !important;
+  }
+
+  .sub-section-mini-title {
+    font-size: 7pt !important;
+    font-weight: 800 !important;
+    color: #1e293b !important;
+    text-transform: uppercase !important;
+  }
+
+  .sub-section-divider {
+    height: 0.5pt !important;
+    background-color: #cbd5e1 !important;
+    width: 85% !important;
+    margin: 3px auto !important;
+  }
+
+  .role-prefix {
+    font-size: 6.8pt !important;
+    font-weight: 700 !important;
+    color: #1d4ed8 !important;
+  }
+
+  .dynamic-duty-subblock {
+    margin-top: 2px !important;
+    padding-top: 2px !important;
+    border-top: 0.5pt dashed #cbd5e1 !important;
+  }
+
+  .dynamic-duty-badge {
+    font-size: 6.8pt !important;
+    font-weight: 700 !important;
+    color: #1e293b !important;
+    text-transform: uppercase !important;
+  }
+
+  .dynamic-duty-soldier {
+    font-size: 8pt !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+  }
+
+  .xlsx-signatures-row {
+    display: flex !important;
+    justify-content: space-around !important;
+    align-items: flex-start !important;
+    gap: 2rem !important;
+    width: 86% !important;
+    max-width: 800px !important;
+    margin: 8px auto 0 auto !important;
+    padding: 0 10px !important;
     page-break-inside: avoid !important;
   }
 
-  .print-signature-box {
+  .xlsx-sig-box {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
     text-align: center !important;
-    width: 250px !important;
+    flex: 1 !important;
+    max-width: 250px !important;
+    min-width: 140px !important;
   }
 
-  @page {
-    size: A4 portrait;
-    margin: 10mm;
+  .sig-dash {
+    font-weight: 700 !important;
+    font-size: 7.5pt !important;
+    color: #0f172a !important;
+  }
+
+  .sig-title {
+    font-weight: 700 !important;
+    font-size: 7.5pt !important;
+    text-transform: uppercase !important;
+    color: #0f172a !important;
+  }
+
+  .sig-space {
+    height: 28px !important;
+  }
+
+  .sig-name {
+    font-weight: 800 !important;
+    font-size: 8pt !important;
+    text-transform: uppercase !important;
+    white-space: pre-line !important;
+    line-height: 1.2 !important;
+    color: #0f172a !important;
+  }
+
+  .sig-rank {
+    font-weight: 600 !important;
+    font-size: 7.5pt !important;
+    text-transform: uppercase !important;
+    white-space: pre-line !important;
+    line-height: 1.15 !important;
+    color: #334155 !important;
+    margin-top: 1px !important;
+  }
+
+  /* Ink Saver Overrides for Print Media */
+  .print-sheet.ink-saver-mode {
+    color: #000000 !important;
+  }
+
+  .print-sheet.ink-saver-mode .print-emblem-header {
+    /* border-bottom: 1pt solid #000000 !important; */
+  }
+
+  .print-sheet.ink-saver-mode .emblem-img {
+    filter: grayscale(100%) contrast(150%) brightness(1.1) !important;
+  }
+
+  .print-sheet.ink-saver-mode .header-unit-location {
+    font-size: 9pt !important;
+    font-weight: 800 !important;
+    color: #000000 !important;
+  }
+
+  .print-sheet.ink-saver-mode .header-division {
+    font-size: 7.8pt !important;
+    font-weight: 500 !important;
+    color: #000000 !important;
+  }
+
+  .print-sheet.ink-saver-mode .header-date {
+    font-size: 12.5pt !important;
+    font-weight: 600 !important;
+    color: #000000 !important;
+  }
+
+  .print-sheet.ink-saver-mode .header-subtitle {
+    font-size: 8pt !important;
+    font-weight: 600 !important;
+    color: #000000 !important;
+  }
+
+  /* --- 1. Major Structural & Perimeter Borders (Bolder) --- */
+  .print-sheet.ink-saver-mode .xlsx-sheet-table {
+    border: 1.5pt solid #000000 !important;
+  }
+
+  /* Major vertical section dividers between the 3 main domains */
+  .print-sheet.ink-saver-mode .col-border-right,
+  .print-sheet.ink-saver-mode th.col-border-right,
+  .print-sheet.ink-saver-mode td.col-border-right {
+    border-right: 1.5pt solid #000000 !important;
+  }
+
+  /* Major horizontal section dividing shifts from notes/materials/bakery */
+  .print-sheet.ink-saver-mode .border-top-thick,
+  .print-sheet.ink-saver-mode th.border-top-thick,
+  .print-sheet.ink-saver-mode td.border-top-thick {
+    border-top: 1.5pt solid #000000 !important;
+  }
+
+  /* --- 2. Table Header Rows (Clean, distinct demarcation) --- */
+  .print-sheet.ink-saver-mode .xlsx-header-row th,
+  .print-sheet.ink-saver-mode .xlsx-header-subrow th {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 0.6pt solid #333333 !important;
+    border-bottom: 1.25pt solid #000000 !important;
+    font-weight: 800 !important;
+  }
+
+  .print-sheet.ink-saver-mode .xlsx-header-row th.col-border-right,
+  .print-sheet.ink-saver-mode .xlsx-header-subrow th.col-border-right {
+    border-right: 1.5pt solid #000000 !important;
+  }
+
+  .print-sheet.ink-saver-mode .header-extra-guards-tag {
+    color: #000000 !important;
+  }
+
+  /* --- 3. Medium Structural Lines (Standard Cell Grid) --- */
+  .print-sheet.ink-saver-mode .xlsx-data-row td {
+    border: 0.55pt solid #475569 !important;
+    background-color: #ffffff !important;
+  }
+
+  .print-sheet.ink-saver-mode .xlsx-data-row td.col-border-right {
+    border-right: 1.5pt solid #000000 !important;
+  }
+
+  .print-sheet.ink-saver-mode .xlsx-data-row td.border-top-thick {
+    border-top: 1.5pt solid #000000 !important;
+  }
+
+  /* --- 4. Internal Micro-Dividers (Subtler Hairlines - Saves Ink & Enhances Readability) --- */
+  /* Horizontal dividers between 2-hour shifts inside a cell */
+  .print-sheet.ink-saver-mode .time-line {
+    border-bottom: 0.35pt solid #94a3b8 !important;
+  }
+
+  .print-sheet.ink-saver-mode .time-line:last-child {
+    border-bottom: none !important;
+  }
+
+  /* Vertical divider between Date and Time within each time row */
+  .print-sheet.ink-saver-mode .d-date {
+    border-right: 0.35pt solid #94a3b8 !important;
+    color: #000000 !important;
+  }
+
+  .print-sheet.ink-saver-mode .d-time {
+    color: #000000 !important;
+  }
+
+  /* Subtle dividers inside role cards */
+  .print-sheet.ink-saver-mode .sub-section-divider {
+    background-color: #94a3b8 !important;
+    height: 0.4pt !important;
+  }
+
+  .print-sheet.ink-saver-mode .dynamic-duty-subblock {
+    border-top: 0.4pt dashed #94a3b8 !important;
+  }
+
+  /* Typography Hierarchy */
+  .print-sheet.ink-saver-mode .soldier-line {
+    color: #111111 !important;
+    font-weight: 500 !important;
+    font-size: 7.8pt !important;
+    letter-spacing: 0.15px !important;
+  }
+
+  .print-sheet.ink-saver-mode .empty-text {
+    color: #64748b !important;
+  }
+
+  .print-sheet.ink-saver-mode .sub-section-mini-title {
+    color: #000000 !important;
+    font-weight: 800 !important;
+  }
+
+  .print-sheet.ink-saver-mode .dynamic-duty-badge {
+    color: #000000 !important;
+    font-weight: 700 !important;
+  }
+
+  .print-sheet.ink-saver-mode .dynamic-duty-soldier {
+    color: #111111 !important;
+    font-weight: 500 !important;
+  }
+
+  .print-sheet.ink-saver-mode .role-prefix {
+    color: #000000 !important;
+    font-weight: 700 !important;
+  }
+
+  .print-sheet.ink-saver-mode .sig-dash,
+  .print-sheet.ink-saver-mode .sig-title,
+  .print-sheet.ink-saver-mode .sig-name,
+  .print-sheet.ink-saver-mode .sig-rank {
+    color: #000000 !important;
   }
 }

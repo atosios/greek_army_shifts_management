@@ -1425,3 +1425,52 @@
 .btn-clock-confirm:hover {
   background: var(--deep-iron);
 }
+
+/* Standby (Επιφυλακή) Styles */
+.standby-status-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-xs);
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  letter-spacing: 0.02em;
+}
+
+.standby-card-body {
+  padding: 0.85rem 0.6rem;
+}
+
+.standby-info-box {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-surface-soft, #f8fafc);
+  border: 1px dashed var(--border-medium, #cbd5e1);
+  border-radius: var(--radius-sm, 6px);
+}
+
+.standby-info-box svg {
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.standby-info-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.standby-info-text strong {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--midnight-charcoal);
+}
+
+.standby-info-text span {
+  font-size: 0.72rem;
+  color: var(--steel-blue-gray);
+  line-height: 1.3;
+}

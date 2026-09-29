@@ -103,7 +103,7 @@
             </svg>
             <span>Τύπος Ωραρίου</span>
             <span class="preset-tag">
-              {{ isDutyRolling(duty) ? 'Πρότυπο εναλλασσόμενο' : (isDutyRestaurant(duty) ? 'Πρότυπο Εστιατορίων' : 'Προσαρμοσμένο') }}
+              {{ isDutyRolling(duty) ? 'Πρότυπο εναλλασσόμενο' : (isDutyRestaurant(duty) ? 'Πρότυπο Εστιατορίων' : (isDutyStandby(duty) ? 'Επιφυλακή' : 'Προσαρμοσμένο')) }}
             </span>
           </div>
 
@@ -255,6 +255,15 @@
                   </svg>
                   <span>4 θέσεις 2-6 (14:00-14:00). Περιλαμβάνει αυτόματες εναλλαγές βαρδιών Σ/Κ για την κάλυψη των απαλλαγών (έξοδος 12:00 Σαββάτου &amp; 10:00 Κυριακής).</span>
                 </div>
+              } @else if (isStandbySelected()) {
+                <div class="preset-help-text">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                  </svg>
+                  <span>Χωρίς συγκεκριμένο ωράριο. Τα άτομα τίθενται σε επιφυλακή εντός μονάδας ώστε να αντικαταστήσουν άμεσα οποιονδήποτε στρατιώτη κωλυθεί ή αδυνατεί να εκτελέσει υπηρεσία.</span>
+                </div>
               }
             </div>
 
@@ -267,12 +276,18 @@
                   <h4 class="intervals-editor-title">
                     @if (isRollingSelected()) {
                       4 Χρονικές Θέσεις (Κυλιόμενος Κύκλος από 14:00)
+                    } @else if (isStandbySelected()) {
+                      Θέσεις Επιφυλακής (Χωρίς Ωράριο)
                     } @else {
                       Προσαρμοσμένες Θέσεις &amp; Ωράρια
                     }
                   </h4>
                   <p class="intervals-editor-subtitle">
-                    Καθορίστε τις θέσεις, τον αριθμό ατόμων ανά θέση και τα διαστήματα υπηρεσίας (Από &ndash; Έως). Μπορείτε να σύρετε τις κάρτες θέσεων για αλλαγή σειράς.
+                    @if (isStandbySelected()) {
+                      Καθορίστε τον αριθμό ατόμων σε επιφυλακή εντός μονάδας. Δεν απαιτείται καθορισμός ωραρίου.
+                    } @else {
+                      Καθορίστε τις θέσεις, τον αριθμό ατόμων ανά θέση και τα διαστήματα υπηρεσίας (Από &ndash; Έως). Μπορείτε να σύρετε τις κάρτες θέσεων για αλλαγή σειράς.
+                    }
                   </p>
                 </div>
                 <button type="button" class="btn btn-primary btn-sm" (click)="addPosition()">
@@ -280,7 +295,7 @@
                     <line x1="12" y1="5" x2="12" y2="19"/>
                     <line x1="5" y1="12" x2="19" y2="12"/>
                   </svg>
-                  Προσθήκη Θέσης
+                  {{ isStandbySelected() ? 'Προσθήκη Επιφυλακής' : 'Προσθήκη Θέσης' }}
                 </button>
               </div>
 
@@ -313,7 +328,7 @@
                           class="form-control slot-label-input" 
                           [(ngModel)]="pos.label" 
                           (ngModelChange)="onPositionLabelChange()"
-                          placeholder="π.χ. 1η Θέση (προαιρετικό)" 
+                          [placeholder]="isStandbySelected() ? 'π.χ. 1η Επιφυλακή' : 'π.χ. 1η Θέση (προαιρετικό)'" 
                         />
                         
                         <!-- Interactive People Stepper per Position -->
@@ -345,7 +360,11 @@
                       </div>
 
                       <div class="slot-header-actions">
-                        <span class="grp-intervals-count">{{ pos.intervals.length }} {{ pos.intervals.length === 1 ? 'διάστημα' : 'διαστήματα' }}</span>
+                        @if (isStandbySelected()) {
+                          <span class="standby-status-pill">Χωρίς Ωράριο</span>
+                        } @else {
+                          <span class="grp-intervals-count">{{ pos.intervals.length }} {{ pos.intervals.length === 1 ? 'διάστημα' : 'διαστήματα' }}</span>
+                        }
                         @if (positions.length > 1) {
                           <button 
                             type="button" 
@@ -361,71 +380,85 @@
                       </div>
                     </div>
 
-                    <!-- Intervals for this position -->
-                    <div class="slot-intervals-grid">
-                      @for (interval of pos.intervals; track $index; let intIdx = $index) {
-                        <div class="interval-time-row">
-                          <span class="interval-number">#{{ intIdx + 1 }}</span>
-                          
-                          <div class="time-clock-group">
-                            <span class="time-label">Από:</span>
-                            <button 
-                              type="button" 
-                              class="time-badge-btn" 
-                              (click)="openClockPicker(interval, 'from', 'Ώρα Έναρξης (' + pos.label + ')')"
-                              title="Επιλογή ώρας (άνοιγμα ρολογιού)">
-                              <span class="time-badge-val">{{ interval.from || '08:00' }}</span>
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <polyline points="12 6 12 12 16 14"/>
-                              </svg>
-                            </button>
+                    @if (isStandbySelected()) {
+                      <div class="standby-card-body">
+                        <div class="standby-info-box">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                          </svg>
+                          <div class="standby-info-text">
+                            <strong>Επιφυλακή Μονάδας</strong>
+                            <span>Σε ετοιμότητα εντός στρατοπέδου για αντικατάσταση στρατιώτη σε περίπτωση ανάγκης ή κωλύματος.</span>
                           </div>
-
-                          <span class="time-separator">&rarr;</span>
-
-                          <div class="time-clock-group">
-                            <span class="time-label">Έως:</span>
-                            <button 
-                              type="button" 
-                              class="time-badge-btn" 
-                              (click)="openClockPicker(interval, 'to', 'Ώρα Λήξης (' + pos.label + ')')"
-                              title="Επιλογή ώρας (άνοιγμα ρολογιού)">
-                              <span class="time-badge-val">{{ interval.to || '14:00' }}</span>
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <polyline points="12 6 12 12 16 14"/>
-                              </svg>
-                            </button>
-                          </div>
-
-                          <button 
-                            type="button" 
-                            class="interval-remove-btn" 
-                            (click)="removeIntervalFromPosition(pos, intIdx)"
-                            title="Αφαίρεση ωραρίου">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <line x1="18" y1="6" x2="6" y2="18"/>
-                              <line x1="6" y1="6" x2="18" y2="18"/>
-                            </svg>
-                          </button>
                         </div>
-                      }
-                    </div>
+                      </div>
+                    } @else {
+                      <!-- Intervals for this position -->
+                      <div class="slot-intervals-grid">
+                        @for (interval of pos.intervals; track $index; let intIdx = $index) {
+                          <div class="interval-time-row">
+                            <span class="interval-number">#{{ intIdx + 1 }}</span>
+                            
+                            <div class="time-clock-group">
+                              <span class="time-label">Από:</span>
+                              <button 
+                                type="button" 
+                                class="time-badge-btn" 
+                                (click)="openClockPicker(interval, 'from', 'Ώρα Έναρξης (' + pos.label + ')')"
+                                title="Επιλογή ώρας (άνοιγμα ρολογιού)">
+                                <span class="time-badge-val">{{ interval.from || '08:00' }}</span>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  <circle cx="12" cy="12" r="10"/>
+                                  <polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                              </button>
+                            </div>
 
-                    <!-- Plus Button to add interval to this position -->
-                    <div class="slot-add-interval-wrap">
-                      <button 
-                        type="button" 
-                        class="btn-add-interval" 
-                        (click)="addIntervalToPosition(pos)">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                          <line x1="12" y1="5" x2="12" y2="19"/>
-                          <line x1="5" y1="12" x2="19" y2="12"/>
-                        </svg>
-                        Προσθήκη Ωραρίου
-                      </button>
-                    </div>
+                            <span class="time-separator">&rarr;</span>
+
+                            <div class="time-clock-group">
+                              <span class="time-label">Έως:</span>
+                              <button 
+                                type="button" 
+                                class="time-badge-btn" 
+                                (click)="openClockPicker(interval, 'to', 'Ώρα Λήξης (' + pos.label + ')')"
+                                title="Επιλογή ώρας (άνοιγμα ρολογιού)">
+                                <span class="time-badge-val">{{ interval.to || '14:00' }}</span>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  <circle cx="12" cy="12" r="10"/>
+                                  <polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                              </button>
+                            </div>
+
+                            <button 
+                              type="button" 
+                              class="interval-remove-btn" 
+                              (click)="removeIntervalFromPosition(pos, intIdx)"
+                              title="Αφαίρεση ωραρίου">
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                              </svg>
+                            </button>
+                          </div>
+                        }
+                      </div>
+
+                      <!-- Plus Button to add interval to this position -->
+                      <div class="slot-add-interval-wrap">
+                        <button 
+                          type="button" 
+                          class="btn-add-interval" 
+                          (click)="addIntervalToPosition(pos)">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                          </svg>
+                          Προσθήκη Ωραρίου
+                        </button>
+                      </div>
+                    }
                   </div>
                 }
               </div>

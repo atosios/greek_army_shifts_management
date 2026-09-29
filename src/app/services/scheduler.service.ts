@@ -99,9 +99,7 @@ export class SchedulerService {
 
   // Get next date string (YYYY-MM-DD)
   getNextDate(dateStr: string): string {
-    const d = new Date(dateStr);
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().slice(0, 10);
+    return this.addDays(dateStr, 1);
   }
 
   // Check if person is on duty the next day
@@ -614,11 +612,9 @@ export class SchedulerService {
               isInvalid = true;
               invalidReason = 'Εξοδούχος Κυριακής στην κάλυψη Σαββάτου 10-12';
             }
-            if (!isInvalid && day === 6 && isSlot12to14(slot) && (isSatOff || isSunOff)) {
+            if (!isInvalid && day === 6 && isSlot12to14(slot) && isSunOff) {
               isInvalid = true;
-              invalidReason = isSatOff 
-                ? 'Εξοδούχος Σαββάτου (έξοδος 12:00)' 
-                : 'Εξοδούχος Κυριακής στην κάλυψη Σαββάτου 12-14';
+              invalidReason = 'Εξοδούχος Κυριακής στην κάλυψη Σαββάτου 12-14';
             }
           }
 
@@ -661,7 +657,7 @@ export class SchedulerService {
               if (isSlotConflictingWithDayOff(slot, day, pSatOff, pSunOff)) return false;
               if (day === 5 && isSlot12to14(slot) && pSatOff) return false;
               if (day === 6 && isSlot10to12(slot) && pSunOff) return false;
-              if (day === 6 && isSlot12to14(slot) && (pSatOff || pSunOff)) return false;
+              if (day === 6 && isSlot12to14(slot) && pSunOff) return false;
             }
             return true;
           });
@@ -849,9 +845,7 @@ export class SchedulerService {
 
           let linkedFridayPerson: Personnel | null = null;
           if (isMonMorningEst) {
-            const friDate = new Date(targetDateStr);
-            friDate.setDate(friDate.getDate() - 3);
-            const friDateStr = friDate.toISOString().slice(0, 10);
+            const friDateStr = this.addDays(targetDateStr, -3);
             const friSched = this.storage.getScheduleForDate(friDateStr);
             const friDuty = friSched?.duties.find(f => f.dutyTypeId === d.dutyTypeId);
             const friPersonId = friDuty?.slots[sIdx]?.personId;
@@ -887,7 +881,7 @@ export class SchedulerService {
             } else if (day === 6 && isSlotCover10) {
               candidates = candidates.filter(p => !plan.sundayOffIds.includes(p.id));
             } else if (day === 6 && isSlotCover12) {
-              candidates = candidates.filter(p => !plan.sundayOffIds.includes(p.id) && !plan.saturdayOffIds.includes(p.id));
+              candidates = candidates.filter(p => !plan.sundayOffIds.includes(p.id));
             }
           }
 
@@ -966,9 +960,7 @@ export class SchedulerService {
 
           let linkedFridayPerson: Personnel | null = null;
           if (isMonMorningEst) {
-            const friDate = new Date(targetDateStr);
-            friDate.setDate(friDate.getDate() - 3);
-            const friDateStr = friDate.toISOString().slice(0, 10);
+            const friDateStr = this.addDays(targetDateStr, -3);
             const friSched = this.storage.getScheduleForDate(friDateStr);
             const friDuty = friSched?.duties.find(f => f.dutyTypeId === duty.id);
             const friPersonId = friDuty?.slots[sIdx]?.personId;
@@ -1002,7 +994,7 @@ export class SchedulerService {
             } else if (day === 6 && isSlotCover10) {
               candidates = candidates.filter(p => !plan.sundayOffIds.includes(p.id));
             } else if (day === 6 && isSlotCover12) {
-              candidates = candidates.filter(p => !plan.sundayOffIds.includes(p.id) && !plan.saturdayOffIds.includes(p.id));
+              candidates = candidates.filter(p => !plan.sundayOffIds.includes(p.id));
             }
           }
 
@@ -1118,42 +1110,12 @@ export class SchedulerService {
     friday.weekendPlan = weekendPlan;
     this.enforceNoDoubleAssignments(friday);
 
-    // 2. Prepare Saturday skeleton with Friday's cover soldier pre-reserved in Saturday Position 4
+    // 2. Prepare Saturday skeleton
     const satDutiesSkeleton = this.buildDutiesSkeletonForDate(dates.saturday);
-    friday.duties.forEach(fDuty => {
-      const dutyDef = this.storage.dutyTypes().find(d => d.id === fDuty.dutyTypeId);
-      if (!dutyDef) return;
-      const isRolling = dutyDef.timePresetType === 'ROLLING_CYCLE' || 
-                        dutyDef.timePresetType === 'GREEK_ARMY_2_6' || 
-                        dutyDef.name.includes('Θαλαμοφύλακας') || 
-                        dutyDef.name.includes('Οπλοφύλακας');
-      if (!isRolling) return;
 
-      const satDuty = satDutiesSkeleton.find(d => d.dutyTypeId === fDuty.dutyTypeId);
-      if (!satDuty) return;
-
-      const friCoverSlots = fDuty.slots.filter(isSlot12to14);
-      const satPos4Slots = satDuty.slots.filter(isSlotSatPos4Incomplete);
-      for (let i = 0; i < friCoverSlots.length; i++) {
-        if (friCoverSlots[i].personId && satPos4Slots[i]) {
-          const p = allPersonnel.find(person => person.id === friCoverSlots[i].personId);
-          if (p) {
-            satPos4Slots[i].personId = p.id;
-            satPos4Slots[i].personName = p.fullName;
-            satPos4Slots[i].rankShort = p.rankShort;
-            satPos4Slots[i].company = p.company;
-            satPos4Slots[i].rotationalGroup = p.rotationalGroup;
-            satPos4Slots[i].manualOverride = true; // Pre-reserves soldier so Saturday won't double-assign them
-          }
-        }
-      }
-    });
-
-    // Generate Saturday (now knows who served Friday, and has Position 4 soldier pre-reserved)
+    // Generate Saturday (now knows who served Friday)
     const saturday = this.generateDailySchedule(dates.saturday, satDutiesSkeleton, weekendPlan);
     saturday.weekendPlan = weekendPlan;
-    // Clear temporary manualOverride flag from the pre-reserved slots
-    saturday.duties.forEach(d => d.slots.forEach(s => { if (isSlotSatPos4Incomplete(s)) s.manualOverride = false; }));
     this.enforceNoDoubleAssignments(saturday);
 
     // 3. Prepare Sunday skeleton with Saturday's cover soldiers pre-reserved in Sunday Pos 3 & Pos 4
@@ -1232,9 +1194,7 @@ export class SchedulerService {
 
   // Synchronizes Friday restaurant half-shift soldiers (16:00-22:00) to Monday morning (05:20-16:00)
   syncFridayRestaurantToMonday(friday: DailySchedule, fridayDateStr: string, allPersonnel: Personnel[]) {
-    const monDate = new Date(fridayDateStr);
-    monDate.setDate(monDate.getDate() + 3);
-    const mondayDateStr = monDate.toISOString().slice(0, 10);
+    const mondayDateStr = this.addDays(fridayDateStr, 3);
 
     const existingMonday = this.storage.getScheduleForDate(mondayDateStr);
     const monday: DailySchedule = existingMonday || {
@@ -1307,32 +1267,6 @@ export class SchedulerService {
       const satDuty = saturday.duties.find(d => d.dutyTypeId === fDuty.dutyTypeId);
       const sunDuty = sunday.duties.find(d => d.dutyTypeId === fDuty.dutyTypeId);
       if (!satDuty || !sunDuty) return;
-
-      // 1. Friday 12:00-14:00 Cover <=> Saturday Position 4 Incomplete
-      const friCoverSlots = fDuty.slots.filter(isSlot12to14);
-      const satPos4Slots = satDuty.slots.filter(isSlotSatPos4Incomplete);
-      for (let i = 0; i < friCoverSlots.length; i++) {
-        if (satPos4Slots[i] && (satPos4Slots[i].personId || friCoverSlots[i].personId)) {
-          const pId = satPos4Slots[i].personId || friCoverSlots[i].personId;
-          const pName = satPos4Slots[i].personName || friCoverSlots[i].personName;
-          const rShort = satPos4Slots[i].rankShort || friCoverSlots[i].rankShort;
-          const comp = satPos4Slots[i].company || friCoverSlots[i].company;
-
-          friCoverSlots[i].personId = pId;
-          friCoverSlots[i].personName = pName;
-          friCoverSlots[i].rankShort = rShort;
-          friCoverSlots[i].company = comp;
-          friCoverSlots[i].conflictWarning = undefined;
-          friCoverSlots[i].conflictSeverity = undefined;
-
-          satPos4Slots[i].personId = pId;
-          satPos4Slots[i].personName = pName;
-          satPos4Slots[i].rankShort = rShort;
-          satPos4Slots[i].company = comp;
-          satPos4Slots[i].conflictWarning = undefined;
-          satPos4Slots[i].conflictSeverity = undefined;
-        }
-      }
 
       // 2. Saturday 10:00-12:00 Cover <=> Sunday Position 3
       const satCover10Slots = satDuty.slots.filter(isSlot10to12);
@@ -1456,6 +1390,9 @@ export class SchedulerService {
   }
 
   private resolveSlotHoursNote(duty: DutyType, slotDef: any, slotIndex: number): string {
+    if (duty.timePresetType === 'STANDBY' || duty.name.toLowerCase().includes('επιφυλακ')) {
+      return slotDef?.label || 'Επιφυλακή';
+    }
     if (slotDef) {
       const str = formatIntervalsToString(slotDef.intervals);
       if (slotDef.label) {
@@ -1470,6 +1407,9 @@ export class SchedulerService {
   }
 
   private getSlotHourNote(duty: DutyType, slotIndex: number): string {
+    if (duty.timePresetType === 'STANDBY' || duty.name.toLowerCase().includes('επιφυλακ')) {
+      return duty.slotDefinitions?.[slotIndex]?.label || 'Επιφυλακή';
+    }
     if (duty.slotDefinitions && duty.slotDefinitions[slotIndex]) {
       const def = duty.slotDefinitions[slotIndex];
       const str = formatIntervalsToString(def.intervals);

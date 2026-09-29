@@ -273,6 +273,11 @@ export class DutyTypesComponent {
       label: 'Πρότυπο Εστιατορίων', 
       desc: 'Καθημερινές: 16:00-22:00 & 05:20-16:00 (επόμενη). Παρασκευή: 16:00-22:00. Σάββατο: 07:00-22:00 (χωρίς εξοδούχους Σαββάτου). Κυριακή: 07:00-22:00 (χωρίς εξοδούχους Κυριακής). Δευτέρα πρωί: 05:20-16:00 από τα άτομα της Παρασκευής.' 
     },
+    {
+      value: 'STANDBY',
+      label: 'Επιφυλακή',
+      desc: 'Χωρίς καθορισμένο ωράριο. Ορίζονται άτομα σε επιφυλακή εντός μονάδας για αντικατάσταση σε περίπτωση κωλύματος ή αδυναμίας εκτέλεσης υπηρεσίας από άλλο στρατιώτη.'
+    },
     { 
       value: 'CUSTOM', 
       label: 'Προσαρμοσμένο', 
@@ -294,6 +299,20 @@ export class DutyTypesComponent {
   set customPositions(val: CustomPositionItem[]) { this.positions = val; }
 
   formModel = this.getInitialFormModel();
+
+  getDefaultStandbyPositions(count: number = 1): CustomPositionItem[] {
+    const list: CustomPositionItem[] = [];
+    const n = Math.max(1, count);
+    for (let i = 1; i <= n; i++) {
+      list.push({
+        positionIndex: i,
+        label: n > 1 ? `${i}η Επιφυλακή` : 'Επιφυλακή',
+        peopleCount: 1,
+        intervals: []
+      });
+    }
+    return list;
+  }
 
   getDefaultRollingPositions(): CustomPositionItem[] {
     return [
@@ -405,6 +424,7 @@ export class DutyTypesComponent {
     
     const isRolling = duty.timePresetType === 'ROLLING_CYCLE' || duty.timePresetType === 'GREEK_ARMY_2_6';
     const isRestaurant = duty.timePresetType === 'RESTAURANT_CYCLE' || duty.id === 'duty-estiatoria';
+    const isStandby = duty.timePresetType === 'STANDBY' || (duty.name?.toLowerCase().includes('επιφυλακ') && duty.timePresetType !== 'CUSTOM');
 
     if (duty.slotDefinitions && duty.slotDefinitions.length > 0) {
       this.positions = this.extractPositionsFromSlots(duty.slotDefinitions);
@@ -412,6 +432,8 @@ export class DutyTypesComponent {
       this.positions = this.getDefaultRollingPositions();
     } else if (isRestaurant) {
       this.positions = this.getDefaultRestaurantPositions();
+    } else if (isStandby) {
+      this.positions = this.getDefaultStandbyPositions(duty.slots || 1);
     } else {
       this.positions = [
         {
@@ -425,7 +447,9 @@ export class DutyTypesComponent {
 
     const calculatedSlots = this.positions.reduce((acc, p) => acc + (p.peopleCount || 1), 0);
 
-    const presetType: TimePresetType = isRolling ? 'ROLLING_CYCLE' : (isRestaurant ? 'RESTAURANT_CYCLE' : 'CUSTOM');
+    const presetType: TimePresetType = isRolling 
+      ? 'ROLLING_CYCLE' 
+      : (isRestaurant ? 'RESTAURANT_CYCLE' : (isStandby ? 'STANDBY' : 'CUSTOM'));
 
     this.formModel = {
       name: duty.name,
@@ -502,6 +526,12 @@ export class DutyTypesComponent {
       this.formModel.type = 'Βάρδιες';
       this.positions = this.getDefaultRestaurantPositions();
       this.regenerateSlotsFromPositions();
+    } else if (preset === 'STANDBY') {
+      this.formModel.timePresetType = 'STANDBY';
+      this.formModel.type = 'Ημερήσια';
+      this.formModel.shiftHours = 'Χωρίς ωράριο (Επιφυλακή)';
+      this.positions = this.getDefaultStandbyPositions();
+      this.regenerateSlotsFromPositions();
     } else {
       this.formModel.timePresetType = 'CUSTOM';
       if (!this.positions || this.positions.length === 0) {
@@ -519,12 +549,20 @@ export class DutyTypesComponent {
     return this.formModel.timePresetType === 'RESTAURANT_CYCLE';
   }
 
+  isStandbySelected(): boolean {
+    return this.formModel.timePresetType === 'STANDBY';
+  }
+
   isDutyRolling(duty: DutyType): boolean {
     return duty.timePresetType === 'ROLLING_CYCLE' || duty.timePresetType === 'GREEK_ARMY_2_6';
   }
 
   isDutyRestaurant(duty: DutyType): boolean {
     return duty.timePresetType === 'RESTAURANT_CYCLE' || duty.id === 'duty-estiatoria';
+  }
+
+  isDutyStandby(duty: DutyType): boolean {
+    return duty.timePresetType === 'STANDBY';
   }
 
   // Switch selection to CUSTOM whenever ANY modification is made to the rolling cycle positions
@@ -773,6 +811,18 @@ export class DutyTypesComponent {
   }
 
   addPosition() {
+    if (this.isStandbySelected()) {
+      const newIdx = this.positions.length + 1;
+      this.positions.push({
+        positionIndex: newIdx,
+        label: `${newIdx}η Επιφυλακή`,
+        peopleCount: 1,
+        intervals: []
+      });
+      this.regenerateSlotsFromPositions();
+      return;
+    }
+
     this.markAsCustomIfRolling();
     const newIdx = this.positions.length + 1;
     const baseIntervals: TimeInterval[] = this.positions.length > 0 && this.positions[0].intervals?.length
@@ -819,23 +869,40 @@ export class DutyTypesComponent {
     const slots: DutySlotDefinition[] = [];
     let globalIndex = 1;
 
-    for (const pos of this.positions) {
-      const pCount = Math.max(1, pos.peopleCount || 1);
-      const timesStr = formatIntervalsToString(pos.intervals);
-      for (let p = 1; p <= pCount; p++) {
-        const posLabel = (pos.label || '').trim();
-        const base = posLabel ? `${posLabel} (${timesStr})` : timesStr;
-        const label = pCount > 1 
-          ? (posLabel ? `${posLabel} (${timesStr}) - Άτομο ${p}` : `${timesStr} - Άτομο ${p}`)
-          : base;
+    if (this.isStandbySelected()) {
+      for (const pos of this.positions) {
+        const pCount = Math.max(1, pos.peopleCount || 1);
+        for (let p = 1; p <= pCount; p++) {
+          const posLabel = (pos.label || '').trim() || 'Επιφυλακή';
+          const label = pCount > 1 ? `${posLabel} - Άτομο ${p}` : posLabel;
+          slots.push({
+            slotIndex: globalIndex++,
+            groupIndex: pos.positionIndex,
+            groupName: posLabel,
+            label,
+            intervals: []
+          });
+        }
+      }
+    } else {
+      for (const pos of this.positions) {
+        const pCount = Math.max(1, pos.peopleCount || 1);
+        const timesStr = formatIntervalsToString(pos.intervals);
+        for (let p = 1; p <= pCount; p++) {
+          const posLabel = (pos.label || '').trim();
+          const base = posLabel ? `${posLabel} (${timesStr})` : timesStr;
+          const label = pCount > 1 
+            ? (posLabel ? `${posLabel} (${timesStr}) - Άτομο ${p}` : `${timesStr} - Άτομο ${p}`)
+            : base;
 
-        slots.push({
-          slotIndex: globalIndex++,
-          groupIndex: pos.positionIndex,
-          groupName: posLabel,
-          label,
-          intervals: JSON.parse(JSON.stringify(pos.intervals))
-        });
+          slots.push({
+            slotIndex: globalIndex++,
+            groupIndex: pos.positionIndex,
+            groupName: posLabel,
+            label,
+            intervals: JSON.parse(JSON.stringify(pos.intervals))
+          });
+        }
       }
     }
 
@@ -848,6 +915,8 @@ export class DutyTypesComponent {
         this.formModel.shiftHours = `Πρότυπο εναλλασσόμενο: 4 θέσεις ανά 6ωρο (${this.formModel.slots} άτομα σύνολο: ${posSummary})`;
       } else if (this.formModel.timePresetType === 'RESTAURANT_CYCLE') {
         this.formModel.shiftHours = `Πρότυπο Εστιατορίων: 16:00-22:00 & 05:20-16:00 (${this.formModel.slots} άτομα)`;
+      } else if (this.formModel.timePresetType === 'STANDBY') {
+        this.formModel.shiftHours = `Χωρίς ωράριο (Επιφυλακή - ${this.formModel.slots} ${this.formModel.slots === 1 ? 'άτομο' : 'άτομα'})`;
       } else {
         if (slots.length > 0 && slots[0].intervals?.length) {
           this.formModel.shiftHours = formatIntervalsToString(slots[0].intervals);
@@ -890,6 +959,16 @@ export class DutyTypesComponent {
           count: p.peopleCount,
           intervals: p.intervals
         }));
+      }
+      if (this.isDutyStandby(duty)) {
+        return [
+          {
+            positionIndex: 1,
+            label: 'Επιφυλακή',
+            count: duty.slots || 1,
+            intervals: []
+          }
+        ];
       }
       return [
         {
@@ -978,7 +1057,14 @@ export class DutyTypesComponent {
 
     this.regenerateSlotsFromPositions();
 
-    if (this.formModel.slotDefinitions && this.formModel.slotDefinitions.length > 0) {
+    if (this.formModel.timePresetType === 'STANDBY') {
+      this.formModel.shiftHours = `Χωρίς ωράριο (Επιφυλακή - ${this.formModel.slots} ${this.formModel.slots === 1 ? 'άτομο' : 'άτομα'})`;
+    } else if (this.formModel.timePresetType === 'ROLLING_CYCLE' || this.formModel.timePresetType === 'GREEK_ARMY_2_6') {
+      const posSummary = this.positions.map(p => `${p.label || ('#' + p.positionIndex)}: ${p.peopleCount || 1}`).join(', ');
+      this.formModel.shiftHours = `Πρότυπο εναλλασσόμενο: 4 θέσεις ανά 6ωρο (${this.formModel.slots} άτομα σύνολο: ${posSummary})`;
+    } else if (this.formModel.timePresetType === 'RESTAURANT_CYCLE') {
+      this.formModel.shiftHours = `Πρότυπο Εστιατορίων: 16:00-22:00 & 05:20-16:00 (${this.formModel.slots} άτομα)`;
+    } else if (this.formModel.slotDefinitions && this.formModel.slotDefinitions.length > 0) {
       const slot1Str = formatIntervalsToString(this.formModel.slotDefinitions[0].intervals);
       this.formModel.shiftHours = slot1Str;
     }

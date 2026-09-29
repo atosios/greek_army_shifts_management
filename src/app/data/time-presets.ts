@@ -553,6 +553,34 @@ export function getDutySlotsForDate(
     return generateRestaurantSlotsForDay(day, count, nextDay);
   }
 
+  const isStandby = duty.timePresetType === 'STANDBY' || 
+                    normName.includes('επιφυλακ') || 
+                    normShort.includes('επιφ');
+
+  if (isStandby) {
+    if (duty.slotDefinitions && duty.slotDefinitions.length > 0) {
+      return duty.slotDefinitions.map((s, idx) => ({
+        ...s,
+        slotIndex: idx + 1,
+        intervals: s.intervals || [],
+        hoursNote: s.hoursNote || 'Επιφυλακή'
+      }));
+    }
+    const count = Math.max(1, Number(duty.slots) || 1);
+    const slots: DutySlotDefinition[] = [];
+    for (let i = 1; i <= count; i++) {
+      slots.push({
+        slotIndex: i,
+        groupIndex: i,
+        groupName: count > 1 ? `${i}η Επιφυλακή` : 'Επιφυλακή',
+        label: count > 1 ? `${i}η Επιφυλακή` : 'Επιφυλακή',
+        intervals: [],
+        hoursNote: 'Επιφυλακή'
+      });
+    }
+    return slots;
+  }
+
   // 1. If the duty has configured slot definitions (e.g. customized by the user in Duty Types), honor them directly!
   if (duty.slotDefinitions && duty.slotDefinitions.length > 0) {
     return duty.slotDefinitions.map((s, idx) => ({

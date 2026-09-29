@@ -600,7 +600,8 @@ function registerIpcHandlers() {
     mainWindow.webContents.print({
       silent: false,
       printBackground: true,
-      pageSize: 'A4'
+      pageSize: 'A4',
+      landscape: true
     });
     return { success: true };
   });

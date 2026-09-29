@@ -147,10 +147,22 @@ export interface DutySlotDefinition {
 export type TimePresetType = 
   | 'ROLLING_CYCLE' 
   | 'RESTAURANT_CYCLE'
+  | 'STANDBY'
   | 'CUSTOM'
   | 'GREEK_ARMY_2_6';
 
 export type FitnessLevel = 'Ι1' | 'Ι2' | 'Ι3' | 'Ι4';
+
+export const SPECIAL_ROLES = [
+  'ΜΟΝΙΜΟΣ ΚΨΜ',
+  'ΓΡΑΦΕΑΣ',
+  'ΜΟΝΙΜΟΣ ΕΣΤΙΑΤΟΡΙΑ',
+  'ΥΠΕΥΘΥΝΟΣ ΥΛΙΚΟΥ ΚΑΘΑΡΙΟΤΗΤΑΣ',
+  'ΟΔΗΓΟΣ',
+  'ΣΙΤΙΣΤΗΣ'
+] as const;
+
+export type SpecialRolePreset = typeof SPECIAL_ROLES[number];
 
 export interface Personnel {
   id: string;
@@ -158,11 +170,13 @@ export interface Personnel {
   rankShort: string;
   category: MilitaryCategory;
   fullName: string;
+  phone?: string;           // Τηλέφωνο επικοινωνίας
   asm: string;              // Αριθμός Στρατιωτικού Μητρώου ή ΕΣΣΟ
   specialty: string;        // ΟΠΛΟ (π.χ. ΠΖ – Πεζικό)
   corps?: string;
   fitnessProfile?: FitnessLevel; // Ι1, Ι2, Ι3, Ι4
   status: PersonnelStatus;  // Ένοπλος / Άοπλος
+  specialRole?: string;     // Ειδικός Ρόλος (π.χ. ΜΟΝΙΜΟΣ ΚΨΜ, ΓΡΑΦΕΑΣ, ΜΟΝΙΜΟΣ ΕΣΤΙΑΤΟΡΙΑ, ΥΠΕΥΘΥΝΟΣ ΥΛΙΚΟΥ ΚΑΘΑΡΙΟΤΗΤΑΣ)
   company?: string;         // Προαιρετικό
   rotationalGroup?: string;
   barracksRoom?: string;    // Θάλαμος (π.χ. "101", "1.1")
@@ -254,22 +268,58 @@ export interface DailySchedule {
   isFinalized?: boolean;
   finalizedAt?: string;
   previousLastDutyDates?: Record<string, string | undefined>;
+  signatures?: SignatureSlot[];
+}
+
+export interface HigherPersonnel {
+  id: string;
+  fullName: string;
+  rank: string;
+  roleTitle: string;
+}
+
+export interface SignatureSlot {
+  id?: string;
+  roleTitle: string;
+  fullName: string;
+  rank: string;
+  higherPersonnelId?: string;
 }
 
 export interface UnitInfo {
   name: string;             // π.χ. 535 Μ/Κ ΤΠ
   location: string;         // π.χ. Σιδηρόκαστρο
   division: string;         // π.χ. 16η Μ/Κ ΜΠ
-  commanderName: string;    // π.χ. Αντισυνταγματάρχης (ΠΖ) Παπαδόπουλος Γεώργιος
-  dutyOfficerSignatureTitle: string; // π.χ. Ο Αξιωματικός Επιχειρήσεων
-  dutyOfficerName: string;  // π.χ. Ταγματάρχης (ΠΖ) Κωνσταντίνου Δημήτριος
+  commanderTitle?: string;  // π.χ. ΔΙΟΙΚΗΤΗΣ ΜΟΙΡΑΣ
+  commanderName: string;    // π.χ. ΖΑΒΙΤΣΑΝΟΣ ΔΗΜΗΤΡΙΟΣ
+  dutyOfficerSignatureTitle: string; // π.χ. ΔΚΤΗΣ ΠΥΡΧΙΑΣ
+  dutyOfficerName: string;  // π.χ. ΛΙΝΑΡΔΟΣ ΜΑΡΙΟΣ
+  supervisorSignatureTitle?: string; // π.χ. ΑΛΧΙΑΣ ΠΥΡΧΙΑΣ
+  supervisorName?: string;  // π.χ. ΤΕΡΖΟΓΛΟΥ ΕΥΜΟΡΦΙΑ
+  emblemUrl?: string;       // Έμβλημα Στρατοπέδου / Μονάδας (Base64 data URI ή URL)
+}
+
+export type SoldierRecordType = 'ΑΙΤΗΜΑ' | 'ΠΟΙΝΗ';
+
+export interface SoldierRecord {
+  id: string;
+  type: SoldierRecordType;
+  personId: string;
+  personName: string;
+  date: string;          // YYYY-MM-DD
+  reason: string;        // Αιτιολογία
+  notes?: string;        // Παρατηρήσεις
+  status?: 'Εκκρεμεί' | 'Εγκρίθηκε' | 'Απορρίφθηκε' | 'Ολοκληρώθηκε';
+  createdAt: string;     // ISO timestamp
 }
 
 export interface AppData {
   unitInfo: UnitInfo;
   personnel: Personnel[];
+  higherPersonnel?: HigherPersonnel[];
   dutyTypes: DutyType[];
   leaves: Leave[];
+  soldierRecords?: SoldierRecord[];
   schedules: DailySchedule[];
   weekendPlans?: Record<string, WeekendPlan>;
 }
@@ -309,6 +359,14 @@ export function normalizeGreek(str: string | null | undefined): string {
 export function toGreekCaps(str: string | null | undefined): string {
   if (!str) return '';
   return stripGreekAccents(str).toUpperCase();
+}
+
+/** Format a Date object to local YYYY-MM-DD string without UTC timezone shift */
+export function formatLocalDate(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 /** Format ISO YYYY-MM-DD date string to Greek DD/MM/YYYY */

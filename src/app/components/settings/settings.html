@@ -2,125 +2,429 @@
   <div class="page-header">
     <div>
       <h1 class="page-title">Ρυθμίσεις Συστήματος & Μονάδας</h1>
-      <p class="page-subtitle">Διαμόρφωση στοιχείων μονάδας, ιεραρχίας υπογραφών και διαχείριση βάσης δεδομένων.</p>
+      <p class="page-subtitle">Διαμόρφωση στοιχείων μονάδας, ανώτερου προσωπικού υπογραφών και διαχείριση βάσης δεδομένων.</p>
     </div>
   </div>
 
-  <div class="settings-grid">
-    <!-- Unit Details Form Card -->
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+  <div class="settings-layout">
+    <!-- Inner Left Sidebar for Tabs -->
+    <nav class="settings-inner-sidebar">
+      <div class="sidebar-section-title">Ενότητες</div>
+
+      <button 
+        type="button" 
+        class="tab-nav-btn" 
+        [class.active]="activeTab() === 'unit'" 
+        (click)="setTab('unit')">
+        <div class="tab-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           </svg>
-          Στοιχεία Στρατιωτικής Μονάδας
-        </h2>
-      </div>
-
-      <div class="card-body">
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">Ονομασία Μονάδας *</label>
-            <input type="text" class="form-control" [(ngModel)]="unitForm.name" placeholder="π.χ. 535 Μ/Κ ΤΠ" />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Σχηματισμός / Μεραρχία</label>
-            <input type="text" class="form-control" [(ngModel)]="unitForm.division" placeholder="π.χ. 16η Μ/Κ ΜΠ" />
-          </div>
-
-          <div class="form-group full-width">
-            <label class="form-label">Τοποθεσία / Έδρα Στρατοπέδου</label>
-            <input type="text" class="form-control" [(ngModel)]="unitForm.location" placeholder="π.χ. Σιδηρόκαστρο Σερρών" />
-          </div>
-
-          <div class="form-group full-width">
-            <label class="form-label">Ονοματεπώνυμο & Βαθμός Διοικητή *</label>
-            <input type="text" class="form-control" [(ngModel)]="unitForm.commanderName" placeholder="π.χ. Αντισυνταγματάρχης (ΠΖ) Παπαδόπουλος Γεώργιος" />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Τίτλος Υπογράφοντος Αξιωματικού</label>
-            <input type="text" class="form-control" [(ngModel)]="unitForm.dutyOfficerSignatureTitle" placeholder="π.χ. Ο Αξιωματικός Επιχειρήσεων" />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Ονοματεπώνυμο & Βαθμός Αξιωματικού</label>
-            <input type="text" class="form-control" [(ngModel)]="unitForm.dutyOfficerName" placeholder="π.χ. Ταγματάρχης (ΠΖ) Κωνσταντίνου Δημήτριος" />
-          </div>
         </div>
-
-        <div class="mt-3">
-          <button class="btn btn-primary" (click)="saveUnitInfo()">
-            Αποθήκευση Στοιχείων Μονάδας
-          </button>
+        <div class="tab-label-group">
+          <span class="tab-label">Μονάδα & Έμβλημα</span>
+          <span class="tab-sublabel">Στοιχεία, έδρα & έμβλημα</span>
         </div>
-      </div>
-    </div>
+      </button>
 
-    <!-- Data Management Card -->
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button 
+        type="button" 
+        class="tab-nav-btn" 
+        [class.active]="activeTab() === 'personnel'" 
+        (click)="setTab('personnel')">
+        <div class="tab-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+        <div class="tab-label-group">
+          <span class="tab-label">Προσωπικό</span>
+          <span class="tab-sublabel">Στελέχη, βαθμοί & υπογραφές</span>
+        </div>
+        <span class="tab-counter">{{ higherPersonnel().length }}</span>
+      </button>
+
+      <button 
+        type="button" 
+        class="tab-nav-btn" 
+        [class.active]="activeTab() === 'database'" 
+        (click)="setTab('database')">
+        <div class="tab-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
             <polyline points="17 21 17 13 7 13 7 21"/>
             <polyline points="7 3 7 8 15 8"/>
           </svg>
-          Διαχείριση Βάσης Δεδομένων
-        </h2>
-      </div>
+        </div>
+        <div class="tab-label-group">
+          <span class="tab-label">Βάση Δεδομένων</span>
+          <span class="tab-sublabel">Αντίγραφα ασφαλείας & αρχεία</span>
+        </div>
+      </button>
+    </nav>
 
-      <div class="card-body">
-        <div class="storage-details-box">
-          <div class="detail-line">
-            <span class="detail-label">Διαδρομή Αρχείου:</span>
-            <span class="detail-value mono">{{ storage.storageFilePath() }}</span>
+    <!-- Main Content Panel based on activeTab -->
+    <main class="settings-main-panel">
+      <!-- ================= TAB 1: Μονάδα & Έμβλημα ================= -->
+      @if (activeTab() === 'unit') {
+        <div class="tab-content-container">
+          <!-- Camp Emblem Card -->
+          <div class="card emblem-card">
+            <div class="card-header">
+              <h2 class="card-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                Έμβλημα Στρατοπέδου / Μονάδας
+              </h2>
+              <span class="badge-emblem">Εκτύπωση ΗΔΥ</span>
+            </div>
+
+            <div class="card-body">
+              <p class="settings-hint">
+                Το έμβλημα εκτυπώνεται επάνω αριστερά και δεξιά στο οριζόντιο φύλλο της Ημερήσιας Διαταγής Υπηρεσίας.
+              </p>
+
+              <div class="emblem-config-container">
+                <div class="emblem-preview-wrapper">
+                  <div class="emblem-preview-box">
+                    <img [src]="unitForm.emblemUrl || defaultEmblem" alt="Έμβλημα Στρατοπέδου" class="emblem-preview-img" />
+                  </div>
+                  <span class="preview-caption">Τρέχον Έμβλημα</span>
+                </div>
+
+                <div class="emblem-controls">
+                  <input 
+                    type="file" 
+                    #emblemFileInput 
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml" 
+                    style="display: none" 
+                    (change)="onEmblemFileSelected($event)" 
+                  />
+
+                  <div class="emblem-btn-group">
+                    <button type="button" class="btn btn-primary" (click)="emblemFileInput.click()">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                      </svg>
+                      Ανέβασμα Νέου Εμβλήματος
+                    </button>
+
+                    <button type="button" class="btn btn-secondary" (click)="resetEmblemToDefault()">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                        <path d="M21 3v5h-5"/>
+                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                        <path d="M3 21v-5h5"/>
+                      </svg>
+                      Επαναφορά Προεπιλεγμένου
+                    </button>
+                  </div>
+
+                  <div class="emblem-notes">
+                    <span class="emblem-note-item">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="16" x2="12" y2="12"/>
+                        <line x1="12" y1="8" x2="12.01" y2="8"/>
+                      </svg>
+                      Υποστηριζόμενα αρχεία: PNG (διαφάνεια), JPG, WEBP, SVG.
+                    </span>
+                    <span class="emblem-note-item">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                        <polyline points="7 3 7 8 15 8"/>
+                      </svg>
+                      Πατήστε παρακάτω «Αποθήκευση Στοιχείων Μονάδας» για μόνιμη καταχώρηση.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div class="detail-line">
-            <span class="detail-label">Τελευταία Αποθήκευση:</span>
-            <span class="detail-value">{{ storage.lastSavedTime() || 'Ενεργή' }}</span>
+          <!-- Unit Details Form Card -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 21h18"/>
+                  <path d="M5 21V7l8-4v18"/>
+                  <path d="M19 21V11l-6-4"/>
+                </svg>
+                Στοιχεία Στρατιωτικής Μονάδας
+              </h2>
+            </div>
+
+            <div class="card-body">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label">Ονομασία Μονάδας *</label>
+                  <input type="text" class="form-control" [(ngModel)]="unitForm.name" placeholder="π.χ. 535 Μ/Κ ΤΠ" />
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Σχηματισμός / Μεραρχία</label>
+                  <input type="text" class="form-control" [(ngModel)]="unitForm.division" placeholder="π.χ. 16η Μ/Κ ΜΠ" />
+                </div>
+
+                <div class="form-group full-width">
+                  <label class="form-label">Τοποθεσία / Έδρα Στρατοπέδου</label>
+                  <input type="text" class="form-control" [(ngModel)]="unitForm.location" placeholder="π.χ. Σιδηρόκαστρο" />
+                </div>
+              </div>
+
+              <div class="mt-3">
+                <button class="btn btn-primary" (click)="saveUnitInfo()">
+                  Αποθήκευση Στοιχείων Μονάδας
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ================= TAB 2: Προσωπικό (Higher Personnel) ================= -->
+      @if (activeTab() === 'personnel') {
+        <div class="tab-content-container">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                  Ανώτερο Προσωπικό & Στελέχη Υπογραφών
+                </h2>
+                <p class="settings-hint mt-1">
+                  Καταχωρήστε τα στελέχη της μονάδας (Αξιωματικούς και Υπαξιωματικούς), τους βαθμούς και τις θέσεις ευθύνης τους. Στην οθόνη εκτύπωσης μπορείτε να επιλέγετε δυναμικά ποια στελέχη θα υπογράψουν στο τέλος της διαταγής.
+                </p>
+              </div>
+              <button class="btn btn-primary" (click)="openAddHpModal()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Προσθήκη Στελέχους
+              </button>
+            </div>
+
+            <div class="card-body">
+              @if (higherPersonnel().length > 0) {
+                <div class="hp-table-container">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 28%;">ΘΕΣΗ ΕΥΘΥΝΗΣ / ΤΙΤΛΟΣ</th>
+                        <th style="width: 30%;">ΟΝΟΜΑΤΕΠΩΝΥΜΟ</th>
+                        <th style="width: 20%;">ΒΑΘΜΟΣ & ΟΠΛΟ/ΣΩΜΑ</th>
+                        <th style="width: 22%; text-align: right;">ΕΝΕΡΓΕΙΕΣ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (p of higherPersonnel(); track p.id) {
+                        <tr>
+                          <td>
+                            <div class="hp-role-badge">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="8" r="7"/>
+                                <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+                              </svg>
+                              <span>{{ p.roleTitle }}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <strong class="hp-name">{{ p.fullName }}</strong>
+                          </td>
+                          <td>
+                            <span class="hp-rank-badge">{{ p.rank }}</span>
+                          </td>
+                          <td style="text-align: right;">
+                            <div class="btn-group-actions">
+                              <button class="btn btn-sm btn-secondary" title="Επεξεργασία" (click)="openEditHpModal(p)">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                </svg>
+                                Επεξεργασία
+                              </button>
+                              <button class="btn btn-sm btn-danger" title="Διαγραφή" (click)="deleteHp(p.id, p.fullName)">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  <polyline points="3 6 5 6 21 6"/>
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <div class="empty-hp-state">
+                  <p>Δεν έχει καταχωρηθεί ακόμη κανένα στέλεχος.</p>
+                  <button class="btn btn-primary" (click)="openAddHpModal()">
+                    + Προσθήκη Πρώτου Στελέχους
+                  </button>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ================= TAB 3: Βάση Δεδομένων ================= -->
+      @if (activeTab() === 'database') {
+        <div class="tab-content-container">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                  <polyline points="17 21 17 13 7 13 7 21"/>
+                  <polyline points="7 3 7 8 15 8"/>
+                </svg>
+                Διαχείριση Βάσης Δεδομένων
+              </h2>
+            </div>
+
+            <div class="card-body">
+              <div class="storage-details-box">
+                <div class="detail-line">
+                  <span class="detail-label">Διαδρομή Αρχείου:</span>
+                  <span class="detail-value mono">{{ storage.storageFilePath() }}</span>
+                </div>
+
+                <div class="detail-line">
+                  <span class="detail-label">Τελευταία Αποθήκευση:</span>
+                  <span class="detail-value">{{ storage.lastSavedTime() || 'Ενεργή' }}</span>
+                </div>
+              </div>
+
+              <div class="storage-buttons-grid">
+                <button class="btn btn-secondary" (click)="createBackup()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                    <polyline points="17 21 17 13 7 13 7 21"/>
+                    <polyline points="7 3 7 8 15 8"/>
+                  </svg>
+                  Αντίγραφο Ασφαλείας
+                </button>
+
+                <button class="btn btn-secondary" (click)="saveAs()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  Αποθήκευση Βάσης ως...
+                </button>
+
+                <button class="btn btn-secondary" (click)="openOtherFile()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  Άνοιγμα Άλλης Βάσης Δεδομένων
+                </button>
+
+                <button class="btn btn-secondary" (click)="resetToDefault()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                    <path d="M21 3v5h-5"/>
+                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                    <path d="M3 21v-5h5"/>
+                  </svg>
+                  Επαναφορά Προτύπων
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </main>
+  </div>
+
+  <!-- Modal for Adding / Editing Higher Personnel -->
+  @if (showHpModal()) {
+    <div class="modal-overlay" (click)="closeHpModal()">
+      <div class="modal-content hp-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3 class="modal-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            </svg>
+            {{ editingHpId() ? 'Επεξεργασία Στελέχους' : 'Προσθήκη Νέου Στελέχους' }}
+          </h3>
+          <button class="close-btn" (click)="closeHpModal()">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Θέση Ευθύνης / Τίτλος Υπογραφής *</label>
+            <input 
+              type="text" 
+              class="form-control" 
+              [(ngModel)]="hpForm.roleTitle" 
+              placeholder="π.χ. ΔΙΟΙΚΗΤΗΣ ΜΟΙΡΑΣ" 
+            />
+            <div class="preset-badges-row">
+              <span class="preset-hint">Συνηθισμένες θέσεις:</span>
+              @for (title of rolePresets; track title) {
+                <button type="button" class="preset-badge" (click)="selectTitlePreset(title)">
+                  {{ title }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Ονοματεπώνυμο Στελέχους *</label>
+            <input 
+              type="text" 
+              class="form-control" 
+              [(ngModel)]="hpForm.fullName" 
+              placeholder="π.χ. ΖΑΒΙΤΣΑΝΟΣ ΔΗΜΗΤΡΙΟΣ" 
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Βαθμός & Όπλο/Σώμα *</label>
+            <input 
+              type="text" 
+              class="form-control" 
+              [(ngModel)]="hpForm.rank" 
+              placeholder="π.χ. ΑΝΧΗΣ (ΠΒ)" 
+            />
+            <div class="preset-badges-row">
+              <span class="preset-hint">Συνηθισμένοι βαθμοί:</span>
+              @for (r of rankPresets; track r) {
+                <button type="button" class="preset-badge" (click)="selectRankPreset(r)">
+                  {{ r }}
+                </button>
+              }
+            </div>
           </div>
         </div>
 
-        <div class="storage-buttons-grid">
-          <button class="btn btn-secondary" (click)="createBackup()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-              <polyline points="17 21 17 13 7 13 7 21"/>
-              <polyline points="7 3 7 8 15 8"/>
-            </svg>
-            Αντίγραφο Ασφαλείας
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeHpModal()">
+            Ακύρωση
           </button>
-
-          <button class="btn btn-secondary" (click)="saveAs()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-            </svg>
-            Αποθήκευση Βάσης ως...
-          </button>
-
-          <button class="btn btn-secondary" (click)="openOtherFile()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-            </svg>
-            Άνοιγμα Άλλης Βάσης Δεδομένων
-          </button>
-
-          <button class="btn btn-secondary" (click)="resetToDefault()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-              <path d="M21 3v5h-5"/>
-              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-              <path d="M3 21v-5h5"/>
-            </svg>
-            Επαναφορά Προτύπων
+          <button type="button" class="btn btn-primary" (click)="saveHp()">
+            {{ editingHpId() ? 'Ενημέρωση Στελέχους' : 'Προσθήκη Στελέχους' }}
           </button>
         </div>
       </div>
     </div>
-  </div>
+  }
 </div>

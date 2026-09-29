@@ -1,0 +1,392 @@
+<div class="hkap-page-wrapper">
+  <!-- Interactive Top Action Bar (Hidden during printing) -->
+  <div class="no-print hkap-action-bar">
+    <div class="bar-left">
+      <!-- Date Selector -->
+      <div class="action-bar-date-group">
+        <label class="action-bar-label">Ημερομηνία:</label>
+        <input type="date" class="form-control hkap-date-input" [ngModel]="date()"
+          (ngModelChange)="onDateChange($event)" />
+      </div>
+
+      <!-- Selection Drawer Toggle Button -->
+      <button type="button" class="btn btn-secondary btn-drawer-toggle" [class.active]="isSelectionPanelOpen()"
+        (click)="toggleSelectionPanel()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 11l3 3L22 4" />
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+        </svg>
+        <span>Επιλογή Εγγραφών ({{ selectedRecordIds().size }})</span>
+        <span class="drawer-arrow">{{ isSelectionPanelOpen() ? '▲' : '▼' }}</span>
+      </button>
+
+      <!-- Header Lines Config Toggle Button -->
+      <button type="button" class="btn btn-secondary btn-drawer-toggle" [class.active]="isHeaderConfigOpen()"
+        (click)="toggleHeaderConfig()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+        </svg>
+        <span>Στοιχεία Μονάδας</span>
+        <span class="drawer-arrow">{{ isHeaderConfigOpen() ? '▲' : '▼' }}</span>
+      </button>
+    </div>
+
+    <div class="bar-right">
+      <a routerLink="/requests-penalties" class="btn btn-secondary"
+        title="Επιστροφή στη διαχείριση αιτημάτων και ποινών">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect width="7" height="9" x="3" y="3" rx="1" />
+          <rect width="7" height="5" x="14" y="3" rx="1" />
+          <rect width="7" height="9" x="14" y="12" rx="1" />
+          <rect width="7" height="5" x="3" y="16" rx="1" />
+        </svg>
+        Διαχείριση
+      </a>
+
+      <button type="button" class="btn btn-primary btn-lg" (click)="print()"
+        title="Εκτύπωση A4 Landscape (2 Σελίδες: Αιτήματα / Ποινές)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 6 2 18 2 18 9" />
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+          <rect width="12" height="8" x="6" y="14" />
+        </svg>
+        Εκτύπωση ΗΚΑΠ
+      </button>
+    </div>
+  </div>
+
+  <!-- Header Lines Configuration Dropdown Panel (Screen only) -->
+  @if (isHeaderConfigOpen()) {
+  <div class="no-print header-config-panel">
+    <div class="config-header">
+      <h4 class="config-title">Στοιχεία Επικεφαλίδας (Πάνω Δεξιά)</h4>
+      <div class="config-actions">
+        <button type="button" class="btn btn-sm btn-secondary" (click)="resetDefaultHeaderLines()">
+          Επαναφορά
+        </button>
+        <button type="button" class="btn-close-drawer" (click)="isHeaderConfigOpen.set(false)">&times;</button>
+      </div>
+    </div>
+    <div class="config-form-grid">
+      <div class="config-field">
+        <label>Γραμμή 1 (Μονάδα/Κέντρο):</label>
+        <input type="text" class="form-control" [ngModel]="headerLine1()"
+          (ngModelChange)="headerLine1.set($event); saveHeaderLines()" placeholder="π.χ. ΚΕΝ ΘΗΒΑΣ (ΚΕΠΒ)" />
+      </div>
+      <div class="config-field">
+        <label>Γραμμή 2 (Υπομονάδα/Σχηματισμός):</label>
+        <input type="text" class="form-control" [ngModel]="headerLine2()"
+          (ngModelChange)="headerLine2.set($event); saveHeaderLines()" placeholder="π.χ. 2η ΜΕΝ/Σ" />
+      </div>
+      <div class="config-field">
+        <label>Γραμμή 3 (Πυροβολαρχία/Λόχος):</label>
+        <input type="text" class="form-control" [ngModel]="headerLine3()"
+          (ngModelChange)="headerLine3.set($event); saveHeaderLines()" placeholder="π.χ. Γ' ΠΥΡΧΙΑ" />
+      </div>
+      <div class="config-field">
+        <label>Γραμμή 4 (Κτήριο/Τοποθεσία):</label>
+        <input type="text" class="form-control" [ngModel]="headerLine4()"
+          (ngModelChange)="headerLine4.set($event); saveHeaderLines()" placeholder="π.χ. ΣΤ' ΚΤΗΡΙΟ" />
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Interactive Selection Panel (Collapsible Drawer on Screen) -->
+  @if (isSelectionPanelOpen()) {
+  <div class="no-print selection-drawer-panel">
+    <div class="drawer-header">
+      <div class="drawer-title-group">
+        <h3 class="drawer-title">Επιλογή Εγγραφών προς Εκτύπωση στο ΗΚΑΠ</h3>
+        <span class="drawer-subtitle">
+          Επιλέξτε ποια αιτήματα και ποιες ποινές θα συμπεριληφθούν. Κάθε επιλογή προσθέτει μία αντίστοιχη γραμμή στον
+          πίνακα.
+        </span>
+      </div>
+      <div class="drawer-controls">
+        <button type="button" class="btn btn-sm btn-secondary" (click)="selectAllForDate()">
+          Επιλογή Σημερινών
+        </button>
+        <button type="button" class="btn btn-sm btn-secondary" (click)="selectAllRecords()">
+          Επιλογή Όλων
+        </button>
+        <button type="button" class="btn btn-sm btn-secondary" (click)="deselectAllRecords()">
+          Αποεπιλογή
+        </button>
+        <button type="button" class="btn-close-drawer" (click)="isSelectionPanelOpen.set(false)">&times;</button>
+      </div>
+    </div>
+
+    <div class="drawer-content">
+      @if (allRecords().length > 0) {
+      <div class="selection-items-grid">
+        @for (rec of allRecords(); track rec.id) {
+        <div class="selection-item-card" [class.selected]="isRecordSelected(rec.id)"
+          [class.is-today]="rec.date === date()" (click)="toggleRecordSelection(rec.id)">
+          <div class="item-checkbox-col">
+            <input type="checkbox" [checked]="isRecordSelected(rec.id)" (click)="$event.stopPropagation()"
+              (change)="toggleRecordSelection(rec.id)" />
+          </div>
+          <div class="item-info-col">
+            <div class="item-header-line">
+              @if (rec.type === 'ΑΙΤΗΜΑ') {
+              <span class="badge badge-primary badge-mini">ΑΙΤΗΜΑ</span>
+              } @else {
+              <span class="badge badge-danger badge-mini">ΠΟΙΝΗ</span>
+              }
+              <span class="item-soldier-name">{{ rec.personName }}</span>
+              <span class="item-date">{{ formatGreekDate(rec.date) }}</span>
+            </div>
+            <div class="item-reason-text"><strong>Περιεχόμενο:</strong> {{ rec.reason }}</div>
+            @if (rec.notes) {
+            <div class="item-notes-text"><strong>Παρατηρήσεις:</strong> {{ rec.notes }}</div>
+            }
+          </div>
+        </div>
+        }
+      </div>
+      } @else {
+      <div class="drawer-empty-notice">
+        Δεν υπάρχουν καταχωρημένες εγγραφές αιτημάτων ή ποινών.
+        <a routerLink="/requests-penalties" class="empty-link">Μεταβείτε στη σελίδα καταχώρισης &rarr;</a>
+      </div>
+      }
+    </div>
+  </div>
+  }
+
+  <!-- Signatures Management Screen Bar (Same system as duty print) -->
+  <div class="no-print signatures-management-bar">
+    <div class="sig-manage-info">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+      </svg>
+      <span class="sig-manage-title">Υπογραφές ΗΚΑΠ: <strong>{{ signatures().length }}</strong></span>
+    </div>
+    <div class="sig-manage-actions">
+      <button type="button" class="btn-sig-pill-action" (click)="addSignatureSlot()"
+        title="Προσθήκη νέας θέσης υπογραφής">
+        + Προσθήκη
+      </button>
+      <button type="button" class="btn-sig-pill-action text-muted" (click)="resetDefaultSignatures()"
+        title="Επαναφορά προεπιλογών">
+        Επαναφορά
+      </button>
+    </div>
+  </div>
+
+  <!-- Printable A4 Document Sheet Stage -->
+  <div class="print-stage">
+
+    <!-- ==========================================
+         PAGE 1: ΠΙΝΑΚΑΣ ΑΙΤΗΣΕΩΝ – ΑΝΑΦΟΡΩΝ ΟΠΛΙΤΩΝ
+         ========================================== -->
+    <div class="hkap-sheet">
+      <!-- Top Row: Page number on left, Unit block on right -->
+      <div class="hkap-sheet-top-row">
+        <div class="hkap-page-number">1</div>
+
+        <div class="hkap-top-right-block">
+          <div>{{ headerLine1() }}</div>
+          <div>{{ headerLine2() }}</div>
+          <div>{{ headerLine3() }}</div>
+          <div>{{ headerLine4() }}</div>
+        </div>
+      </div>
+
+      <!-- Vertically Centered Table & Title Section -->
+      <div class="hkap-center-content">
+        <!-- Center Title: ΠΙΝΑΚΑΣ / ΑΙΤΗΣΕΩΝ – ΑΝΑΦΟΡΩΝ ΟΠΛΙΤΩΝ ΤΗΣ DD/MM/YY -->
+        <div class="hkap-sheet-title-group">
+          <div class="hkap-main-title">ΠΙΝΑΚΑΣ</div>
+          <div class="hkap-sub-title">ΑΙΤΗΣΕΩΝ – ΑΝΑΦΟΡΩΝ ΟΠΛΙΤΩΝ ΤΗΣ {{ formatTitleDate(date()) }}</div>
+        </div>
+
+        <!-- Center 4-Column Table: ΑΙΤΗΜΑΤΑ -->
+        <table class="hkap-table">
+          <colgroup>
+            <col style="width: 6%;">
+            <col style="width: 26%;">
+            <col style="width: 50%;">
+            <col style="width: 18%;">
+          </colgroup>
+          <thead>
+            <tr class="hkap-header-row">
+              <th class="col-num">Α/Α</th>
+              <th class="col-soldier">ΟΝΟΜΑΤΕΠΩΝΥΜΟ</th>
+              <th class="col-content">ΑΙΤΗΜΑ - ΑΝΑΦΟΡΑ</th>
+              <th class="col-notes">ΠΑΡΑΤΗΡΗΣΕΙΣ</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of printableRequests(); track $index) {
+            <tr class="hkap-data-row" [class.empty-row]="item.isEmpty">
+              <td class="hkap-cell text-center col-num">
+                {{ item.numberText }}
+              </td>
+              <td class="hkap-cell col-soldier">
+                <span class="soldier-line">{{ item.soldierName }}</span>
+              </td>
+              <td class="hkap-cell col-content">
+                <span class="content-text">{{ item.content }}</span>
+              </td>
+              <td class="hkap-cell col-notes">
+                <span class="notes-text">{{ item.notes }}</span>
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Bottom Military Signatures (Same system as duty print) -->
+      <div class="xlsx-signatures-row">
+        @for (sig of signatures(); track $index; let i = $index; let first = $first; let last = $last) {
+        <div class="xlsx-sig-box">
+          <!-- Screen-only dropdown selector & slot controls (Hidden during printing) -->
+          <div class="no-print sig-slot-controls">
+            <select class="sig-member-select" [ngModel]="sig.higherPersonnelId"
+              (ngModelChange)="onSelectSigner(i, $event)" title="Επιλέξτε στέλεχος από το Προσωπικό">
+              <option value="">-- Επιλογή Στελέχους --</option>
+              @for (hp of higherPersonnel(); track hp.id) {
+              <option [value]="hp.id">{{ hp.roleTitle }} - {{ hp.fullName }} ({{ hp.rank }})</option>
+              }
+            </select>
+
+            <div class="sig-btn-mini-group">
+              @if (!first) {
+              <button type="button" class="btn-mini-sig" (click)="moveSignature(i, 'left')"
+                title="Μετακίνηση αριστερά">&larr;</button>
+              }
+              @if (!last) {
+              <button type="button" class="btn-mini-sig" (click)="moveSignature(i, 'right')"
+                title="Μετακίνηση δεξιά">&rarr;</button>
+              }
+              @if (signatures().length > 1) {
+              <button type="button" class="btn-mini-sig btn-mini-del" (click)="removeSignatureSlot(i)"
+                title="Αφαίρεση υπογραφής">&times;</button>
+              }
+            </div>
+          </div>
+
+          <!-- Printable Official Military Signature Block -->
+          <div class="sig-dash">-Ο-</div>
+          <div class="sig-title">{{ sig.roleTitle }}</div>
+          <div class="sig-space"></div>
+          <div class="sig-name">{{ sig.fullName }}</div>
+          @if (sig.rank) {
+          <div class="sig-rank">{{ sig.rank }}</div>
+          }
+        </div>
+        }
+      </div>
+    </div>
+
+    <!-- ==========================================
+         PAGE 2: ΠΙΝΑΚΑΣ ΠΟΙΝΩΝ ΟΠΛΙΤΩΝ
+         ========================================== -->
+    <div class="hkap-sheet hkap-page-2">
+      <!-- Top Row: Page number 2 on left, Unit block on right -->
+      <div class="hkap-sheet-top-row">
+        <div class="hkap-page-number">2</div>
+
+        <div class="hkap-top-right-block">
+          <div>{{ headerLine1() }}</div>
+          <div>{{ headerLine2() }}</div>
+          <div>{{ headerLine3() }}</div>
+          <div>{{ headerLine4() }}</div>
+        </div>
+      </div>
+
+      <!-- Vertically Centered Table & Title Section -->
+      <div class="hkap-center-content">
+        <!-- Center Title: ΠΙΝΑΚΑΣ / ΠΟΙΝΩΝ ΟΠΛΙΤΩΝ ΤΗΣ DD/MM/YY -->
+        <div class="hkap-sheet-title-group">
+          <div class="hkap-main-title">ΠΙΝΑΚΑΣ</div>
+          <div class="hkap-sub-title">ΠΟΙΝΩΝ ΟΠΛΙΤΩΝ ΤΗΣ {{ formatTitleDate(date()) }}</div>
+        </div>
+
+        <!-- Center 4-Column Table: ΠΟΙΝΕΣ -->
+        <table class="hkap-table">
+          <colgroup>
+            <col style="width: 6%;">
+            <col style="width: 26%;">
+            <col style="width: 50%;">
+            <col style="width: 18%;">
+          </colgroup>
+          <thead>
+            <tr class="hkap-header-row">
+              <th class="col-num">Α/Α</th>
+              <th class="col-soldier">ΟΝΟΜΑΤΕΠΩΝΥΜΟ</th>
+              <th class="col-content">ΑΙΤΙΟΛΟΓΙΚΟ - ΠΟΙΝΗ</th>
+              <th class="col-notes">ΠΑΡΑΤΗΡΗΣΕΙΣ</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of printablePenalties(); track $index) {
+            <tr class="hkap-data-row" [class.empty-row]="item.isEmpty">
+              <td class="hkap-cell text-center col-num">
+                {{ item.numberText }}
+              </td>
+              <td class="hkap-cell col-soldier">
+                <span class="soldier-line">{{ item.soldierName }}</span>
+              </td>
+              <td class="hkap-cell col-content">
+                <span class="content-text">{{ item.content }}</span>
+              </td>
+              <td class="hkap-cell col-notes">
+                <span class="notes-text">{{ item.notes }}</span>
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Bottom Military Signatures (Same system as duty print) -->
+      <div class="xlsx-signatures-row">
+        @for (sig of signatures(); track $index; let i = $index; let first = $first; let last = $last) {
+        <div class="xlsx-sig-box">
+          <!-- Screen-only dropdown selector & slot controls (Hidden during printing) -->
+          <div class="no-print sig-slot-controls">
+            <select class="sig-member-select" [ngModel]="sig.higherPersonnelId"
+              (ngModelChange)="onSelectSigner(i, $event)" title="Επιλέξτε στέλεχος από το Προσωπικό">
+              <option value="">-- Επιλογή Στελέχους --</option>
+              @for (hp of higherPersonnel(); track hp.id) {
+              <option [value]="hp.id">{{ hp.roleTitle }} - {{ hp.fullName }} ({{ hp.rank }})</option>
+              }
+            </select>
+
+            <div class="sig-btn-mini-group">
+              @if (!first) {
+              <button type="button" class="btn-mini-sig" (click)="moveSignature(i, 'left')"
+                title="Μετακίνηση αριστερά">&larr;</button>
+              }
+              @if (!last) {
+              <button type="button" class="btn-mini-sig" (click)="moveSignature(i, 'right')"
+                title="Μετακίνηση δεξιά">&rarr;</button>
+              }
+              @if (signatures().length > 1) {
+              <button type="button" class="btn-mini-sig btn-mini-del" (click)="removeSignatureSlot(i)"
+                title="Αφαίρεση υπογραφής">&times;</button>
+              }
+            </div>
+          </div>
+
+          <!-- Printable Official Military Signature Block -->
+          <div class="sig-dash">-Ο-</div>
+          <div class="sig-title">{{ sig.roleTitle }}</div>
+          <div class="sig-space"></div>
+          <div class="sig-name">{{ sig.fullName }}</div>
+          @if (sig.rank) {
+          <div class="sig-rank">{{ sig.rank }}</div>
+          }
+        </div>
+        }
+      </div>
+    </div>
+
+  </div>
+</div>

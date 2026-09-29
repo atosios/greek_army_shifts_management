@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { StorageService } from '../../services/storage.service';
 import { ExcelExportService } from '../../services/excel-export.service';
 import * as XLSX from 'xlsx';
-import { Personnel, MilitaryCategory, PersonnelStatus, FitnessLevel, LeaveType, toGreekCaps, formatGreekDate, getCorpsShort, normalizeGreek } from '../../models/shift.model';
+import { Personnel, MilitaryCategory, PersonnelStatus, FitnessLevel, LeaveType, toGreekCaps, formatGreekDate, getCorpsShort, normalizeGreek, SPECIAL_ROLES } from '../../models/shift.model';
 import { GREEK_RANKS, GREEK_CORPS } from '../../data/default-data';
 
 export type CsvConflictStrategy = 'UPDATE' | 'SKIP' | 'INSERT';
@@ -36,6 +36,7 @@ export interface SoldierCalDay {
 export interface ParsedCsvRow {
   rowNumber: number;
   fullName: string;
+  phone?: string;
   asm: string;
   specialty: string;
   fitnessProfile: FitnessLevel;
@@ -44,6 +45,7 @@ export interface ParsedCsvRow {
   bedNumber: string;
   exemptFromAllDuties: boolean;
   dutyScore: number;
+  lastDutyDate?: string;
   notes: string;
   isValid: boolean;
   errorMessage?: string;
@@ -66,6 +68,7 @@ export class PersonnelComponent {
 
   readonly ranks = GREEK_RANKS;
   readonly corps = GREEK_CORPS;
+  readonly specialRoles = SPECIAL_ROLES;
   readonly formatGreekDate = formatGreekDate;
   readonly getCorpsShort = getCorpsShort;
 
@@ -225,10 +228,12 @@ export class PersonnelComponent {
     rank: 'ΣΤΡΑΤΙΩΤΗΣ',
     category: 'Κληρωτός' as MilitaryCategory,
     fullName: '',
+    phone: '',
     asm: '',
     specialty: 'ΠΖ',
     fitnessProfile: 'Ι1' as FitnessLevel,
     status: 'Ένοπλος' as PersonnelStatus,
+    specialRole: '',
     weaponNumber: '',
     barracksRoom: '',
     bedNumber: '',
@@ -560,11 +565,13 @@ export class PersonnelComponent {
       if (query) {
         const matchesName = toGreekCaps(p.fullName).includes(query);
         const matchesAsm = toGreekCaps(p.asm || '').includes(query);
+        const matchesPhone = toGreekCaps(p.phone || '').includes(query);
         const matchesCorps = toGreekCaps(p.specialty || '').includes(query) || getCorpsShort(p.specialty).includes(query);
         const matchesRoom = toGreekCaps(p.barracksRoom || '').includes(query);
         const matchesBed = toGreekCaps(p.bedNumber || '').includes(query);
         const matchesNotes = toGreekCaps(p.notes || '').includes(query);
-        if (!matchesName && !matchesAsm && !matchesCorps && !matchesRoom && !matchesBed && !matchesNotes) {
+        const matchesRole = toGreekCaps(p.specialRole || '').includes(query);
+        if (!matchesName && !matchesAsm && !matchesPhone && !matchesCorps && !matchesRoom && !matchesBed && !matchesNotes && !matchesRole) {
           return false;
         }
       }
@@ -612,6 +619,8 @@ export class PersonnelComponent {
           return a.fullName.localeCompare(b.fullName, 'el') * dir;
         case 'asm':
           return (a.asm || '').localeCompare(b.asm || '', 'el', { numeric: true }) * dir;
+        case 'phone':
+          return (a.phone || '').localeCompare(b.phone || '', 'el', { numeric: true }) * dir;
         case 'corps':
           return getCorpsShort(a.specialty).localeCompare(getCorpsShort(b.specialty), 'el') * dir;
         case 'fitness': {
@@ -842,10 +851,12 @@ export class PersonnelComponent {
       rank: 'ΣΤΡΑΤΙΩΤΗΣ',
       category: 'Κληρωτός',
       fullName: '',
+      phone: '',
       asm: '',
       specialty: 'ΠΖ',
       fitnessProfile: 'Ι1',
       status: 'Ένοπλος',
+      specialRole: '',
       weaponNumber: '',
       barracksRoom: '',
       bedNumber: '',
@@ -877,10 +888,12 @@ export class PersonnelComponent {
       rank: 'ΣΤΡΑΤΙΩΤΗΣ',
       category: 'Κληρωτός',
       fullName: toGreekCaps(p.fullName),
+      phone: p.phone || '',
       asm: toGreekCaps(p.asm || ''),
       specialty: getCorpsShort(p.specialty),
       fitnessProfile: fitness,
       status: status,
+      specialRole: p.specialRole ? toGreekCaps(p.specialRole) : '',
       weaponNumber: weaponNum,
       barracksRoom: toGreekCaps(p.barracksRoom || ''),
       bedNumber: toGreekCaps(p.bedNumber || ''),
@@ -894,6 +907,25 @@ export class PersonnelComponent {
     };
     this.soldierCalDate.set(new Date());
     this.isModalOpen.set(true);
+  }
+
+  setSpecialRolePreset(role: string) {
+    this.formModel.specialRole = role;
+  }
+
+  onSpecialRoleInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const originalVal = input.value;
+    const transformed = toGreekCaps(originalVal);
+    this.formModel.specialRole = transformed;
+    if (originalVal !== transformed) {
+      input.value = transformed;
+      if (start !== null && end !== null) {
+        input.setSelectionRange(start, end);
+      }
+    }
   }
 
   closeModal() {
@@ -914,12 +946,14 @@ export class PersonnelComponent {
 
   savePerson() {
     this.formModel.fullName = toGreekCaps(this.formModel.fullName.trim());
+    this.formModel.phone = this.formModel.phone ? this.formModel.phone.trim() : '';
     if (this.formModel.asm) {
       this.formModel.asm = toGreekCaps(this.formModel.asm.trim());
     }
     this.formModel.barracksRoom = toGreekCaps(this.formModel.barracksRoom.trim());
     this.formModel.bedNumber = toGreekCaps(this.formModel.bedNumber.trim());
     this.formModel.specialty = getCorpsShort(this.formModel.specialty);
+    this.formModel.specialRole = this.formModel.specialRole ? toGreekCaps(this.formModel.specialRole.trim()) : '';
 
     if (!this.formModel.fullName) {
       this.storage.notify('Παρακαλώ συμπληρώστε το ονοματεπώνυμο.', 'warning');
@@ -1016,9 +1050,42 @@ export class PersonnelComponent {
   }
 
   downloadCsvTemplate() {
-    const headers = ['Ονοματεπώνυμο', 'ΑΣΜ', 'ΟΠΛΟ', 'ΘΑΛΑΜΟΣ', 'ΚΡΕΒΑΤΙ', 'ΙΚΑΝΟΤΗΤΑ'];
-    const sample1 = ['ΠΑΠΑΔΟΠΟΥΛΟΣ ΓΕΩΡΓΙΟΣ', '2024 Δ / 09144', 'ΠΖ', 'ΘΑΛΑΜΟΣ 1', '1', 'Ι1'];
-    const sample2 = ['ΙΩΑΝΝΙΔΗΣ ΚΩΝΣΤΑΝΤΙΝΟΣ', '2024 Γ / 11204', 'ΤΧ', 'ΘΑΛΑΜΟΣ 2', '4', ''];
+    const headers = [
+      'ΟΝΟΜΑΤΕΠΩΝΥΜΟ',
+      'Α.Σ.Μ.',
+      'ΤΗΛΕΦΩΝΟ',
+      'ΟΠΛΟ',
+      'ΙΚΑΝΟΤΗΤΑ',
+      'ΟΠΛΙΣΜΟΣ',
+      'ΘΑΛΑΜΟΣ',
+      'ΚΡΕΒΑΤΙ',
+      'ΥΠΗΡΕΣΙΕΣ',
+      'ΤΕΛΕΥΤΑΙΑ ΥΠΗΡΕΣΙΑ'
+    ];
+    const sample1 = [
+      'ΠΑΠΑΔΟΠΟΥΛΟΣ ΓΕΩΡΓΙΟΣ',
+      '2024 Δ / 09144',
+      '6981234567',
+      'ΠΖ',
+      'Ι1',
+      'Ένοπλος',
+      '1.1',
+      '1',
+      '2',
+      '2026-09-20'
+    ];
+    const sample2 = [
+      'ΙΩΑΝΝΙΔΗΣ ΚΩΝΣΤΑΝΤΙΝΟΣ',
+      '2024 Γ / 11204',
+      '6979876543',
+      'ΤΧ',
+      'Ι2',
+      'Ένοπλος',
+      '1.2',
+      '4',
+      '0',
+      ''
+    ];
 
     // UTF-8 BOM (\uFEFF) for immediate correct Greek display in Excel
     const csvContent = '\uFEFF' + [
@@ -1116,6 +1183,32 @@ export class PersonnelComponent {
     reader.readAsText(file, 'utf-8');
   }
 
+  private parseFlexibleDate(val?: string): string | undefined {
+    if (!val) return undefined;
+    const s = val.trim();
+    if (!s || s === '-' || s.toLowerCase() === 'καμια' || s.toLowerCase() === 'καμία') return undefined;
+
+    // 1. Check YYYY-MM-DD
+    const isoMatch = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+    if (isoMatch) {
+      const y = isoMatch[1];
+      const m = isoMatch[2].padStart(2, '0');
+      const d = isoMatch[3].padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    // 2. Check DD/MM/YYYY or DD-MM-YYYY
+    const grMatch = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+    if (grMatch) {
+      const d = grMatch[1].padStart(2, '0');
+      const m = grMatch[2].padStart(2, '0');
+      const y = grMatch[3];
+      return `${y}-${m}-${d}`;
+    }
+
+    return undefined;
+  }
+
   parseCsvContent(text: string, filename: string) {
     const cleanText = text.replace(/^\uFEFF/, '');
     const rawRows = this.parseCsvLines(cleanText);
@@ -1140,10 +1233,14 @@ export class PersonnelComponent {
           const norm = normalizeGreek(cell);
           if (norm.includes('ονομ') || norm.includes('name')) colMap['fullName'] = colIdx;
           else if (norm.includes('ασμ') || norm.includes('asm') || norm.includes('εσσο')) colMap['asm'] = colIdx;
+          else if (norm.includes('τηλ') || norm.includes('phone') || norm.includes('tel')) colMap['phone'] = colIdx;
+          else if (norm.includes('τελ') || norm.includes('last')) colMap['lastDutyDate'] = colIdx;
+          else if (norm.includes('υπηρ') || norm.includes('score') || norm.includes('duties')) colMap['dutyScore'] = colIdx;
+          else if (norm.includes('οπλισμ') || norm.includes('arms') || norm.includes('status')) colMap['status'] = colIdx;
           else if (norm.includes('οπλ') || norm.includes('ειδικ') || norm.includes('corps')) colMap['specialty'] = colIdx;
+          else if (norm.includes('ικαν') || norm.includes('fit')) colMap['fitness'] = colIdx;
           else if (norm.includes('θαλαμ') || norm.includes('room')) colMap['room'] = colIdx;
           else if (norm.includes('κρεβ') || norm.includes('bed')) colMap['bed'] = colIdx;
-          else if (norm.includes('ικαν') || norm.includes('fit')) colMap['fitness'] = colIdx;
         });
         break;
       }
@@ -1153,10 +1250,14 @@ export class PersonnelComponent {
       colMap = {
         fullName: 0,
         asm: 1,
-        specialty: 2,
-        room: 3,
-        bed: 4,
-        fitness: 5
+        phone: 2,
+        specialty: 3,
+        fitness: 4,
+        status: 5,
+        room: 6,
+        bed: 7,
+        dutyScore: 8,
+        lastDutyDate: 9
       };
     }
 
@@ -1177,13 +1278,18 @@ export class PersonnelComponent {
 
       const rawFullName = (colMap['fullName'] !== undefined ? row[colMap['fullName']] : row[0]) || '';
       const rawAsm = (colMap['asm'] !== undefined ? row[colMap['asm']] : row[1]) || '';
-      const rawSpecialty = (colMap['specialty'] !== undefined ? row[colMap['specialty']] : row[2]) || '';
-      const rawRoom = (colMap['room'] !== undefined ? row[colMap['room']] : row[3]) || '';
-      const rawBed = (colMap['bed'] !== undefined ? row[colMap['bed']] : row[4]) || '';
-      const rawFitness = (colMap['fitness'] !== undefined ? row[colMap['fitness']] : row[5]) || '';
+      const rawPhone = (colMap['phone'] !== undefined ? row[colMap['phone']] : '') || '';
+      const rawSpecialty = (colMap['specialty'] !== undefined ? row[colMap['specialty']] : row[3]) || '';
+      const rawFitness = (colMap['fitness'] !== undefined ? row[colMap['fitness']] : row[4]) || '';
+      const rawStatus = (colMap['status'] !== undefined ? row[colMap['status']] : row[5]) || '';
+      const rawRoom = (colMap['room'] !== undefined ? row[colMap['room']] : row[6]) || '';
+      const rawBed = (colMap['bed'] !== undefined ? row[colMap['bed']] : row[7]) || '';
+      const rawDutyScore = (colMap['dutyScore'] !== undefined ? row[colMap['dutyScore']] : row[8]) || '';
+      const rawLastDutyDate = (colMap['lastDutyDate'] !== undefined ? row[colMap['lastDutyDate']] : row[9]) || '';
 
       const fullName = toGreekCaps(rawFullName.trim());
       const asm = toGreekCaps(rawAsm.trim());
+      const phone = rawPhone.trim();
       const specialty = getCorpsShort(rawSpecialty);
       const barracksRoom = toGreekCaps(rawRoom.trim());
       const bedNumber = toGreekCaps(rawBed.trim());
@@ -1203,7 +1309,24 @@ export class PersonnelComponent {
         fitnessProfile = 'Ι1';
       }
 
-      const status: PersonnelStatus = 'Ένοπλος';
+      // Status: Ένοπλος / Άοπλος
+      let status: PersonnelStatus = 'Ένοπλος';
+      const normStatus = normalizeGreek(rawStatus.trim());
+      if (normStatus.includes('αοπλ') || normStatus.includes('unarm')) {
+        status = 'Άοπλος';
+      } else {
+        status = 'Ένοπλος';
+      }
+      if (fitnessProfile === 'Ι1' || fitnessProfile === 'Ι2') {
+        status = 'Ένοπλος';
+      }
+
+      // Duty Score
+      const parsedScore = parseInt(rawDutyScore.trim(), 10);
+      const dutyScore = !isNaN(parsedScore) && parsedScore >= 0 ? parsedScore : 0;
+
+      // Last Duty Date
+      const lastDutyDate = this.parseFlexibleDate(rawLastDutyDate);
 
       // Validation: Ονοματεπώνυμο (required else ignore), ΑΣΜ (required else ignore)
       const hasFullName = fullName.length > 0;
@@ -1243,6 +1366,7 @@ export class PersonnelComponent {
       parsed.push({
         rowNumber: idx + 1 + (headerRowIdx >= 0 ? headerRowIdx + 1 : 0),
         fullName,
+        phone,
         asm,
         specialty,
         fitnessProfile,
@@ -1250,7 +1374,8 @@ export class PersonnelComponent {
         barracksRoom,
         bedNumber,
         exemptFromAllDuties: false,
-        dutyScore: 0,
+        dutyScore,
+        lastDutyDate,
         notes: '',
         isValid,
         errorMessage,
@@ -1336,6 +1461,7 @@ export class PersonnelComponent {
     const items = validRows.map(r => ({
       person: {
         fullName: r.fullName,
+        phone: r.phone || '',
         asm: r.asm,
         specialty: r.specialty,
         fitnessProfile: r.fitnessProfile,
@@ -1344,6 +1470,7 @@ export class PersonnelComponent {
         bedNumber: r.bedNumber,
         exemptFromAllDuties: r.exemptFromAllDuties,
         dutyScore: r.dutyScore,
+        lastDutyDate: r.lastDutyDate,
         notes: r.notes,
         active: true,
         rank: 'ΣΤΡΑΤΙΩΤΗΣ',

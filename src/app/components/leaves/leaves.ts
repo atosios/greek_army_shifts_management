@@ -2,7 +2,7 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { StorageService } from '../../services/storage.service';
-import { Leave, LeaveType, Personnel, ALL_LEAVE_TYPES, getLeaveTypeMeta, normalizeGreek, toGreekCaps, formatGreekDate } from '../../models/shift.model';
+import { Leave, LeaveType, Personnel, ALL_LEAVE_TYPES, getLeaveTypeMeta, normalizeGreek, toGreekCaps, formatGreekDate, formatLocalDate } from '../../models/shift.model';
 
 @Component({
   selector: 'app-leaves',
@@ -15,7 +15,7 @@ export class LeavesComponent {
   storage = inject(StorageService);
 
   readonly formatGreekDate = formatGreekDate;
-  readonly todayStr = new Date().toISOString().slice(0, 10);
+  readonly todayStr = formatLocalDate(new Date());
 
   readonly leaveTypes: LeaveType[] = ALL_LEAVE_TYPES;
 
@@ -55,8 +55,8 @@ export class LeavesComponent {
     personId: '',
     personName: '',
     type: 'Ελεύθερος Υπηρεσίας (ΕΥ)' as LeaveType,
-    startDate: new Date().toISOString().slice(0, 10),
-    endDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    startDate: formatLocalDate(new Date()),
+    endDate: formatLocalDate(new Date(Date.now() + 4 * 24 * 60 * 60 * 1000)),
     reason: '',
     status: 'Ενεργή' as 'Ενεργή' | 'Ολοκληρωμένη' | 'Ακυρωμένη'
   };
@@ -148,8 +148,8 @@ export class LeavesComponent {
   openAddModal() {
     this.editingLeaveId.set(null);
     const firstPerson = this.activePersonnel()[0];
-    const today = new Date().toISOString().slice(0, 10);
-    const end = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const today = formatLocalDate(new Date());
+    const end = formatLocalDate(new Date(Date.now() + 4 * 24 * 60 * 60 * 1000));
 
     this.formModel = {
       personId: firstPerson ? firstPerson.id : '',

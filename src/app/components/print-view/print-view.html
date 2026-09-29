@@ -1,23 +1,33 @@
-<div class="print-page-wrapper">
+<div class="print-page-wrapper" [class.ink-saver-active]="inkSaver()">
   <!-- Interactive Top Action Bar (Hidden during printing) -->
   <div class="no-print print-action-bar">
     <div class="bar-left">
-      <a [routerLink]="['/scheduler']" [queryParams]="{ date: date() }" class="btn btn-secondary">
-        &larr; Επιστροφή στο Πρόγραμμα
-      </a>
-      <span class="preview-badge">Προεπισκόπηση Εκτύπωσης A4 (Επίσημο Έγγραφο)</span>
+      <!-- Ink Saver (Εξοικονόμηση Μελανιού) Mode Toggle on Far Left -->
+      <button type="button" 
+              class="btn btn-ink-saver" 
+              [class.active]="inkSaver()" 
+              (click)="toggleInkSaver()"
+              title="Εξοικονόμηση Μελανιού: Αφαιρεί όλα τα γκρι φόντα, διατηρεί έντονες επικεφαλίδες και κάνει τα ονόματα πιο διακριτικά για μέγιστη ιεραρχία και ελάχιστη κατανάλωση τόνερ">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+        </svg>
+        <span>Εξοικονόμηση Μελανιού</span>
+        <span class="ink-saver-badge" [class.on]="inkSaver()">{{ inkSaver() ? 'ON' : 'OFF' }}</span>
+      </button>
     </div>
+
     <div class="bar-right">
-      <button class="btn btn-secondary" (click)="exportExcel()">
+      <button class="btn btn-secondary" (click)="exportExcel()" title="Εξαγωγή σε αρχείο Excel (XLSX) με την ίδια διάταξη">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
           <polyline points="14 2 14 8 20 8"/>
           <line x1="8" y1="13" x2="16" y2="13"/>
           <line x1="8" y1="17" x2="16" y2="17"/>
         </svg>
-        Εξαγωγή σε Υπολογιστικό Φύλλο
+        Εξαγωγή σε Excel
       </button>
-      <button class="btn btn-primary btn-lg" (click)="print()">
+
+      <button class="btn btn-primary btn-lg" (click)="print()" title="Άμεση εκτύπωση του δελτίου υπηρεσίας σε A4 Landscape">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="6 9 6 2 18 2 18 9"/>
           <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
@@ -28,116 +38,432 @@
     </div>
   </div>
 
-  <!-- Printable A4 Document Sheet -->
-  <div class="print-sheet">
-    <!-- Official Greek Military Header -->
-    <div class="official-header">
-      <div class="header-left">
-        <div>ΕΛΛΗΝΙΚΗ ΔΗΜΟΚΡΑΤΙΑ</div>
-        <div>ΥΠΟΥΡΓΕΙΟ ΕΘΝΙΚΗΣ ΑΜΥΝΑΣ</div>
-        <div>ΓΕΣ / {{ unit().division }}</div>
-        <div>{{ unit().name }}</div>
-        <div>{{ unit().location }}</div>
-      </div>
-      <div class="header-right">
-        <div>ΒΑΘΜΟΣ ΑΣΦΑΛΕΙΑΣ: ΑΔΙΑΒΑΘΜΗΤΟ</div>
-        <div>ΗΜΕΡΟΜΗΝΙΑ: {{ formatGreekDate(date()) }}</div>
-        <div>ΑΡ. ΔΙΑΤΑΓΗΣ: ΗΔΥ / {{ formatGreekDate(date()) }}</div>
-      </div>
-    </div>
+  <!-- Printable A4 Document Sheet Stage -->
+  <div class="print-stage">
+    <div class="print-sheet a4-landscape-page" [class.ink-saver-mode]="inkSaver()">
+      <!-- 1. Official Top Emblem & Unit Header (Fixed on top far left & right) -->
+      <div class="print-emblem-header">
+        <div class="header-emblem-col emblem-left">
+          <img [src]="unit().emblemUrl || defaultEmblem" alt="Έμβλημα Μονάδας" class="emblem-img" />
+        </div>
 
-    <!-- Title -->
-    <div class="document-title">
-      <h1>ΗΜΕΡΗΣΙΑ ΔΙΑΤΑΓΗ ΥΠΗΡΕΣΙΑΣ</h1>
-      <div class="title-sub">
-        ΓΙΑ ΤΗΝ {{ formatGreekDate(date()) }} 
-        @if (schedule()?.isHolidayOrWeekend) {
-          <span>(ΑΡΓΙΑ / ΣΑΒΒΑΤΟΚΥΡΙΑΚΟ)</span>
-        } @else {
-          <span>(ΚΑΘΗΜΕΡΙΝΗ)</span>
-        }
-      </div>
-    </div>
+        <div class="header-center-col">
+          <div class="header-unit-location">
+            {{ unit().name }}
+          </div>
+          <div class="header-division">
+            {{ unit().division }}
+          </div>
+          <div class="header-date">
+            {{ formatGreekDate(date()) }}
+          </div>
+          <div class="header-subtitle">ΥΠΗΡΕΣΙΕΣ ΟΠΛΙΤΩΝ</div>
+        </div>
 
-    <!-- Official Military Roster Table -->
-    @if (schedule(); as s) {
-      <table class="print-table">
-        <thead>
-          <tr>
-            <th style="width: 5%;">Α/Α</th>
-            <th style="width: 28%;">Υπηρεσία / Πόστο</th>
-            <th style="width: 8%;">Βαθμός</th>
-            <th style="width: 25%;">Ονοματεπώνυμο</th>
-            <th style="width: 14%;">Α.Σ.Μ.</th>
-            <th style="width: 20%;">Ώρες / Βάρδια Υπηρεσίας</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (item of printableSlots(); track item.index) {
-            <tr>
-              <td style="text-align: center;">{{ item.index }}</td>
-              <td>
-                <strong>{{ item.dutyName }}</strong>
+        <div class="header-emblem-col emblem-right">
+          <img [src]="unit().emblemUrl || defaultEmblem" alt="Έμβλημα Μονάδας" class="emblem-img" />
+        </div>
+      </div>
+
+      <!-- 2. Main XLSX Grid Roster Table -->
+      @if (schedule()) {
+        <table class="xlsx-sheet-table">
+          <colgroup>
+            <!-- Col 1: Θαλαμοφύλακες / Οπλοφύλακας / Λοιποί Φύλακες -->
+            <col style="width: 13.5%;">
+            <col style="width: 20.5%;">
+            <!-- Col 2: Καθαριότητες -->
+            <col style="width: 13%;">
+            <col style="width: 18%;">
+            <!-- Col 3: Εστιατόρια, Μόνιμοι, Επιφυλακές, Γραφείς, Αρτοκλίβανος -->
+            <col style="width: 14%;">
+            <col style="width: 21%;">
+          </colgroup>
+
+          <tbody>
+            <!-- SECTION ROW 1: Shift 1 / Τουαλέτες / Εστιατόρια -->
+            <tr class="xlsx-header-row">
+              <th>ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
+              <th class="col-border-right">
+                ΘΑΛΑΜΟΦΥΛΑΚΕΣ<br>ΟΠΛΟΦΥΛΑΚΑΣ
+                @if (extraGuardDuties().length > 0) {
+                  <span class="header-extra-guards-tag">/ ΛΟΙΠΟΙ ΦΥΛΑΚΕΣ</span>
+                }
+              </th>
+              <th>ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
+              <th class="col-border-right">{{ cleaningSections().sections[0]?.title || 'ΤΟΥΑΛΕΤΕΣ' }}</th>
+              <th>ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
+              <th>ΕΣΤΙΑΤΟΡΙΑ</th>
+            </tr>
+            <tr class="xlsx-data-row">
+              <!-- Col 1: Shift 1 -->
+              <td class="times-cell">
+                @for (t of guardGroups()[0].times; track $index) {
+                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
+                }
               </td>
-              <td style="text-align: center;">
-                <strong>{{ item.person ? item.person.rankShort : '-' }}</strong>
+              <td class="names-cell col-border-right">
+                @for (s of guardGroups()[0].thalamofylakes; track $index) {
+                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΘΦ') }}</div>
+                }
+                @for (s of guardGroups()[0].oplofylakes; track $index) {
+                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΟΦ') }}</div>
+                }
+                @for (og of guardGroups()[0].otherGuards; track og.dutyName) {
+                  @for (s of og.slots; track $index) {
+                    <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, og.shortName) }}</div>
+                  }
+                }
               </td>
-              <td>
-                {{ item.person ? item.person.fullName : (item.slot.personName || 'ΚΕΝΟ ΠΟΣΤΟ') }}
+
+              <!-- Col 2: Τουαλέτες -->
+              <td class="times-cell">
+                @for (t of cleaningSections().sections[0]?.times || []; track $index) {
+                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
+                }
               </td>
-              <td style="text-align: center; font-size: 8.5pt;">
-                {{ item.person ? (item.person.asm || '-') : '-' }}
+              <td class="names-cell col-border-right">
+                @for (slot of cleaningSections().sections[0]?.slots || []; track $index) {
+                  <div class="soldier-line">{{ formatSoldierDisplay(slot.personId, slot.personName) }}</div>
+                }
+                @if (!cleaningSections().sections[0] || cleaningSections().sections[0].slots.length === 0) {
+                  <div class="soldier-line empty-text">---</div>
+                }
               </td>
-              <td style="font-size: 8.5pt;">
-                {{ item.slot.hoursNote || '08:00 - 08:00' }}
+
+              <!-- Col 3: Εστιατόρια (2 columns if 3 or more people) -->
+              <td class="times-cell">
+                @for (t of col3Data().restaurant.times; track $index) {
+                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
+                }
+              </td>
+              <td class="names-cell">
+                <div class="restaurant-slots-container" [class.restaurant-grid-2col]="col3Data().restaurant.slots.length >= 3">
+                  @for (s of col3Data().restaurant.slots; track $index) {
+                    <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName) }}</div>
+                  }
+                  @if (col3Data().restaurant.slots.length === 0) {
+                    <div class="soldier-line empty-text">---</div>
+                  }
+                </div>
               </td>
             </tr>
-          }
-        </tbody>
-      </table>
 
-      <!-- Summary Statistics Section -->
-      <div class="print-summary-box">
-        <div class="summary-line">
-          <strong>ΣΥΓΚΕΝΤΡΩΤΙΚΑ ΣΤΟΙΧΕΙΑ:</strong>
-          <span>Σύνολο Προσωπικού σε Υπηρεσία: <strong>{{ getAssignedCount() }}</strong></span>
-        </div>
-        @let leaves = getLeavesOnDate();
-        @if (leaves.length > 0) {
-          <div class="summary-line leaves-summary">
-            <strong>Απόντες σε Άδεια / Ε.Υ. ({{ leaves.length }}):</strong>
-            <span>
-              @for (l of leaves; track l.id; let last = $last) {
-                {{ l.personName }} ({{ l.type }}){{ !last ? ', ' : '' }}
+            <!-- SECTION ROW 2: Shift 2 / Λουτρά / Μόνιμοι Εστιατόρια & ΚΨΜ -->
+            <tr class="xlsx-header-subrow">
+              <th class="border-top-thick">ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
+              <th class="border-top-thick col-border-right">
+                ΘΑΛΑΜΟΦΥΛΑΚΕΣ<br>ΟΠΛΟΦΥΛΑΚΑΣ
+                @if (extraGuardDuties().length > 0) {
+                  <span class="header-extra-guards-tag">/ ΛΟΙΠΟΙ ΦΥΛΑΚΕΣ</span>
+                }
+              </th>
+              <th class="border-top-thick">ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
+              <th class="border-top-thick col-border-right">{{ cleaningSections().sections[1]?.title || 'ΛΟΥΤΡΑ / ΝΙΠΤΗΡΕΣ' }}</th>
+              <th class="border-top-thick">ΜΟΝΙΜΟΙ ΕΣΤΙΑΤΟΡΙΑ</th>
+              <th class="border-top-thick">ΜΟΝΙΜΟΙ ΚΨΜ</th>
+            </tr>
+            <tr class="xlsx-data-row">
+              <!-- Col 1: Shift 2 -->
+              <td class="times-cell">
+                @for (t of guardGroups()[1].times; track $index) {
+                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
+                }
+              </td>
+              <td class="names-cell col-border-right">
+                @for (s of guardGroups()[1].thalamofylakes; track $index) {
+                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΘΦ') }}</div>
+                }
+                @for (s of guardGroups()[1].oplofylakes; track $index) {
+                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΟΦ') }}</div>
+                }
+                @for (og of guardGroups()[1].otherGuards; track og.dutyName) {
+                  @for (s of og.slots; track $index) {
+                    <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, og.shortName) }}</div>
+                  }
+                }
+              </td>
+
+              <!-- Col 2: Λουτρά / Νιπτήρες -->
+              <td class="times-cell">
+                @for (t of cleaningSections().sections[1]?.times || []; track $index) {
+                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
+                }
+              </td>
+              <td class="names-cell col-border-right">
+                @for (slot of cleaningSections().sections[1]?.slots || []; track $index) {
+                  <div class="soldier-line">{{ formatSoldierDisplay(slot.personId, slot.personName) }}</div>
+                }
+                @if (!cleaningSections().sections[1] || cleaningSections().sections[1].slots.length === 0) {
+                  <div class="soldier-line empty-text">---</div>
+                }
+              </td>
+
+              <!-- Col 3: Μόνιμοι Εστιατόρια -->
+              <td class="names-cell">
+                @for (s of col3Data().permanentEst.slots; track $index) {
+                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName) }}</div>
+                }
+                @if (col3Data().permanentEst.slots.length === 0) {
+                  <div class="soldier-line empty-text">---</div>
+                }
+              </td>
+
+              <!-- Col 3: Μόνιμοι ΚΨΜ -->
+              <td class="names-cell">
+                @for (s of col3Data().permanentKpsm.slots; track $index) {
+                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName) }}</div>
+                }
+                @if (col3Data().permanentKpsm.slots.length === 0) {
+                  <div class="soldier-line empty-text">---</div>
+                }
+              </td>
+            </tr>
+
+            <!-- SECTION ROW 3: Shift 3 / Σκάλες-Διάδρομοι / Επιφυλακές & Γραφείς -->
+            <tr class="xlsx-header-subrow">
+              <th class="border-top-thick">ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
+              <th class="border-top-thick col-border-right">
+                ΘΑΛΑΜΟΦΥΛΑΚΕΣ<br>ΟΠΛΟΦΥΛΑΚΑΣ
+                @if (extraGuardDuties().length > 0) {
+                  <span class="header-extra-guards-tag">/ ΛΟΙΠΟΙ ΦΥΛΑΚΕΣ</span>
+                }
+              </th>
+              <th class="border-top-thick">ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
+              <th class="border-top-thick col-border-right">{{ cleaningSections().sections[2]?.title || 'ΣΚΑΛΕΣ / ΔΙΑΔΡΟΜΟΙ' }}</th>
+              <th class="border-top-thick" [attr.colspan]="col3Data().grafeis.slots.length > 0 ? 1 : 2">ΕΠΙΦΥΛΑΚΕΣ</th>
+              @if (col3Data().grafeis.slots.length > 0) {
+                <th class="border-top-thick">ΓΡΑΦΕΙΣ</th>
               }
-            </span>
+            </tr>
+            <tr class="xlsx-data-row">
+              <!-- Col 1: Shift 3 -->
+              <td class="times-cell">
+                @for (t of guardGroups()[2].times; track $index) {
+                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
+                }
+              </td>
+              <td class="names-cell col-border-right">
+                @for (s of guardGroups()[2].thalamofylakes; track $index) {
+                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΘΦ') }}</div>
+                }
+                @for (s of guardGroups()[2].oplofylakes; track $index) {
+                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΟΦ') }}</div>
+                }
+                @for (og of guardGroups()[2].otherGuards; track og.dutyName) {
+                  @for (s of og.slots; track $index) {
+                    <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, og.shortName) }}</div>
+                  }
+                }
+              </td>
+
+              <!-- Col 2: Σκάλες / Διάδρομοι -->
+              <td class="times-cell">
+                @for (t of cleaningSections().sections[2]?.times || []; track $index) {
+                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
+                }
+              </td>
+              <td class="names-cell col-border-right">
+                @for (slot of cleaningSections().sections[2]?.slots || []; track $index) {
+                  <div class="soldier-line">{{ formatSoldierDisplay(slot.personId, slot.personName) }}</div>
+                }
+                @if (!cleaningSections().sections[2] || cleaningSections().sections[2].slots.length === 0) {
+                  <div class="soldier-line empty-text">---</div>
+                }
+              </td>
+
+              <!-- Col 3: Επιφυλακές (rowspan 3) -->
+              <td class="names-cell standby-cell" [attr.colspan]="col3Data().grafeis.slots.length > 0 ? 1 : 2" rowspan="3">
+                <div class="standby-names-list">
+                  @for (s of col3Data().standby.slots; track $index) {
+                    <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName) }}</div>
+                  }
+                  @if (col3Data().standby.slots.length === 0) {
+                    <div class="soldier-line empty-text">---</div>
+                  }
+                </div>
+              </td>
+
+              <!-- Col 3: Γραφείς (rowspan 3 if present) -->
+              @if (col3Data().grafeis.slots.length > 0) {
+                <td class="names-cell standby-cell" rowspan="3">
+                  <div class="standby-names-list">
+                    @for (s of col3Data().grafeis.slots; track $index) {
+                      <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName) }}</div>
+                    }
+                  </div>
+                </td>
+              }
+            </tr>
+
+            <!-- SECTION ROW 4: Shift 4 / Προαύλιος Χώρος -->
+            <tr class="xlsx-header-subrow">
+              <th class="border-top-thick">ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
+              <th class="border-top-thick col-border-right">
+                ΘΑΛΑΜΟΦΥΛΑΚΕΣ<br>ΟΠΛΟΦΥΛΑΚΑΣ
+                @if (extraGuardDuties().length > 0) {
+                  <span class="header-extra-guards-tag">/ ΛΟΙΠΟΙ ΦΥΛΑΚΕΣ</span>
+                }
+              </th>
+              <th class="border-top-thick">ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
+              <th class="border-top-thick col-border-right">{{ cleaningSections().sections[3]?.title || 'ΠΡΟΑΥΛΙΟΣ ΧΩΡΟΣ' }}</th>
+            </tr>
+            <tr class="xlsx-data-row">
+              <!-- Col 1: Shift 4 -->
+              <td class="times-cell">
+                @for (t of guardGroups()[3].times; track $index) {
+                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
+                }
+              </td>
+              <td class="names-cell col-border-right">
+                @for (s of guardGroups()[3].thalamofylakes; track $index) {
+                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΘΦ') }}</div>
+                }
+                @for (s of guardGroups()[3].oplofylakes; track $index) {
+                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΟΦ') }}</div>
+                }
+                @for (og of guardGroups()[3].otherGuards; track og.dutyName) {
+                  @for (s of og.slots; track $index) {
+                    <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, og.shortName) }}</div>
+                  }
+                }
+              </td>
+
+              <!-- Col 2: Προαύλιος Χώρος -->
+              <td class="times-cell">
+                @for (t of cleaningSections().sections[3]?.times || []; track $index) {
+                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
+                }
+              </td>
+              <td class="names-cell col-border-right">
+                @for (slot of cleaningSections().sections[3]?.slots || []; track $index) {
+                  <div class="soldier-line">{{ formatSoldierDisplay(slot.personId, slot.personName) }}</div>
+                }
+                @if (!cleaningSections().sections[3] || cleaningSections().sections[3].slots.length === 0) {
+                  <div class="soldier-line empty-text">---</div>
+                }
+              </td>
+            </tr>
+
+            <!-- SECTION ROW 5: Υπεύθυνος Υλικού Καθαριότητας & Αρτοκλίβανος / Λοιπές Υπηρεσίες -->
+            <tr class="xlsx-header-subrow">
+              <th class="border-top-thick col-border-right" colspan="2">
+                @if (extraGuards().hasExtra) {
+                  ΕΠΙΠΡΟΣΘΕΤΟΙ ΦΥΛΑΚΕΣ
+                } @else {
+                  ΕΙΔΙΚΕΣ ΠΑΡΑΤΗΡΗΣΕΙΣ
+                }
+              </th>
+              <th class="border-top-thick col-border-right" colspan="2">ΥΠΕΥΘΥΝΟΣ ΥΛΙΚΟΥ ΚΑΘΑΡΙΟΤΗΤΑΣ</th>
+              <th class="border-top-thick">ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
+              <th class="border-top-thick">ΑΡΤΟΚΛΙΒΑΝΟΣ</th>
+            </tr>
+            <tr class="xlsx-data-row">
+              <!-- Col 1: extra guards if present -->
+              <td colspan="2" class="names-cell col-border-right">
+                @if (extraGuards().hasExtra) {
+                  @for (s of extraGuards().thalamofylakes; track $index) {
+                    <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΘΦ') }}</div>
+                  }
+                  @for (s of extraGuards().oplofylakes; track $index) {
+                    <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΟΦ') }}</div>
+                  }
+                } @else {
+                  <div class="soldier-line empty-text text-muted">-</div>
+                }
+              </td>
+
+              <!-- Col 2: Υπεύθυνος Υλικού Καθαριότητας -->
+              <td colspan="2" class="names-cell text-center col-border-right">
+                @if (cleaningSections().supervisor; as sup) {
+                  <div class="soldier-line">{{ formatSoldierDisplay(sup.personId, sup.personName) }}</div>
+                } @else {
+                  <div class="soldier-line empty-text">---</div>
+                }
+              </td>
+
+              <!-- Col 3: Αρτοκλίβανος -->
+              <td class="times-cell">
+                @for (t of col3Data().bakery.times; track $index) {
+                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
+                }
+              </td>
+              <td class="names-cell">
+                @for (s of col3Data().bakery.slots; track $index) {
+                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName) }}</div>
+                }
+                @if (col3Data().bakery.slots.length === 0) {
+                  <div class="soldier-line empty-text">---</div>
+                }
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      } @else {
+        <div class="empty-notice">
+          Δεν έχει δημιουργηθεί ακόμη πρόγραμμα για την ημερομηνία αυτή.
+        </div>
+      }
+
+      <!-- 3. Dynamic Signatures Block (Selected from Higher Personnel) -->
+      <div class="no-print signatures-management-bar">
+        <div class="sig-manage-info">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 20h9"/>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+          <span class="sig-manage-title">Υπογραφές: <strong>{{ signatures().length }}</strong></span>
+        </div>
+        <div class="sig-manage-actions">
+          <button type="button" class="btn-sig-pill-action" (click)="addSignatureSlot()" title="Προσθήκη νέας θέσης υπογραφής">
+            + Προσθήκη
+          </button>
+          <button type="button" class="btn-sig-pill-action text-muted" (click)="resetDefaultSignatures()" title="Επαναφορά προεπιλογών">
+            Επαναφορά
+          </button>
+        </div>
+      </div>
+
+      <div class="xlsx-signatures-row">
+        @for (sig of signatures(); track $index; let i = $index; let first = $first; let last = $last) {
+          <div class="xlsx-sig-box">
+            <!-- Screen-only dropdown selector & slot controls (Hidden during printing) -->
+            <div class="no-print sig-slot-controls">
+              <select 
+                class="sig-member-select" 
+                [ngModel]="sig.higherPersonnelId" 
+                (ngModelChange)="onSelectSigner(i, $event)"
+                title="Επιλέξτε στέλεχος από το Προσωπικό">
+                <option value="">-- Επιλογή Στελέχους --</option>
+                @for (hp of higherPersonnel(); track hp.id) {
+                  <option [value]="hp.id">{{ hp.roleTitle }} - {{ hp.fullName }} ({{ hp.rank }})</option>
+                }
+              </select>
+
+              <div class="sig-btn-mini-group">
+                @if (!first) {
+                  <button type="button" class="btn-mini-sig" (click)="moveSignature(i, 'left')" title="Μετακίνηση αριστερά">&larr;</button>
+                }
+                @if (!last) {
+                  <button type="button" class="btn-mini-sig" (click)="moveSignature(i, 'right')" title="Μετακίνηση δεξιά">&rarr;</button>
+                }
+                @if (signatures().length > 1) {
+                  <button type="button" class="btn-mini-sig btn-mini-del" (click)="removeSignatureSlot(i)" title="Αφαίρεση υπογραφής">&times;</button>
+                }
+              </div>
+            </div>
+
+            <!-- Printable Official Military Signature Block -->
+            <div class="sig-dash">-Ο-</div>
+            <div class="sig-title">{{ sig.roleTitle }}</div>
+            <div class="sig-space"></div>
+            <div class="sig-name">{{ sig.fullName }}</div>
+            @if (sig.rank) {
+              <div class="sig-rank">{{ sig.rank }}</div>
+            }
           </div>
         }
       </div>
-
-      <!-- Signatures Block -->
-      <div class="print-signature-row">
-        <div class="print-signature-box">
-          <div class="sig-title">{{ unit().dutyOfficerSignatureTitle || 'Ο Αξιωματικός Επιχειρήσεων' }}</div>
-          <div class="sig-space"></div>
-          <div class="sig-name">{{ unit().dutyOfficerName }}</div>
-        </div>
-
-        <div class="seal-box">
-          <div class="seal-circle">Τ.Σ.</div>
-          <div class="seal-text">ΣΦΡΑΓΙΔΑ ΜΟΝΑΔΟΣ</div>
-        </div>
-
-        <div class="print-signature-box">
-          <div class="sig-title">Ο ΔΙΟΙΚΗΤΗΣ</div>
-          <div class="sig-space"></div>
-          <div class="sig-name">{{ unit().commanderName }}</div>
-        </div>
-      </div>
-    } @else {
-      <div class="empty-notice">
-        Δεν έχει δημιουργηθεί ακόμη πρόγραμμα για την ημερομηνία αυτή.
-      </div>
-    }
+    </div>
   </div>
 </div>
