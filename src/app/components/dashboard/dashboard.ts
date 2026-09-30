@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { StorageService } from '../../services/storage.service';
 import { SchedulerService } from '../../services/scheduler.service';
-import { ExcelExportService } from '../../services/excel-export.service';
 import { formatGreekDate, formatLocalDate } from '../../models/shift.model';
 
 @Component({
@@ -16,7 +15,6 @@ import { formatGreekDate, formatLocalDate } from '../../models/shift.model';
 export class DashboardComponent {
   storage = inject(StorageService);
   scheduler = inject(SchedulerService);
-  excelService = inject(ExcelExportService);
 
   readonly formatGreekDate = formatGreekDate;
   readonly todayStr = formatLocalDate(new Date());
@@ -76,15 +74,6 @@ export class DashboardComponent {
     const onDuty = this.onDutyTodayCount();
     return Math.max(0, present - onDuty);
   });
-
-  exportTodayExcel() {
-    const sched = this.todaySchedule();
-    if (sched) {
-      this.excelService.exportScheduleToExcel(sched);
-    } else {
-      this.storage.notify('Δεν έχει δημιουργηθεί ακόμη πρόγραμμα για σήμερα. Μεταβείτε στην "Έκδοση Υπηρεσιών" για αυτόματη παραγωγή.', 'warning');
-    }
-  }
 
   createBackup() {
     this.storage.createBackup();

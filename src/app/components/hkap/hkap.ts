@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { StorageService } from '../../services/storage.service';
-import { SoldierRecord, SignatureSlot, formatGreekDate, formatLocalDate, toGreekCaps } from '../../models/shift.model';
+import { SoldierRecord, SignatureSlot, formatGreekDate, formatLocalDate, formatRecordPersonName, normalizeGreek, toGreekCaps } from '../../models/shift.model';
 
 export interface HkapRowItem {
   numberText: string;
@@ -25,6 +25,7 @@ export class HkapComponent {
   storage = inject(StorageService);
 
   readonly formatGreekDate = formatGreekDate;
+  readonly formatRecordPersonName = formatRecordPersonName;
   readonly higherPersonnel = this.storage.higherPersonnel;
   readonly unit = this.storage.unitInfo;
 
@@ -33,6 +34,10 @@ export class HkapComponent {
 
   // Selected record IDs to include in printout
   selectedRecordIds = signal<Set<string>>(new Set<string>());
+  selectionSearch = signal<string>('');
+  selectionTypeFilter = signal<'ALL' | SoldierRecord['type']>('ALL');
+  selectionStatusFilter = signal<'ACTIVE' | 'ALL' | NonNullable<SoldierRecord['status']>>('ACTIVE');
+  selectionDateFilter = signal<string>('');
 
   // Editable top right header lines (matching military document format)
   headerLine1 = signal<string>('');
@@ -49,6 +54,33 @@ export class HkapComponent {
 
   // All soldier records from storage
   readonly allRecords = this.storage.soldierRecords;
+
+  readonly filteredSelectionRecords = computed(() => {
+    const query = normalizeGreek(this.selectionSearch());
+    const type = this.selectionTypeFilter();
+    const status = this.selectionStatusFilter();
+    const date = this.selectionDateFilter();
+
+    return this.allRecords().filter(record => {
+      if (type !== 'ALL' && record.type !== type) return false;
+      if (date && record.date !== date) return false;
+
+      const recordStatus = record.status || 'Εκκρεμεί';
+      if (status === 'ACTIVE' && recordStatus === 'Ολοκληρώθηκε') return false;
+      if (status !== 'ACTIVE' && status !== 'ALL' && recordStatus !== status) return false;
+
+      if (query) {
+        const searchable = normalizeGreek(`${record.personName} ${record.reason} ${record.notes || ''}`);
+        if (!searchable.includes(query)) return false;
+      }
+
+      return true;
+    });
+  });
+
+  readonly selectedFilteredRecordCount = computed(() =>
+    this.filteredSelectionRecords().filter(record => this.selectedRecordIds().has(record.id)).length
+  );
 
   /** Format title date as DD/MM/YY (e.g. 10/09/26) exactly like in the user's images */
   formatTitleDate(dateStr: string): string {
@@ -86,7 +118,7 @@ export class HkapComponent {
     return records.map((r, idx) => ({
       numberText: String(idx + 1),
       record: r,
-      soldierName: toGreekCaps(r.personName),
+      soldierName: toGreekCaps(formatRecordPersonName(r.personName)),
       content: toGreekCaps(r.reason),
       notes: r.notes ? toGreekCaps(r.notes) : '-',
       isEmpty: false
@@ -113,7 +145,7 @@ export class HkapComponent {
     return records.map((r, idx) => ({
       numberText: String(idx + 1),
       record: r,
-      soldierName: toGreekCaps(r.personName),
+      soldierName: toGreekCaps(formatRecordPersonName(r.personName)),
       content: toGreekCaps(r.reason),
       notes: r.notes ? toGreekCaps(r.notes) : '-',
       isEmpty: false
@@ -276,7 +308,7 @@ export class HkapComponent {
 
   initDefaultSelections() {
     const d = this.date();
-    const matching = this.allRecords().filter(r => r.date === d);
+    const matching = this.filteredSelectionRecords().filter(r => r.date === d);
     const set = new Set<string>();
     matching.forEach(r => set.add(r.id));
     this.selectedRecordIds.set(set);
@@ -284,7 +316,7 @@ export class HkapComponent {
 
   onDateChange(newDate: string) {
     this.date.set(newDate);
-    const matching = this.allRecords().filter(r => r.date === newDate);
+    const matching = this.filteredSelectionRecords().filter(r => r.date === newDate);
     const set = new Set<string>();
     matching.forEach(r => set.add(r.id));
     this.selectedRecordIds.set(set);
@@ -306,24 +338,11 @@ export class HkapComponent {
     return this.selectedRecordIds().has(id);
   }
 
-  selectAllForDate() {
-    const d = this.date();
-    const matching = this.allRecords().filter(r => r.date === d);
-    this.selectedRecordIds.update(set => {
-      const copy = new Set(set);
-      matching.forEach(r => copy.add(r.id));
-      return copy;
-    });
-  }
-
-  selectAllRecords() {
-    const set = new Set<string>();
-    this.allRecords().forEach(r => set.add(r.id));
-    this.selectedRecordIds.set(set);
-  }
-
-  deselectAllRecords() {
-    this.selectedRecordIds.set(new Set<string>());
+  clearSelectionFilters() {
+    this.selectionSearch.set('');
+    this.selectionTypeFilter.set('ALL');
+    this.selectionStatusFilter.set('ACTIVE');
+    this.selectionDateFilter.set('');
   }
 
   toggleSelectionPanel() {

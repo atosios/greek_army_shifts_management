@@ -361,6 +361,12 @@ export function toGreekCaps(str: string | null | undefined): string {
   return stripGreekAccents(str).toUpperCase();
 }
 
+/** Remove the conscript rank prefix from names shown in requests and ΗΚΑΠ records. */
+export function formatRecordPersonName(personName: string | null | undefined): string {
+  if (!personName) return '';
+  return personName.replace(/^\s*ΣΤΡ(?=\s|$)\s*/iu, '').trim();
+}
+
 /** Format a Date object to local YYYY-MM-DD string without UTC timezone shift */
 export function formatLocalDate(d: Date = new Date()): string {
   const year = d.getFullYear();

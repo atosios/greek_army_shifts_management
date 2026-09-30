@@ -2,6 +2,15 @@
   <!-- Interactive Top Action Bar (Hidden during printing) -->
   <div class="no-print print-action-bar">
     <div class="bar-left">
+      <a [routerLink]="['/scheduler']" [queryParams]="{ date: date() }" class="btn btn-secondary"
+        title="Επιστροφή στην Έκδοση Υπηρεσιών για την ίδια ημερομηνία">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5" />
+          <path d="m12 19-7-7 7-7" />
+        </svg>
+        Πίσω στις Υπηρεσίες
+      </a>
+
       <!-- Ink Saver (Εξοικονόμηση Μελανιού) Mode Toggle on Far Left -->
       <button type="button" 
               class="btn btn-ink-saver" 
@@ -40,11 +49,13 @@
 
   <!-- Printable A4 Document Sheet Stage -->
   <div class="print-stage">
-    <div class="print-sheet a4-landscape-page" [class.ink-saver-mode]="inkSaver()">
+    <div class="print-sheet a4-landscape-page" [class.ink-saver-mode]="inkSaver()" [class.has-additional-duties]="additionalDuties().length > 0">
       <!-- 1. Official Top Emblem & Unit Header (Fixed on top far left & right) -->
       <div class="print-emblem-header">
         <div class="header-emblem-col emblem-left">
-          <img [src]="unit().emblemUrl || defaultEmblem" alt="Έμβλημα Μονάδας" class="emblem-img" />
+          @if (unit().emblemUrl) {
+            <img [src]="unit().emblemUrl" alt="Έμβλημα Μονάδας" class="emblem-img" />
+          }
         </div>
 
         <div class="header-center-col">
@@ -61,7 +72,9 @@
         </div>
 
         <div class="header-emblem-col emblem-right">
-          <img [src]="unit().emblemUrl || defaultEmblem" alt="Έμβλημα Μονάδας" class="emblem-img" />
+          @if (unit().emblemUrl) {
+            <img [src]="unit().emblemUrl" alt="Έμβλημα Μονάδας" class="emblem-img" />
+          }
         </div>
       </div>
 
@@ -127,15 +140,17 @@
                   <div class="soldier-line">{{ formatSoldierDisplay(slot.personId, slot.personName) }}</div>
                 }
                 @if (!cleaningSections().sections[0] || cleaningSections().sections[0].slots.length === 0) {
-                  <div class="soldier-line empty-text">---</div>
+                  <div class="soldier-line empty-text">-</div>
                 }
               </td>
 
               <!-- Col 3: Εστιατόρια (2 columns if 3 or more people) -->
-              <td class="times-cell">
-                @for (t of col3Data().restaurant.times; track $index) {
-                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
-                }
+              <td class="times-cell restaurant-times-cell">
+                <div class="restaurant-times-list">
+                  @for (t of col3Data().restaurant.times; track $index) {
+                    <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
+                  }
+                </div>
               </td>
               <td class="names-cell">
                 <div class="restaurant-slots-container" [class.restaurant-grid-2col]="col3Data().restaurant.slots.length >= 3">
@@ -143,7 +158,7 @@
                     <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName) }}</div>
                   }
                   @if (col3Data().restaurant.slots.length === 0) {
-                    <div class="soldier-line empty-text">---</div>
+                    <div class="soldier-line empty-text">-</div>
                   }
                 </div>
               </td>
@@ -195,7 +210,7 @@
                   <div class="soldier-line">{{ formatSoldierDisplay(slot.personId, slot.personName) }}</div>
                 }
                 @if (!cleaningSections().sections[1] || cleaningSections().sections[1].slots.length === 0) {
-                  <div class="soldier-line empty-text">---</div>
+                  <div class="soldier-line empty-text">-</div>
                 }
               </td>
 
@@ -205,7 +220,7 @@
                   <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName) }}</div>
                 }
                 @if (col3Data().permanentEst.slots.length === 0) {
-                  <div class="soldier-line empty-text">---</div>
+                  <div class="soldier-line empty-text">-</div>
                 }
               </td>
 
@@ -215,7 +230,7 @@
                   <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName) }}</div>
                 }
                 @if (col3Data().permanentKpsm.slots.length === 0) {
-                  <div class="soldier-line empty-text">---</div>
+                  <div class="soldier-line empty-text">-</div>
                 }
               </td>
             </tr>
@@ -268,7 +283,7 @@
                   <div class="soldier-line">{{ formatSoldierDisplay(slot.personId, slot.personName) }}</div>
                 }
                 @if (!cleaningSections().sections[2] || cleaningSections().sections[2].slots.length === 0) {
-                  <div class="soldier-line empty-text">---</div>
+                  <div class="soldier-line empty-text">-</div>
                 }
               </td>
 
@@ -279,7 +294,7 @@
                     <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName) }}</div>
                   }
                   @if (col3Data().standby.slots.length === 0) {
-                    <div class="soldier-line empty-text">---</div>
+                    <div class="soldier-line empty-text">-</div>
                   }
                 </div>
               </td>
@@ -340,7 +355,7 @@
                   <div class="soldier-line">{{ formatSoldierDisplay(slot.personId, slot.personName) }}</div>
                 }
                 @if (!cleaningSections().sections[3] || cleaningSections().sections[3].slots.length === 0) {
-                  <div class="soldier-line empty-text">---</div>
+                  <div class="soldier-line empty-text">-</div>
                 }
               </td>
             </tr>
@@ -378,7 +393,7 @@
                 @if (cleaningSections().supervisor; as sup) {
                   <div class="soldier-line">{{ formatSoldierDisplay(sup.personId, sup.personName) }}</div>
                 } @else {
-                  <div class="soldier-line empty-text">---</div>
+                  <div class="soldier-line empty-text">-</div>
                 }
               </td>
 
@@ -393,10 +408,34 @@
                   <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName) }}</div>
                 }
                 @if (col3Data().bakery.slots.length === 0) {
-                  <div class="soldier-line empty-text">---</div>
+                  <div class="soldier-line empty-text">-</div>
                 }
               </td>
             </tr>
+
+            @for (duty of additionalDuties(); track duty.dutyTypeId) {
+              <tr class="xlsx-header-subrow additional-duty-header">
+                <th class="border-top-thick col-border-right" colspan="2">ΗΜΕΡΟΜΗΝΙΑ &amp; ΩΡΑ</th>
+                <th class="border-top-thick" colspan="4">{{ duty.dutyName }}</th>
+              </tr>
+              @for (group of duty.timeGroups; track $index) {
+                <tr class="xlsx-data-row additional-duty-row">
+                  <td class="times-cell col-border-right" colspan="2">
+                    @for (time of group.times; track $index) {
+                      <div class="time-line"><span class="d-date">{{ time.date }}</span> <span class="d-time">{{ time.time }}</span></div>
+                    }
+                  </td>
+                  <td class="names-cell" colspan="4">
+                    @for (slot of group.slots; track slot.slotIndex) {
+                      <div class="soldier-line">{{ formatSoldierDisplay(slot.personId, slot.personName) }}</div>
+                    }
+                    @if (group.slots.length === 0) {
+                      <div class="soldier-line empty-text">-</div>
+                    }
+                  </td>
+                </tr>
+              }
+            }
           </tbody>
         </table>
       } @else {

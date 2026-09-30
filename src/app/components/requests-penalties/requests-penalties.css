@@ -192,6 +192,26 @@
   flex-wrap: wrap;
 }
 
+.filter-modal-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.filter-active-count {
+  display: inline-flex;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
 .search-input-wrapper {
   position: relative;
   width: 260px;
@@ -237,6 +257,43 @@
   width: 155px;
 }
 
+.record-date-input-wrap {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.form-group > .record-date-input-wrap {
+  display: flex;
+  width: 100%;
+}
+
+.record-date-input {
+  width: 100%;
+}
+
+.date-filter-group .record-date-input {
+  width: 155px;
+}
+
+.record-date-placeholder {
+  position: absolute;
+  top: 50%;
+  left: 0.65rem;
+  transform: translateY(-50%);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  pointer-events: none;
+}
+
+.record-date-input-wrap.is-empty:not(:focus-within) .record-date-input::-webkit-datetime-edit {
+  color: transparent;
+}
+
+.record-date-input-wrap:focus-within .record-date-placeholder {
+  display: none;
+}
+
 .btn-clear-date {
   background: #f1f5f9;
   border: 1px solid var(--border-medium);
@@ -251,6 +308,127 @@
 .btn-clear-date:hover {
   background: #e2e8f0;
   color: #0f172a;
+}
+
+.sortable-header {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sortable-header span {
+  flex-shrink: 0;
+  color: #94a3b8;
+  font-size: 0.62rem;
+}
+
+.sortable-header:hover span,
+.sortable-header:focus-visible span {
+  color: #334155;
+}
+
+.sortable-header:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Record filter modal */
+.records-filter-modal {
+  width: 95vw;
+  max-width: 680px;
+}
+
+.records-filter-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.records-filter-body {
+  display: flex;
+  max-height: 72vh;
+  flex-direction: column;
+  gap: 0.85rem;
+  overflow-y: auto;
+}
+
+.records-filter-group {
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-sm);
+  background: #f8fafc;
+}
+
+.records-filter-group h3 {
+  margin: 0 0 0.55rem;
+  color: #475569;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.records-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.records-filter-chip {
+  min-height: 30px;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.records-filter-chip:hover {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
+
+.records-filter-chip.is-selected {
+  border-color: #334155;
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.records-filter-date-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.records-filter-date-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.3rem;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.records-filter-date-field .record-date-input-wrap {
+  display: flex;
+  width: 100%;
+}
+
+@media (max-width: 560px) {
+  .records-filter-date-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Table Card */
@@ -479,6 +657,63 @@
 .textarea-field {
   resize: vertical;
   line-height: 1.4;
+}
+
+.reason-autocomplete-group {
+  position: relative;
+}
+
+.reason-autocomplete-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 1100;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid var(--steel-blue-gray);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+}
+
+.higher-person-option {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.55rem 0.75rem;
+  background: #ffffff;
+  border: 0;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.higher-person-option:last-child {
+  border-bottom: 0;
+}
+
+.higher-person-option:hover,
+.higher-person-option.active {
+  background: #eff6ff;
+}
+
+.higher-person-main {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.higher-person-role,
+.higher-person-no-results {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.higher-person-no-results {
+  padding: 0.6rem 0.75rem;
 }
 
 /* Combobox */

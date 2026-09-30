@@ -852,15 +852,23 @@
 .soldier-modal-content {
   max-width: 1200px;
   width: 96vw;
+  height: min(92vh, 900px);
   max-height: 92vh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.soldier-modal-content > .modal-header,
+.soldier-modal-content > .modal-footer {
+  flex: 0 0 auto;
 }
 
 .soldier-modal-body {
   padding: 1.25rem;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
 
 .soldier-modal-layout {
@@ -894,6 +902,37 @@
 
 .form-section-card:hover {
   border-color: #cbd5e1;
+}
+
+.profile-options-collapse {
+  width: 100%;
+}
+
+.profile-options-summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.profile-options-summary::-webkit-details-marker {
+  display: none;
+}
+
+.profile-options-summary:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
+.profile-options-chevron {
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.profile-options-collapse[open] .profile-options-chevron {
+  transform: rotate(180deg);
+}
+
+.profile-options-section + .profile-options-section {
+  border-top: 1px solid #e2e8f0;
 }
 
 .form-section-header {
@@ -1125,6 +1164,81 @@
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+}
+
+.soldier-records-card {
+  margin-top: 0.85rem;
+  background: #ffffff;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-sm);
+  padding: 0;
+  overflow: hidden;
+}
+
+.soldier-records-header {
+  margin-bottom: 0;
+}
+
+.soldier-records-content {
+  padding: 0.85rem;
+}
+
+.soldier-records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.soldier-record-item {
+  border: 1px solid #E2E8F0;
+  border-left: 3px solid #2563EB;
+  border-radius: var(--radius-xs);
+  padding: 0.6rem 0.7rem;
+  background: #F8FAFC;
+}
+
+.soldier-record-item:has(.soldier-record-type.penalty) {
+  border-left-color: #DC2626;
+}
+
+.soldier-record-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--steel-blue-gray);
+  font-size: 0.6875rem;
+}
+
+.soldier-record-type {
+  color: #1D4ED8;
+  font-weight: 800;
+}
+
+.soldier-record-type.penalty {
+  color: #B91C1C;
+}
+
+.soldier-record-reason {
+  margin-top: 0.35rem;
+  color: var(--midnight-charcoal);
+  font-size: 0.8rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.soldier-record-notes,
+.soldier-record-status {
+  margin-top: 0.25rem;
+  color: var(--steel-blue-gray);
+  font-size: 0.7rem;
+  overflow-wrap: anywhere;
+}
+
+.soldier-records-empty {
+  margin: 0;
+  color: var(--steel-blue-gray);
+  font-size: 0.75rem;
 }
 
 .calendar-card-header {

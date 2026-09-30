@@ -100,52 +100,107 @@
       <div class="drawer-title-group">
         <h3 class="drawer-title">Επιλογή Εγγραφών προς Εκτύπωση στο ΗΚΑΠ</h3>
         <span class="drawer-subtitle">
-          Επιλέξτε ποια αιτήματα και ποιες ποινές θα συμπεριληφθούν. Κάθε επιλογή προσθέτει μία αντίστοιχη γραμμή στον
-          πίνακα.
+          Επιλέξτε ποια αιτήματα και ποιες ποινές θα συμπεριληφθούν.
         </span>
       </div>
-      <div class="drawer-controls">
-        <button type="button" class="btn btn-sm btn-secondary" (click)="selectAllForDate()">
-          Επιλογή Σημερινών
+    </div>
+
+    <div class="selection-filters">
+      <label class="selection-filter-field selection-search-field">
+        <span>Αναζήτηση</span>
+        <input type="search" class="form-control" placeholder="Στρατιώτης, αιτιολογία, παρατηρήσεις"
+          [ngModel]="selectionSearch()" (ngModelChange)="selectionSearch.set($event)" />
+      </label>
+      <label class="selection-filter-field">
+        <span>Τύπος</span>
+        <select class="form-select" [ngModel]="selectionTypeFilter()"
+          (ngModelChange)="selectionTypeFilter.set($event)">
+          <option value="ALL">Όλοι</option>
+          <option value="ΑΙΤΗΜΑ">Αιτήματα</option>
+          <option value="ΠΟΙΝΗ">Ποινές</option>
+        </select>
+      </label>
+      <label class="selection-filter-field">
+        <span>Κατάσταση</span>
+        <select class="form-select" [ngModel]="selectionStatusFilter()"
+          (ngModelChange)="selectionStatusFilter.set($event)">
+          <option value="ACTIVE">Ενεργές (χωρίς ολοκληρωμένες)</option>
+          <option value="ALL">Όλες οι καταστάσεις</option>
+          <option value="Εκκρεμεί">Εκκρεμεί</option>
+          <option value="Εγκρίθηκε">Εγκρίθηκε</option>
+          <option value="Απορρίφθηκε">Απορρίφθηκε</option>
+          <option value="Ολοκληρώθηκε">Ολοκληρώθηκε</option>
+        </select>
+      </label>
+      <label class="selection-filter-field">
+        <span>Ημερομηνία εγγραφής</span>
+        <span class="selection-date-input-wrap" [class.is-empty]="!selectionDateFilter()">
+          <input type="date" class="form-control selection-date-input" [ngModel]="selectionDateFilter()"
+            (ngModelChange)="selectionDateFilter.set($event)" />
+          @if (!selectionDateFilter()) {
+            <span class="selection-date-placeholder" aria-hidden="true">-</span>
+          }
+        </span>
+      </label>
+      <div class="selection-filter-summary" aria-live="polite">
+        Εμφανίζονται {{ filteredSelectionRecords().length }} από {{ allRecords().length }} εγγραφές
+        <span>Επιλεγμένες από τα αποτελέσματα: {{ selectedFilteredRecordCount() }}</span>
+        <button type="button" class="btn btn-sm btn-secondary" (click)="clearSelectionFilters()">
+          Καθαρισμός φίλτρων
         </button>
-        <button type="button" class="btn btn-sm btn-secondary" (click)="selectAllRecords()">
-          Επιλογή Όλων
-        </button>
-        <button type="button" class="btn btn-sm btn-secondary" (click)="deselectAllRecords()">
-          Αποεπιλογή
-        </button>
-        <button type="button" class="btn-close-drawer" (click)="isSelectionPanelOpen.set(false)">&times;</button>
       </div>
     </div>
 
     <div class="drawer-content">
       @if (allRecords().length > 0) {
+      @if (filteredSelectionRecords().length > 0) {
       <div class="selection-items-grid">
-        @for (rec of allRecords(); track rec.id) {
-        <div class="selection-item-card" [class.selected]="isRecordSelected(rec.id)"
-          [class.is-today]="rec.date === date()" (click)="toggleRecordSelection(rec.id)">
-          <div class="item-checkbox-col">
-            <input type="checkbox" [checked]="isRecordSelected(rec.id)" (click)="$event.stopPropagation()"
-              (change)="toggleRecordSelection(rec.id)" />
-          </div>
+        @for (rec of filteredSelectionRecords(); track rec.id) {
+        <button type="button" class="selection-item-card" [class.selected]="isRecordSelected(rec.id)"
+          [class.is-today]="rec.date === date()" [attr.aria-pressed]="isRecordSelected(rec.id)"
+          (click)="toggleRecordSelection(rec.id)">
           <div class="item-info-col">
             <div class="item-header-line">
-              @if (rec.type === 'ΑΙΤΗΜΑ') {
-              <span class="badge badge-primary badge-mini">ΑΙΤΗΜΑ</span>
-              } @else {
-              <span class="badge badge-danger badge-mini">ΠΟΙΝΗ</span>
-              }
-              <span class="item-soldier-name">{{ rec.personName }}</span>
+              <div class="item-type-status">
+                @if (rec.type === 'ΑΙΤΗΜΑ') {
+                <span class="badge badge-primary badge-mini">ΑΙΤΗΜΑ</span>
+                } @else {
+                <span class="badge badge-danger badge-mini">ΠΟΙΝΗ</span>
+                }
+                <span class="item-status-badge"
+                  [class.status-pending]="(rec.status || 'Εκκρεμεί') === 'Εκκρεμεί'"
+                  [class.status-approved]="rec.status === 'Εγκρίθηκε'"
+                  [class.status-rejected]="rec.status === 'Απορρίφθηκε'"
+                  [class.status-completed]="rec.status === 'Ολοκληρώθηκε'"
+                  [attr.aria-label]="'Κατάσταση: ' + (rec.status || 'Εκκρεμεί')"
+                  [title]="'Κατάσταση: ' + (rec.status || 'Εκκρεμεί')">
+                  {{ rec.status || 'Εκκρεμεί' }}
+                </span>
+              </div>
               <span class="item-date">{{ formatGreekDate(rec.date) }}</span>
             </div>
-            <div class="item-reason-text"><strong>Περιεχόμενο:</strong> {{ rec.reason }}</div>
-            @if (rec.notes) {
-            <div class="item-notes-text"><strong>Παρατηρήσεις:</strong> {{ rec.notes }}</div>
-            }
+            <div class="item-soldier-name">{{ formatRecordPersonName(rec.personName) }}</div>
+            <div class="item-text-panel">
+              <div class="item-reason-block">
+                <span class="item-text-label">ΑΙΤΙΟΛΟΓΙΑ</span>
+                <span class="item-reason-text" [title]="rec.reason">{{ rec.reason }}</span>
+              </div>
+              @if (rec.notes) {
+              <div class="item-notes-row" [title]="rec.notes">
+                <span class="item-text-label">Παρατηρήσεις</span>
+                <span class="item-notes-text">{{ rec.notes }}</span>
+              </div>
+              }
+            </div>
           </div>
-        </div>
+        </button>
         }
       </div>
+      } @else {
+      <div class="drawer-empty-notice">
+        Δεν βρέθηκαν εγγραφές με τα επιλεγμένα φίλτρα.
+      </div>
+      }
       } @else {
       <div class="drawer-empty-notice">
         Δεν υπάρχουν καταχωρημένες εγγραφές αιτημάτων ή ποινών.

@@ -162,6 +162,20 @@
   break-after: page;
 }
 
+.print-sheet.a4-landscape-page.has-additional-duties {
+  height: auto;
+  min-height: 210mm;
+  max-height: none;
+  overflow: visible;
+  justify-content: flex-start;
+}
+
+.additional-duty-header,
+.additional-duty-row {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 /* 1. Official Top Emblem Header */
 .print-emblem-header {
   display: flex;
@@ -315,6 +329,22 @@
 
 .time-line:last-child {
   border-bottom: none;
+}
+
+.restaurant-times-cell {
+  position: relative;
+}
+
+.restaurant-times-list {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.restaurant-times-list .time-line {
+  min-height: 0;
+  height: 100%;
 }
 
 .d-date {

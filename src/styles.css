@@ -461,15 +461,21 @@ body {
     margin: 0;
   }
 
+  /* 1. Let the browser calculate width/height for multi-page flow */
   html,
-  body {
+  body,
+  app-root {
     background: #FFFFFF !important;
     color: #000000 !important;
     font-size: 9.5pt !important;
     line-height: 1.2 !important;
     margin: 0 !important;
     padding: 0 !important;
-    width: 297mm !important;
+    width: 100% !important;
+    /* Changed from 297mm */
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
   }
 
   .no-print,
@@ -487,14 +493,17 @@ body {
     display: none !important;
   }
 
+  /* 2. Remove rigid mm constraints from global wrappers */
   .main-wrapper,
   .content-body,
   .print-page-wrapper,
   .print-stage {
     margin: 0 !important;
     padding: 0 !important;
-    width: 297mm !important;
-    max-width: 297mm !important;
+    width: 100% !important;
+    /* Changed from 297mm */
+    max-width: none !important;
+    height: auto !important;
     zoom: 1 !important;
     transform: none !important;
     display: block !important;
@@ -524,6 +533,14 @@ body {
     break-after: page !important;
     overflow: hidden !important;
     font-family: 'Segoe UI', Arial, sans-serif !important;
+  }
+
+  .print-sheet.has-additional-duties {
+    height: auto !important;
+    min-height: 210mm !important;
+    max-height: none !important;
+    overflow: visible !important;
+    justify-content: flex-start !important;
   }
 
   .print-sheet:last-child {

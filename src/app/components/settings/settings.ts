@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { StorageService } from '../../services/storage.service';
 import { UnitInfo, HigherPersonnel } from '../../models/shift.model';
-import { DEFAULT_EMBLEM_BASE64 } from '../../data/default-emblem';
 
 export type SettingsTab = 'unit' | 'personnel' | 'database';
 
@@ -17,7 +16,6 @@ export type SettingsTab = 'unit' | 'personnel' | 'database';
 export class SettingsComponent {
   storage = inject(StorageService);
 
-  readonly defaultEmblem = DEFAULT_EMBLEM_BASE64;
   readonly higherPersonnel = this.storage.higherPersonnel;
 
   // Active inner sidebar tab
@@ -28,13 +26,13 @@ export class SettingsComponent {
     name: '',
     location: '',
     division: '',
-    commanderTitle: 'ΔΙΟΙΚΗΤΗΣ ΜΟΙΡΑΣ',
+    commanderTitle: '',
     commanderName: '',
-    dutyOfficerSignatureTitle: 'ΔΚΤΗΣ ΠΥΡΧΙΑΣ',
+    dutyOfficerSignatureTitle: '',
     dutyOfficerName: '',
-    supervisorSignatureTitle: 'ΑΛΧΙΑΣ ΠΥΡΧΙΑΣ',
+    supervisorSignatureTitle: '',
     supervisorName: '',
-    emblemUrl: DEFAULT_EMBLEM_BASE64
+    emblemUrl: ''
   };
 
   // Higher Personnel Modal & Form State
@@ -73,11 +71,11 @@ export class SettingsComponent {
     const current = this.storage.unitInfo();
     this.unitForm = { 
       ...current,
-      commanderTitle: current.commanderTitle || 'ΔΙΟΙΚΗΤΗΣ ΜΟΙΡΑΣ',
-      dutyOfficerSignatureTitle: current.dutyOfficerSignatureTitle || 'ΔΚΤΗΣ ΠΥΡΧΙΑΣ',
-      supervisorSignatureTitle: current.supervisorSignatureTitle || 'ΑΛΧΙΑΣ ΠΥΡΧΙΑΣ',
+      commanderTitle: current.commanderTitle || '',
+      dutyOfficerSignatureTitle: current.dutyOfficerSignatureTitle || '',
+      supervisorSignatureTitle: current.supervisorSignatureTitle || '',
       supervisorName: current.supervisorName || '',
-      emblemUrl: current.emblemUrl || DEFAULT_EMBLEM_BASE64
+      emblemUrl: current.emblemUrl || ''
     };
   }
 
@@ -137,9 +135,9 @@ export class SettingsComponent {
     img.src = dataUrl;
   }
 
-  resetEmblemToDefault() {
-    this.unitForm.emblemUrl = DEFAULT_EMBLEM_BASE64;
-    this.storage.notify('Επαναφέρθηκε το προεπιλεγμένο έμβλημα στρατοπέδου.', 'info');
+  clearEmblem() {
+    this.unitForm.emblemUrl = '';
+    this.storage.notify('Το έμβλημα αφαιρέθηκε.', 'info');
   }
 
   saveUnitInfo() {
@@ -155,8 +153,8 @@ export class SettingsComponent {
     this.editingHpId.set(null);
     this.hpForm = {
       fullName: '',
-      rank: 'ΑΝΧΗΣ (ΠΒ)',
-      roleTitle: 'ΔΙΟΙΚΗΤΗΣ ΜΟΙΡΑΣ'
+      rank: '',
+      roleTitle: ''
     };
     this.showHpModal.set(true);
   }
@@ -234,9 +232,9 @@ export class SettingsComponent {
     this.storage.loadFromOtherFile();
   }
 
-  resetToDefault() {
-    if (confirm('ΠΡΟΣΟΧΗ: Θέλετε να επαναφέρετε τα προεπιλεγμένα πρότυπα δεδομένα; Όλες οι τρέχουσες αλλαγές θα αντικατασταθούν.')) {
-      this.storage.resetToDefaultData();
+  clearAllData() {
+    if (confirm('ΠΡΟΣΟΧΗ: Θα διαγραφούν όλα τα αποθηκευμένα δεδομένα και θα δημιουργηθεί κενή βάση. Η ενέργεια δεν μπορεί να αναιρεθεί.')) {
+      this.storage.resetAllData();
       this.unitForm = { ...this.storage.unitInfo() };
     }
   }

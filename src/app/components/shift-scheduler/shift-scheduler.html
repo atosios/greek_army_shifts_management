@@ -7,6 +7,18 @@
         μονάδας.</p>
     </div>
     <div class="header-actions">
+      @if (isCurrentScheduleFinalized()) {
+      <a [routerLink]="['/print', selectedDate()]" class="btn btn-secondary"
+        title="Προεπισκόπηση και εκτύπωση υπηρεσιών για την επιλεγμένη ημέρα">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 6 2 18 2 18 9" />
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+          <rect width="12" height="8" x="6" y="14" />
+        </svg>
+        Εκτύπωση Υπηρεσιών
+      </a>
+      }
+
       <!-- Button: Εκκαθάριση (minimal icon button without text) -->
       <button class="btn btn-clear-duties-minimal" [disabled]="isCurrentScheduleFinalized()" (click)="clearAllDutiesForCurrentDay()"
         [title]="isCurrentScheduleFinalized() ? 'Το πρόγραμμα έχει οριστικοποιηθεί. Πατήστε «Επαναφορά» για επεξεργασία.' : 'Εκκαθάριση όλων των στρατιωτών από τις θέσεις της ημέρας'">

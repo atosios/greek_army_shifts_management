@@ -2,6 +2,30 @@ import { AppData, HigherPersonnel } from '../models/shift.model';
 import { generateGreekArmy26Slots } from './time-presets';
 import { DEFAULT_EMBLEM_BASE64 } from './default-emblem';
 
+export function createEmptyAppData(): AppData {
+  return {
+    unitInfo: {
+      name: '',
+      location: '',
+      division: '',
+      commanderTitle: '',
+      commanderName: '',
+      dutyOfficerSignatureTitle: '',
+      dutyOfficerName: '',
+      supervisorSignatureTitle: '',
+      supervisorName: '',
+      emblemUrl: ''
+    },
+    higherPersonnel: [],
+    personnel: [],
+    dutyTypes: [],
+    leaves: [],
+    soldierRecords: [],
+    schedules: [],
+    weekendPlans: {}
+  };
+}
+
 export const DEFAULT_HIGHER_PERSONNEL: HigherPersonnel[] = [
   {
     id: 'hp-1',

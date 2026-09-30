@@ -813,108 +813,115 @@
                 </div>
               </div>
 
-              <!-- Section 4: Ειδικός Ρόλος / Μόνιμη Τοποθέτηση -->
-              <div class="form-section-card special-role-card">
-                <div class="form-section-header">
-                  <div class="form-section-title">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                    </svg>
-                    <span>Ειδικός Ρόλος / Μόνιμη Τοποθέτηση</span>
-                  </div>
-                  @if (formModel.specialRole) {
-                    <button type="button" class="btn-clear-role" (click)="setSpecialRolePreset('')" title="Καθαρισμός ειδικού ρόλου">&times; Καθαρισμός</button>
-                  }
-                </div>
-                <div class="form-section-body">
-                  <div class="role-preset-chips">
-                    @for (role of specialRoles; track role) {
-                      <button 
-                        type="button" 
-                        class="role-chip-btn" 
-                        [class.is-selected]="formModel.specialRole === role"
-                        (click)="setSpecialRolePreset(role)"
-                      >
-                        {{ role }}
-                      </button>
+              <details class="form-section-card profile-options-collapse">
+                <summary class="form-section-header profile-options-summary">
+                  <span class="form-section-title">Ειδικός Ρόλος / Μόνιμη Τοποθέτηση & Επιλεξιμότητα Υπηρεσιών</span>
+                  <svg class="profile-options-chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </summary>
+
+                <section class="profile-options-section special-role-card">
+                  <div class="form-section-header">
+                    <div class="form-section-title">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                      </svg>
+                      <span>Ειδικός Ρόλος / Μόνιμη Τοποθέτηση</span>
+                    </div>
+                    @if (formModel.specialRole) {
+                      <button type="button" class="btn-clear-role" (click)="setSpecialRolePreset('')" title="Καθαρισμός ειδικού ρόλου">&times; Καθαρισμός</button>
                     }
                   </div>
-                  <div class="role-custom-input-row">
-                    <input 
-                      type="text" 
-                      class="form-control form-control-sm uppercase-name-input" 
-                      [value]="formModel.specialRole"
-                      (input)="onSpecialRoleInput($event)"
-                      placeholder="Ή πληκτρολογήστε προσαρμοσμένο ρόλο (π.χ. ΜΟΝΙΜΟΣ ΚΨΜ, ΓΡΑΦΕΑΣ...)" 
-                      autocomplete="off"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <!-- Section 5: Επιλεξιμότητα Υπηρεσιών -->
-              <div class="form-section-card duties-eligibility-card">
-                <div class="form-section-header">
-                  <div class="form-section-title">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    </svg>
-                    <span>Επιλεξιμότητα Υπηρεσιών</span>
-                  </div>
-                  <div class="duties-quick-actions">
-                    <button type="button" class="btn btn-secondary btn-xs" (click)="selectAllDuties()" [disabled]="formModel.exemptFromAllDuties">
-                      Επιλογή Όλων
-                    </button>
-                    <button type="button" class="btn btn-secondary btn-xs" (click)="deselectAllDuties()" [disabled]="formModel.exemptFromAllDuties">
-                      Αποεπιλογή Όλων
-                    </button>
-                  </div>
-                </div>
-
-                <div class="form-section-body">
-                  <div class="duties-subtitle">Επιλέξτε τις υπηρεσίες που δύναται να εκτελέσει ο στρατιώτης (προεπιλογή: όλες επιλεγμένες).</div>
-
-                  <div class="exempt-toggle-box">
-                    <label class="exempt-checkbox-label">
-                      <input 
-                        type="checkbox" 
-                        [ngModel]="formModel.exemptFromAllDuties" 
-                        (ngModelChange)="onExemptFromAllChange($event)" 
-                      />
-                      <span class="exempt-label-text">
-                        <strong>Δεν εκτελεί καμία υπηρεσία</strong> (πλήρης απαλλαγή υπηρεσιών)
-                      </span>
-                    </label>
-                  </div>
-
-                  @if (!formModel.exemptFromAllDuties) {
-                    <div class="duties-checkbox-grid">
-                      @for (duty of storage.dutyTypes(); track duty.id) {
-                        <label class="duty-check-item" [class.is-checked]="isDutySelected(duty.id)">
-                          <input 
-                            type="checkbox" 
-                            [checked]="isDutySelected(duty.id)" 
-                            (change)="toggleDutySelection(duty.id)" 
-                          />
-                          <div class="duty-info">
-                            <span class="duty-title">{{ duty.name }}</span>
-                            <span class="duty-meta">@if (duty.category && duty.category !== 'Οπλίτης' && duty.category !== 'Στρατιώτης') { {{ duty.category }} • }{{ duty.armsRequired }}</span>
-                          </div>
-                        </label>
+                  <div class="form-section-body">
+                    <div class="role-preset-chips">
+                      @for (role of specialRoles; track role) {
+                        <button 
+                          type="button" 
+                          class="role-chip-btn" 
+                          [class.is-selected]="formModel.specialRole === role"
+                          (click)="setSpecialRolePreset(role)"
+                        >
+                          {{ role }}
+                        </button>
                       }
                     </div>
-                  } @else {
-                    <div class="exempt-alert-message">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="8" x2="12" y2="12"/>
-                        <line x1="12" y1="16" x2="12.01" y2="16"/>
-                      </svg>
-                      <span>Ο στρατιώτης έχει εξαιρεθεί από όλες τις υπηρεσίες. Δεν θα συμμετέχει στον προγραμματισμό και τυχόν νέες υπηρεσίες που θα δημιουργηθούν αργότερα δεν θα προστεθούν σε αυτόν.</span>
+                    <div class="role-custom-input-row">
+                      <input 
+                        type="text" 
+                        class="form-control form-control-sm uppercase-name-input" 
+                        [value]="formModel.specialRole"
+                        (input)="onSpecialRoleInput($event)"
+                        placeholder="Ή πληκτρολογήστε προσαρμοσμένο ρόλο (π.χ. ΜΟΝΙΜΟΣ ΚΨΜ, ΓΡΑΦΕΑΣ...)" 
+                        autocomplete="off"
+                      />
                     </div>
-                  }
-                </div>
-              </div>
+                  </div>
+                </section>
+
+                <section class="profile-options-section duties-eligibility-card">
+                  <div class="form-section-header">
+                    <div class="form-section-title">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                      </svg>
+                      <span>Επιλεξιμότητα Υπηρεσιών</span>
+                    </div>
+                    <div class="duties-quick-actions">
+                      <button type="button" class="btn btn-secondary btn-xs" (click)="selectAllDuties()" [disabled]="formModel.exemptFromAllDuties">
+                        Επιλογή Όλων
+                      </button>
+                      <button type="button" class="btn btn-secondary btn-xs" (click)="deselectAllDuties()" [disabled]="formModel.exemptFromAllDuties">
+                        Αποεπιλογή Όλων
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="form-section-body">
+                    <div class="duties-subtitle">Επιλέξτε τις υπηρεσίες που δύναται να εκτελέσει ο στρατιώτης (προεπιλογή: όλες επιλεγμένες).</div>
+
+                    <div class="exempt-toggle-box">
+                      <label class="exempt-checkbox-label">
+                        <input 
+                          type="checkbox" 
+                          [ngModel]="formModel.exemptFromAllDuties" 
+                          (ngModelChange)="onExemptFromAllChange($event)" 
+                        />
+                        <span class="exempt-label-text">
+                          <strong>Δεν εκτελεί καμία υπηρεσία</strong> (πλήρης απαλλαγή υπηρεσιών)
+                        </span>
+                      </label>
+                    </div>
+
+                    @if (!formModel.exemptFromAllDuties) {
+                      <div class="duties-checkbox-grid">
+                        @for (duty of storage.dutyTypes(); track duty.id) {
+                          <label class="duty-check-item" [class.is-checked]="isDutySelected(duty.id)">
+                            <input 
+                              type="checkbox" 
+                              [checked]="isDutySelected(duty.id)" 
+                              (change)="toggleDutySelection(duty.id)" 
+                            />
+                            <div class="duty-info">
+                              <span class="duty-title">{{ duty.name }}</span>
+                              <span class="duty-meta">@if (duty.category && duty.category !== 'Οπλίτης' && duty.category !== 'Στρατιώτης') { {{ duty.category }} • }{{ duty.armsRequired }}</span>
+                            </div>
+                          </label>
+                        }
+                      </div>
+                    } @else {
+                      <div class="exempt-alert-message">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <circle cx="12" cy="12" r="10"/>
+                          <line x1="12" y1="8" x2="12" y2="12"/>
+                          <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        <span>Ο στρατιώτης έχει εξαιρεθεί από όλες τις υπηρεσίες. Δεν θα συμμετέχει στον προγραμματισμό και τυχόν νέες υπηρεσίες που θα δημιουργηθούν αργότερα δεν θα προστεθούν σε αυτόν.</span>
+                      </div>
+                    }
+                  </div>
+                </section>
+              </details>
 
             </div>
 
@@ -1056,6 +1063,46 @@
                     Θα ενεργοποιηθεί αυτόματα μόλις ολοκληρώσετε την προσθήκη του στρατιώτη στη Δύναμη.
                   </div>
                 </div>
+              }
+
+              @if (editingPersonId()) {
+                <details class="soldier-records-card profile-options-collapse">
+                  <summary class="form-section-header profile-options-summary soldier-records-header">
+                    <div class="calendar-header-titles">
+                      <div class="calendar-card-title">Αιτήματα & Ποινές ΗΚΑΠ</div>
+                      <div class="calendar-card-subtitle">{{ profileSoldierRecords().length }} καταχωρίσεις</div>
+                    </div>
+                    <svg class="profile-options-chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </summary>
+
+                  <div class="soldier-records-content">
+                    @if (profileSoldierRecords().length > 0) {
+                      <div class="soldier-records-list">
+                        @for (record of profileSoldierRecords(); track record.id) {
+                          <article class="soldier-record-item">
+                            <div class="soldier-record-topline">
+                              <span class="soldier-record-type" [class.penalty]="record.type === 'ΠΟΙΝΗ'">
+                                {{ record.type }}
+                              </span>
+                              <time [attr.datetime]="record.date">{{ formatGreekDate(record.date) }}</time>
+                            </div>
+                            <div class="soldier-record-reason">{{ record.reason }}</div>
+                            @if (record.notes) {
+                              <div class="soldier-record-notes">{{ record.notes }}</div>
+                            }
+                            @if (record.status) {
+                              <div class="soldier-record-status">{{ record.status }}</div>
+                            }
+                          </article>
+                        }
+                      </div>
+                    } @else {
+                      <p class="soldier-records-empty">Δεν υπάρχουν καταχωρίσεις ΗΚΑΠ για τον στρατιώτη.</p>
+                    }
+                  </div>
+                </details>
               }
             </div>
           </div>

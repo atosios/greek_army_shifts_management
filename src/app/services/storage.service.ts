@@ -1,7 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { AppData, Personnel, HigherPersonnel, SignatureSlot, DutyType, Leave, SoldierRecord, SoldierRecordType, DailySchedule, WeekendPlan, UnitInfo, toGreekCaps, formatGreekDate, getCorpsShort, formatLocalDate } from '../models/shift.model';
-import { DEFAULT_APP_DATA, DEFAULT_HIGHER_PERSONNEL, normalizeRank } from '../data/default-data';
-import { DEFAULT_EMBLEM_BASE64 } from '../data/default-emblem';
+import { DEFAULT_APP_DATA, createEmptyAppData, normalizeRank } from '../data/default-data';
 import { getDutySlotsForDate, formatIntervalsToString, stripGroupText } from '../data/time-presets';
 
 declare global {
@@ -32,7 +31,7 @@ export class StorageService {
   private readonly LOCAL_STORAGE_KEY = 'greek_army_shifts_app_data';
 
   // Signals
-  readonly appData = signal<AppData>(DEFAULT_APP_DATA);
+  readonly appData = signal<AppData>(createEmptyAppData());
   readonly isElectron = signal<boolean>(false);
   readonly storageFilePath = signal<string>('Τοπική Μνήμη (Local Memory)');
   readonly isPortable = signal<boolean>(false);
@@ -43,21 +42,13 @@ export class StorageService {
   // Computed signals
   readonly personnel = computed(() => this.appData().personnel);
   readonly higherPersonnel = computed<HigherPersonnel[]>(() => {
-    const hp = this.appData().higherPersonnel;
-    if (hp && hp.length > 0) return hp;
-    return DEFAULT_HIGHER_PERSONNEL;
+    return this.appData().higherPersonnel || [];
   });
   readonly dutyTypes = computed(() => this.appData().dutyTypes);
   readonly leaves = computed(() => this.appData().leaves);
   readonly soldierRecords = computed<SoldierRecord[]>(() => this.appData().soldierRecords || []);
   readonly schedules = computed(() => this.appData().schedules);
-  readonly unitInfo = computed(() => {
-    const info = this.appData().unitInfo;
-    return {
-      ...info,
-      emblemUrl: info?.emblemUrl || DEFAULT_EMBLEM_BASE64
-    };
-  });
+  readonly unitInfo = computed(() => this.appData().unitInfo);
   readonly weekendPlans = computed(() => this.appData().weekendPlans || {});
 
   readonly activePersonnel = computed(() => 
@@ -85,25 +76,15 @@ export class StorageService {
         const result = await window.electronAPI.loadData();
         if (result.success && result.data) {
           const loadedData = result.data;
-          const hasKath = loadedData.dutyTypes?.some((d: any) => d.id === 'duty-kathariotites');
-          const thf = loadedData.dutyTypes?.find((d: any) => d.id === 'duty-thalamofylakas');
-          const opl = loadedData.dutyTypes?.find((d: any) => d.id === 'duty-oplofylakas');
-          const hasOldNotes = thf?.description?.includes('Γκρουπ') || thf?.weekendSwapNote;
-          if (!hasKath || !thf || thf.slots !== 8 || !opl || hasOldNotes) {
-            loadedData.dutyTypes = DEFAULT_APP_DATA.dutyTypes;
-          }
-          if (loadedData.dutyTypes) {
-            loadedData.dutyTypes = loadedData.dutyTypes.map((d: any) => ({
-              ...d,
-              weekendSwapNote: undefined,
-              allowedRanks: (d.allowedRanks || []).map((r: string) => normalizeRank(r).rankShort)
-            }));
-          }
-          if (!loadedData.personnel || loadedData.personnel.length < 24) {
-            loadedData.personnel = DEFAULT_APP_DATA.personnel;
-          } else {
-            const allDIds = (loadedData.dutyTypes || DEFAULT_APP_DATA.dutyTypes).map((d: any) => d.id);
-            loadedData.personnel = loadedData.personnel.map((p, index) => {
+          loadedData.personnel = loadedData.personnel || [];
+          loadedData.dutyTypes = (loadedData.dutyTypes || []).map((d: any) => ({
+            ...d,
+            weekendSwapNote: undefined,
+            allowedRanks: (d.allowedRanks || []).map((r: string) => normalizeRank(r).rankShort)
+          }));
+          {
+            const allDIds = loadedData.dutyTypes.map((d: any) => d.id);
+            loadedData.personnel = (loadedData.personnel || []).map(p => {
               const isExempt = p.exemptFromAllDuties || false;
               return {
                 ...p,
@@ -161,14 +142,12 @@ export class StorageService {
           } else {
             loadedData.soldierRecords = [];
           }
-          if (!loadedData.unitInfo) {
-            loadedData.unitInfo = { ...DEFAULT_APP_DATA.unitInfo };
-          } else if (!loadedData.unitInfo.emblemUrl) {
-            loadedData.unitInfo.emblemUrl = DEFAULT_EMBLEM_BASE64;
-          }
-          if (!loadedData.higherPersonnel || loadedData.higherPersonnel.length === 0) {
-            loadedData.higherPersonnel = DEFAULT_HIGHER_PERSONNEL;
-          }
+          loadedData.unitInfo = { ...createEmptyAppData().unitInfo, ...(loadedData.unitInfo || {}) };
+          loadedData.higherPersonnel = loadedData.higherPersonnel || [];
+          loadedData.leaves = loadedData.leaves || [];
+          loadedData.schedules = loadedData.schedules || [];
+          loadedData.soldierRecords = loadedData.soldierRecords || [];
+          loadedData.weekendPlans = loadedData.weekendPlans || {};
           this.appData.set(loadedData);
           this.notify('Φορτώθηκαν δεδομένα επιτυχώς από το αρχείο USB/Δίσκου', 'success');
           return;
@@ -183,25 +162,16 @@ export class StorageService {
       const localDataStr = localStorage.getItem(this.LOCAL_STORAGE_KEY);
       if (localDataStr) {
         const parsed = JSON.parse(localDataStr);
-        const hasKath = parsed.dutyTypes?.some((d: any) => d.id === 'duty-kathariotites');
-        const thf = parsed.dutyTypes?.find((d: any) => d.id === 'duty-thalamofylakas');
-        const opl = parsed.dutyTypes?.find((d: any) => d.id === 'duty-oplofylakas');
-        const hasOldNotes = thf?.description?.includes('Γκρουπ') || thf?.weekendSwapNote;
-        if (!hasKath || !thf || thf.slots !== 8 || !opl || hasOldNotes) {
-          parsed.dutyTypes = DEFAULT_APP_DATA.dutyTypes;
-        } else if (parsed.dutyTypes) {
-          parsed.dutyTypes = parsed.dutyTypes.map((d: any) => ({
-            ...d,
-            category: d.category === 'Οπλίτης' ? 'Στρατιώτης' : d.category,
-            weekendSwapNote: undefined,
-            allowedRanks: (d.allowedRanks || []).map((r: string) => normalizeRank(r).rankShort)
-          }));
-        }
-        if (!parsed.personnel || parsed.personnel.length < 24) {
-          parsed.personnel = DEFAULT_APP_DATA.personnel;
-        } else {
-          const allDIds = (parsed.dutyTypes || DEFAULT_APP_DATA.dutyTypes).map((d: any) => d.id);
-          parsed.personnel = parsed.personnel.map((p: any, index: number) => {
+        parsed.personnel = parsed.personnel || [];
+        parsed.dutyTypes = (parsed.dutyTypes || []).map((d: any) => ({
+          ...d,
+          category: d.category === 'Οπλίτης' ? 'Στρατιώτης' : d.category,
+          weekendSwapNote: undefined,
+          allowedRanks: (d.allowedRanks || []).map((r: string) => normalizeRank(r).rankShort)
+        }));
+        {
+          const allDIds = parsed.dutyTypes.map((d: any) => d.id);
+          parsed.personnel = (parsed.personnel || []).map((p: any) => {
             const isExempt = p.exemptFromAllDuties || false;
             return {
               ...p,
@@ -259,14 +229,12 @@ export class StorageService {
         } else {
           parsed.soldierRecords = [];
         }
-        if (!parsed.unitInfo) {
-          parsed.unitInfo = { ...DEFAULT_APP_DATA.unitInfo };
-        } else if (!parsed.unitInfo.emblemUrl) {
-          parsed.unitInfo.emblemUrl = DEFAULT_EMBLEM_BASE64;
-        }
-        if (!parsed.higherPersonnel || parsed.higherPersonnel.length === 0) {
-          parsed.higherPersonnel = DEFAULT_HIGHER_PERSONNEL;
-        }
+        parsed.unitInfo = { ...createEmptyAppData().unitInfo, ...(parsed.unitInfo || {}) };
+        parsed.higherPersonnel = parsed.higherPersonnel || [];
+        parsed.leaves = parsed.leaves || [];
+        parsed.schedules = parsed.schedules || [];
+        parsed.soldierRecords = parsed.soldierRecords || [];
+        parsed.weekendPlans = parsed.weekendPlans || {};
         this.appData.set(parsed);
         this.saveData();
         this.notify('Φορτώθηκαν αποθηκευμένα δεδομένα προγράμματος', 'info');
@@ -276,8 +244,7 @@ export class StorageService {
       console.warn('Could not read from localStorage:', e);
     }
 
-    // Default seed data
-    this.appData.set(DEFAULT_APP_DATA);
+    this.appData.set(createEmptyAppData());
     this.saveData();
   }
 
@@ -1199,7 +1166,7 @@ export class StorageService {
     };
     this.appData.update(prev => ({
       ...prev,
-      higherPersonnel: [...(prev.higherPersonnel || DEFAULT_HIGHER_PERSONNEL), newPerson]
+      higherPersonnel: [...(prev.higherPersonnel || []), newPerson]
     }));
     this.saveData();
     this.notify(`Προστέθηκε στο ανώτερο προσωπικό: ${newPerson.fullName}`, 'success');
@@ -1207,7 +1174,7 @@ export class StorageService {
 
   updateHigherPersonnel(id: string, updates: Partial<HigherPersonnel>) {
     this.appData.update(prev => {
-      const list = prev.higherPersonnel || DEFAULT_HIGHER_PERSONNEL;
+      const list = prev.higherPersonnel || [];
       const updated = list.map(p => {
         if (p.id !== id) return p;
         return {
@@ -1230,7 +1197,7 @@ export class StorageService {
   deleteHigherPersonnel(id: string) {
     this.appData.update(prev => ({
       ...prev,
-      higherPersonnel: (prev.higherPersonnel || DEFAULT_HIGHER_PERSONNEL).filter(p => p.id !== id)
+      higherPersonnel: (prev.higherPersonnel || []).filter(p => p.id !== id)
     }));
     this.saveData();
     this.notify('Το στέλεχος διαγράφηκε', 'warning');
@@ -1254,10 +1221,10 @@ export class StorageService {
     this.saveData();
   }
 
-  // --- Reset to Default Seed Data ---
-  resetToDefaultData() {
-    this.appData.set(DEFAULT_APP_DATA);
+  // --- Reset to Empty Data ---
+  resetAllData() {
+    this.appData.set(createEmptyAppData());
     this.saveData();
-    this.notify('Επαναφέρθηκαν τα προεπιλεγμένα πρότυπα δεδομένα', 'info');
+    this.notify('Όλα τα δεδομένα διαγράφηκαν', 'info');
   }
 }

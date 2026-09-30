@@ -14,10 +14,6 @@
       </div>
     </div>
     <div class="banner-meta">
-      <div class="meta-item">
-        <span class="meta-label">Διοικητής Μονάδας</span>
-        <span class="meta-val">{{ unit().commanderName }}</span>
-      </div>
       <div class="banner-actions">
         <a routerLink="/scheduler" [queryParams]="{ date: tomorrowStr }" class="btn btn-primary">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -73,89 +69,6 @@
 
   <!-- Main Content Layout -->
   <div class="dashboard-columns">
-    <!-- Today's Schedule Card -->
-    <div class="card column-card">
-      <div class="card-header">
-        <div class="card-title">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
-            <line x1="16" x2="16" y1="2" y2="6"/>
-            <line x1="8" x2="8" y1="2" y2="6"/>
-            <line x1="3" x2="21" y1="10" y2="10"/>
-          </svg>
-          Έκδοση Υπηρεσιών Σήμερα ({{ todayStr }})
-        </div>
-        <div class="card-actions">
-          @if (todaySchedule()) {
-            <button class="btn btn-secondary btn-sm" (click)="exportTodayExcel()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-                <line x1="8" y1="13" x2="16" y2="13"/>
-                <line x1="8" y1="17" x2="16" y2="17"/>
-              </svg>
-              Excel
-            </button>
-            <a [routerLink]="['/print', todayStr]" class="btn btn-secondary btn-sm">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="6 9 6 2 18 2 18 9"/>
-                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                <rect width="12" height="8" x="6" y="14"/>
-              </svg>
-              Εκτύπωση A4
-            </a>
-          }
-          <a routerLink="/scheduler" [queryParams]="{ date: todayStr }" class="btn btn-primary btn-sm">
-            {{ todaySchedule() ? 'Επεξεργασία' : 'Παραγωγή Διαταγής' }}
-          </a>
-        </div>
-      </div>
-
-      @if (todaySchedule(); as sched) {
-        <div class="data-table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Πόστο / Υπηρεσία</th>
-                <th>Βαθμός & Ονοματεπώνυμο</th>
-                <th>Λόχος</th>
-                <th>Ώρες / Βάρδια</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (duty of sched.duties; track duty.dutyTypeId) {
-                @for (slot of duty.slots; track slot.slotIndex) {
-                  <tr>
-                    <td>
-                      <span class="duty-badge">{{ duty.shortName }}</span>
-                      <span class="slot-idx">#{{ slot.slotIndex }}</span>
-                    </td>
-                    <td>
-                      @if (slot.personId) {
-                        <strong>{{ slot.rankShort }} {{ slot.personName }}</strong>
-                      } @else {
-                        <span class="text-danger">Κενό Πόστο</span>
-                      }
-                    </td>
-                    <td><span class="text-muted">{{ slot.company || '-' }}</span></td>
-                    <td><span class="badge badge-corporate">{{ slot.hoursNote || '24ωρη' }}</span></td>
-                  </tr>
-                }
-              }
-            </tbody>
-          </table>
-        </div>
-      } @else {
-        <div class="empty-state">
-          <h3>Δεν έχει εκδοθεί πρόγραμμα για σήμερα</h3>
-          <p>Μπορείτε να εκτελέσετε αυτόματη κατανομή υπηρεσιών άμεσα.</p>
-          <a routerLink="/scheduler" [queryParams]="{ date: todayStr }" class="btn btn-primary">
-            Παραγωγή Σημερινής Διαταγής
-          </a>
-        </div>
-      }
-    </div>
-
     <!-- Side Column -->
     <div class="side-column">
       <!-- Active Leaves Card -->

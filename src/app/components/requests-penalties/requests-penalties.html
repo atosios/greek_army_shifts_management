@@ -127,8 +127,13 @@
 
       <!-- Date Filter -->
       <div class="date-filter-group">
-        <input type="date" class="form-control date-input" [ngModel]="dateFilter()"
-          (ngModelChange)="dateFilter.set($event)" title="Φιλτράρισμα με συγκεκριμένη ημερομηνία" />
+        <span class="record-date-input-wrap" [class.is-empty]="!dateFilter()">
+          <input type="date" class="form-control date-input record-date-input" [ngModel]="dateFilter()"
+            (ngModelChange)="dateFilter.set($event)" title="Φιλτράρισμα με συγκεκριμένη ημερομηνία" />
+          @if (!dateFilter()) {
+          <span class="record-date-placeholder" aria-hidden="true">-</span>
+          }
+        </span>
         @if (dateFilter()) {
         <button type="button" class="btn-clear-date" (click)="clearDateFilter()" title="Καθαρισμός φίλτρου ημερομηνίας">
           &times;
@@ -140,8 +145,95 @@
         </button>
         }
       </div>
+      <button type="button" class="btn btn-secondary filter-modal-trigger" (click)="openFilterModal()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+        </svg>
+        Φίλτρα
+        @if (activeFilterCount() > 0) {
+        <span class="filter-active-count">{{ activeFilterCount() }}</span>
+        }
+      </button>
     </div>
   </div>
+
+  <!-- Record Filters -->
+  @if (isFilterModalOpen()) {
+  <div class="modal-overlay" (click)="closeFilterModal()">
+    <div class="modal-content records-filter-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="records-filter-modal-title">
+          <h2 class="card-title">Φίλτρα Εγγραφών</h2>
+          @if (activeFilterCount() > 0) {
+          <span class="filter-active-count">{{ activeFilterCount() }} ενεργά</span>
+          }
+        </div>
+        <button type="button" class="btn-close" (click)="closeFilterModal()" title="Κλείσιμο">&times;</button>
+      </div>
+
+      <div class="modal-body records-filter-body">
+        <section class="records-filter-group">
+          <h3>Τύπος εγγραφής</h3>
+          <div class="records-filter-chips">
+            <button type="button" class="records-filter-chip" [class.is-selected]="filterTypes().length === 0"
+              [attr.aria-pressed]="filterTypes().length === 0" (click)="filterTypes.set([])">Όλα</button>
+            <button type="button" class="records-filter-chip" [class.is-selected]="filterTypes().includes('ΑΙΤΗΜΑ')"
+              [attr.aria-pressed]="filterTypes().includes('ΑΙΤΗΜΑ')" (click)="toggleTypeFilter('ΑΙΤΗΜΑ')">Αίτημα</button>
+            <button type="button" class="records-filter-chip" [class.is-selected]="filterTypes().includes('ΠΟΙΝΗ')"
+              [attr.aria-pressed]="filterTypes().includes('ΠΟΙΝΗ')" (click)="toggleTypeFilter('ΠΟΙΝΗ')">Ποινή</button>
+          </div>
+        </section>
+
+        <section class="records-filter-group">
+          <h3>Κατάσταση</h3>
+          <div class="records-filter-chips">
+            <button type="button" class="records-filter-chip" [class.is-selected]="filterStatuses().length === 0"
+              [attr.aria-pressed]="filterStatuses().length === 0" (click)="filterStatuses.set([])">Όλες</button>
+            @for (status of recordStatuses; track status) {
+            <button type="button" class="records-filter-chip" [class.is-selected]="filterStatuses().includes(status)"
+              [attr.aria-pressed]="filterStatuses().includes(status)" (click)="toggleStatusFilter(status)">
+              {{ status }}
+            </button>
+            }
+          </div>
+        </section>
+
+        <section class="records-filter-group">
+          <h3>Χρονικό διάστημα</h3>
+          <div class="records-filter-date-grid">
+            <label class="records-filter-date-field">
+              <span>Από</span>
+              <span class="record-date-input-wrap" [class.is-empty]="!filterDateFrom()">
+                <input type="date" class="form-control record-date-input" [ngModel]="filterDateFrom()"
+                  (ngModelChange)="filterDateFrom.set($event)" />
+                @if (!filterDateFrom()) {
+                <span class="record-date-placeholder" aria-hidden="true">-</span>
+                }
+              </span>
+            </label>
+            <label class="records-filter-date-field">
+              <span>Έως</span>
+              <span class="record-date-input-wrap" [class.is-empty]="!filterDateTo()">
+                <input type="date" class="form-control record-date-input" [ngModel]="filterDateTo()"
+                  (ngModelChange)="filterDateTo.set($event)" />
+                @if (!filterDateTo()) {
+                <span class="record-date-placeholder" aria-hidden="true">-</span>
+                }
+              </span>
+            </label>
+          </div>
+        </section>
+      </div>
+
+      <div class="modal-footer modal-footer-split">
+        <button type="button" class="btn btn-secondary" (click)="resetAllFilters()">Καθαρισμός φίλτρων</button>
+        <button type="button" class="btn btn-primary" (click)="closeFilterModal()">
+          Εφαρμογή ({{ filteredRecords().length }})
+        </button>
+      </div>
+    </div>
+  </div>
+  }
 
   <!-- Main Content Card / Table -->
   <div class="card table-card">
@@ -150,12 +242,12 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th style="width: 100px;">ΤΥΠΟΣ</th>
-            <th style="width: 110px;">ΗΜΕΡΟΜΗΝΙΑ</th>
-            <th style="width: 240px;">ΣΤΡΑΤΙΩΤΗΣ</th>
-            <th>ΑΙΤΙΟΛΟΓΙΑ</th>
-            <th>ΠΑΡΑΤΗΡΗΣΕΙΣ</th>
-            <th style="width: 120px;">ΚΑΤΑΣΤΑΣΗ</th>
+            <th style="width: 100px;"><button type="button" class="sortable-header" (click)="toggleSort('type')">ΤΥΠΟΣ <span>{{ sortColumn() === 'type' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
+            <th style="width: 110px;"><button type="button" class="sortable-header" (click)="toggleSort('date')">ΗΜΕΡΟΜΗΝΙΑ <span>{{ sortColumn() === 'date' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
+            <th style="width: 240px;"><button type="button" class="sortable-header" (click)="toggleSort('personName')">ΣΤΡΑΤΙΩΤΗΣ <span>{{ sortColumn() === 'personName' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
+            <th><button type="button" class="sortable-header" (click)="toggleSort('reason')">ΑΙΤΙΟΛΟΓΙΑ <span>{{ sortColumn() === 'reason' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
+            <th><button type="button" class="sortable-header" (click)="toggleSort('notes')">ΠΑΡΑΤΗΡΗΣΕΙΣ <span>{{ sortColumn() === 'notes' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
+            <th style="width: 120px;"><button type="button" class="sortable-header" (click)="toggleSort('status')">ΚΑΤΑΣΤΑΣΗ <span>{{ sortColumn() === 'status' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
             <th style="width: 110px; text-align: center;">ΕΝΕΡΓΕΙΕΣ</th>
           </tr>
         </thead>
@@ -193,7 +285,7 @@
             <!-- Soldier -->
             <td>
               <div class="soldier-cell">
-                <span class="soldier-name">{{ record.personName }}</span>
+                <span class="soldier-name">{{ formatRecordPersonName(record.personName) }}</span>
               </div>
             </td>
 
@@ -269,7 +361,7 @@
       </div>
       <h3 class="empty-state-title">Δεν βρέθηκαν αιτήματα ή ποινές</h3>
       <p class="empty-state-description">
-        @if (searchQuery() || dateFilter() || selectedTab() !== 'ALL') {
+        @if (activeFilterCount() > 0) {
         Δεν υπάρχουν εγγραφές που να ανταποκρίνονται στα επιλεγμένα φίλτρα αναζήτησης.
         } @else {
         Δεν έχει καταχωρηθεί ακόμη κανένα αίτημα ή ποινή για το προσωπικό της μονάδας.
@@ -304,7 +396,7 @@
           <label class="form-label">ΤΥΠΟΣ ΕΓΓΡΑΦΗΣ *</label>
           <div class="type-selector-buttons">
             <button type="button" class="type-btn type-btn-req" [class.active]="formModel.type === 'ΑΙΤΗΜΑ'"
-              (click)="formModel.type = 'ΑΙΤΗΜΑ'">
+              (click)="formModel.type = 'ΑΙΤΗΜΑ'; closeReasonAutocomplete()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 16v-4" />
@@ -314,7 +406,7 @@
             </button>
 
             <button type="button" class="type-btn type-btn-pen" [class.active]="formModel.type === 'ΠΟΙΝΗ'"
-              (click)="formModel.type = 'ΠΟΙΝΗ'">
+              (click)="formModel.type = 'ΠΟΙΝΗ'; closeReasonAutocomplete()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                 <line x1="12" y1="9" x2="12" y2="13" />
@@ -374,7 +466,12 @@
         <div class="form-row-2col">
           <div class="form-group">
             <label class="form-label">ΗΜΕΡΟΜΗΝΙΑ *</label>
-            <input type="date" class="form-control" [(ngModel)]="formModel.date" required />
+            <span class="record-date-input-wrap" [class.is-empty]="!formModel.date">
+              <input type="date" class="form-control record-date-input" [(ngModel)]="formModel.date" required />
+              @if (!formModel.date) {
+              <span class="record-date-placeholder" aria-hidden="true">-</span>
+              }
+            </span>
           </div>
 
           <div class="form-group">
@@ -391,9 +488,33 @@
         <!-- Reason (ΑΙΤΙΟΛΟΓΙΑ) -->
         <div class="form-group">
           <label class="form-label">ΑΙΤΙΟΛΟΓΙΑ *</label>
-          <textarea class="form-control textarea-field" rows="3"
-            placeholder="Συμπληρώστε την αιτιολογία του αιτήματος ή της ποινής..." [(ngModel)]="formModel.reason"
-            required></textarea>
+          <div class="reason-autocomplete-group">
+            <textarea #reasonInput class="form-control textarea-field" rows="3"
+              placeholder="Συμπληρώστε την αιτιολογία του αιτήματος ή της ποινής..."
+              [ngModel]="formModel.reason" (ngModelChange)="onReasonChange($event, reasonInput)"
+              (click)="updateReasonAutocomplete(reasonInput)" (keyup)="onReasonKeyup($event, reasonInput)"
+              (blur)="closeReasonAutocomplete()"
+              (keydown)="onReasonKeydown($event, reasonInput)"
+              [attr.aria-autocomplete]="formModel.type === 'ΠΟΙΝΗ' ? 'list' : null"
+              [attr.aria-expanded]="higherPersonnelSuggestions().length > 0" required></textarea>
+            @if (formModel.type === 'ΠΟΙΝΗ' && reasonAutocompleteContext()) {
+              <div class="reason-autocomplete-dropdown" role="listbox" aria-label="Ανώτερο προσωπικό">
+                @if (higherPersonnelSuggestions().length > 0) {
+                  @for (person of higherPersonnelSuggestions(); track person.id; let index = $index) {
+                    <button type="button" class="higher-person-option"
+                      [class.active]="reasonAutocompleteIndex() === index"
+                      (mousedown)="$event.preventDefault()"
+                      (click)="selectHigherPersonnel(person, reasonInput)" role="option">
+                      <span class="higher-person-main">{{ formatReferenceRank(person.rank) }} {{ formatReferenceName(person.fullName, reasonAutocompleteContext()?.pronoun === 'τον') }}</span>
+                      <span class="higher-person-role">{{ person.roleTitle }}</span>
+                    </button>
+                  }
+                } @else {
+                  <div class="higher-person-no-results">Δεν βρέθηκε ανώτερο προσωπικό.</div>
+                }
+              </div>
+            }
+          </div>
         </div>
 
         <!-- Notes (ΠΑΡΑΤΗΡΗΣΕΙΣ) -->

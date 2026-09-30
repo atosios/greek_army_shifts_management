@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { StorageService } from '../../services/storage.service';
 import { ExcelExportService } from '../../services/excel-export.service';
 import * as XLSX from 'xlsx';
-import { Personnel, MilitaryCategory, PersonnelStatus, FitnessLevel, LeaveType, toGreekCaps, formatGreekDate, getCorpsShort, normalizeGreek, SPECIAL_ROLES } from '../../models/shift.model';
+import { Personnel, SoldierRecord, MilitaryCategory, PersonnelStatus, FitnessLevel, LeaveType, toGreekCaps, formatGreekDate, getCorpsShort, normalizeGreek, SPECIAL_ROLES } from '../../models/shift.model';
 import { GREEK_RANKS, GREEK_CORPS } from '../../data/default-data';
 
 export type CsvConflictStrategy = 'UPDATE' | 'SKIP' | 'INSERT';
@@ -253,6 +253,15 @@ export class PersonnelComponent {
   ];
 
   soldierCalDate = signal<Date>(new Date());
+
+  readonly profileSoldierRecords = computed<SoldierRecord[]>(() => {
+    const personId = this.editingPersonId();
+    if (!personId) return [];
+
+    return this.storage.soldierRecords()
+      .filter(record => record.personId === personId)
+      .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+  });
 
   readonly soldierCalMonthLabel = computed(() => {
     const d = this.soldierCalDate();

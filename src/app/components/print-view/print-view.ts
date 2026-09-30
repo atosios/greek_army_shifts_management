@@ -4,8 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { StorageService } from '../../services/storage.service';
 import { ExcelExportService } from '../../services/excel-export.service';
-import { DailySchedule, Personnel, DutyAssignment, ShiftSlotAssignment, SignatureSlot, formatGreekDate, formatLocalDate, normalizeGreek } from '../../models/shift.model';
-import { DEFAULT_EMBLEM_BASE64 } from '../../data/default-emblem';
+import { DailySchedule, Personnel, DutyAssignment, ShiftSlotAssignment, SignatureSlot, TimeInterval, formatGreekDate, formatLocalDate, normalizeGreek } from '../../models/shift.model';
 
 export interface PrintableSlotItem {
   index: number;
@@ -13,6 +12,29 @@ export interface PrintableSlotItem {
   person: Personnel | undefined;
   slot: ShiftSlotAssignment;
 }
+
+const STANDARD_GUARD_INTERVALS: TimeInterval[][] = [
+  [
+    { from: '14:00', to: '16:00' },
+    { from: '22:00', to: '00:00' },
+    { from: '06:00', to: '08:00' }
+  ],
+  [
+    { from: '16:00', to: '18:00' },
+    { from: '00:00', to: '02:00' },
+    { from: '08:00', to: '10:00' }
+  ],
+  [
+    { from: '18:00', to: '20:00' },
+    { from: '02:00', to: '04:00' },
+    { from: '10:00', to: '12:00' }
+  ],
+  [
+    { from: '20:00', to: '22:00' },
+    { from: '04:00', to: '06:00' },
+    { from: '12:00', to: '14:00' }
+  ]
+];
 
 @Component({
   selector: 'app-print-view',
@@ -26,7 +48,6 @@ export class PrintViewComponent {
   excelService = inject(ExcelExportService);
   route = inject(ActivatedRoute);
 
-  readonly defaultEmblem = DEFAULT_EMBLEM_BASE64;
   readonly formatGreekDate = formatGreekDate;
   readonly higherPersonnel = this.storage.higherPersonnel;
 
@@ -115,9 +136,13 @@ export class PrintViewComponent {
    * SURNAME (ROOM.BED) [DUTY_CODE] e.g. "ΒΟΠΑΖΟΣ (2.1) ΘΦ" or "ΗΛΙΑΔΗΣ Χ. (2.1)"
    */
   formatSoldierDisplay(personId: string | null | undefined, personNameFallback?: string, suffix?: string): string {
-    if (!personId && !personNameFallback) return '---';
+    const fallbackName = personNameFallback?.trim();
     const p = personId ? this.getPerson(personId) : null;
-    const fullName = p ? p.fullName : (personNameFallback || '---');
+    const fullName = (p?.fullName || fallbackName || '').trim();
+    const normalizedName = normalizeGreek(fullName);
+    const compactName = normalizedName.replace(/\s+/g, '');
+    const emptySlotNames = ['', '-', '---', 'κ.', 'κενη θεση'];
+    if (emptySlotNames.includes(normalizedName) || /^-+κ\.$/u.test(compactName)) return '-';
 
     const tokens = fullName.trim().split(/\s+/);
     let displayName = tokens[0] || fullName;
@@ -213,8 +238,7 @@ export class PrintViewComponent {
       const code = d.dutyTypeId.toLowerCase();
       const isTh = name.includes('θαλαμ') || code.includes('θαλαμ');
       const isOp = name.includes('οπλοφ') || code.includes('οπλοφ');
-      const isGuard = name.includes('πυλ') || name.includes('σκοπ') || name.includes('περίπολ');
-      return !isTh && !isOp && isGuard;
+      return !isTh && !isOp && this.isGuardDuty(d) && this.hasStandardGuardHours(d);
     });
   });
 
@@ -225,31 +249,7 @@ export class PrintViewComponent {
     const thSlots = thDuty ? thDuty.slots : [];
     const opSlots = opDuty ? opDuty.slots : [];
 
-    const d1 = this.date1Formatted();
-    const d2 = this.date2Formatted();
-
-    const timeDefs = [
-      [
-        { date: d1, time: '14:00 - 16:00' },
-        { date: d1, time: '22:00 - 00:00' },
-        { date: d2, time: '06:00 - 08:00' }
-      ],
-      [
-        { date: d1, time: '16:00 - 18:00' },
-        { date: d2, time: '00:00 - 02:00' },
-        { date: d2, time: '08:00 - 10:00' }
-      ],
-      [
-        { date: d1, time: '18:00 - 20:00' },
-        { date: d2, time: '02:00 - 04:00' },
-        { date: d2, time: '10:00 - 12:00' }
-      ],
-      [
-        { date: d1, time: '20:00 - 22:00' },
-        { date: d2, time: '04:00 - 06:00' },
-        { date: d2, time: '12:00 - 14:00' }
-      ]
-    ];
+    const timeDefs = STANDARD_GUARD_INTERVALS.map(intervals => this.formatDutyIntervals(intervals));
 
     return timeDefs.map((times, idx) => {
       const gIndex = idx + 1;
@@ -370,18 +370,99 @@ export class PrintViewComponent {
       if (name.includes('αρτοκλιβ') || name.includes('αρτοποι') || name.includes('φουρν') || code.includes('artokliv') || code.includes('bakery') || short === 'αρτ' || dtName.includes('αρτοκλιβ')) return false;
       if (name.includes('επιφυλακ') || code.includes('επιφυλακ') || code.includes('epifylak')) return false;
       if (name.includes('κψμ') || name.includes('καψιμ') || code.includes('kpsm') || code.includes('ksym')) return false;
-      if (name.includes('πυλ') || name.includes('σκοπ') || name.includes('περιπολ')) return false;
+      if (this.isGuardDuty(d) && this.hasStandardGuardHours(d)) return false;
       return true;
     }).map(d => {
       const dtDef = this.storage.dutyTypes().find(dt => dt.id === d.dutyTypeId);
       return {
+        dutyTypeId: d.dutyTypeId,
         dutyName: d.dutyName,
         shortName: d.shortName || d.dutyName,
         shiftHours: dtDef?.shiftHours || (d.slots[0]?.hoursNote || ''),
-        slots: d.slots
+        slots: d.slots,
+        timeGroups: this.createDutyTimeGroups(d.slots, dtDef?.shiftHours || '')
       };
     });
   });
+
+  private createDutyTimeGroups(slots: ShiftSlotAssignment[], fallbackTime: string) {
+    const groups = new Map<string, { times: { date: string; time: string }[]; slots: ShiftSlotAssignment[] }>();
+    const date1 = this.date1Formatted();
+
+    for (const slot of slots) {
+      const intervals = slot.intervals || [];
+      const note = slot.hoursNote || fallbackTime;
+      const key = intervals.length > 0 ? JSON.stringify(intervals) : note;
+      let group = groups.get(key);
+
+      if (!group) {
+        let dayOffset = 0;
+        group = {
+          times: intervals.length > 0
+            ? this.formatDutyIntervals(intervals)
+            : [{ date: date1, time: note || '-' }],
+          slots: []
+        };
+        groups.set(key, group);
+      }
+
+      group.slots.push(slot);
+    }
+
+    if (groups.size === 0) {
+      return [{ times: [{ date: date1, time: fallbackTime || '-' }], slots: [] as ShiftSlotAssignment[] }];
+    }
+
+    return [...groups.values()];
+  }
+
+  private formatDutyIntervals(intervals: TimeInterval[]) {
+    const date1 = this.date1Formatted();
+    const date2 = this.date2Formatted();
+    let dayOffset = 0;
+    let previousStart: number | undefined;
+
+    return intervals.map(interval => {
+      const [fromHour, fromMinute] = interval.from.split(':').map(Number);
+      const from = fromHour * 60 + fromMinute;
+      if (previousStart !== undefined && from < previousStart) dayOffset++;
+      previousStart = from;
+      return {
+        date: this.formatDutyDateOffset(dayOffset, date1, date2),
+        time: `${interval.from} - ${interval.to}`
+      };
+    });
+  }
+
+  private isGuardDuty(duty: DutyAssignment): boolean {
+    const name = normalizeGreek(duty.dutyName || '');
+    const id = normalizeGreek(duty.dutyTypeId || '');
+    return name.includes('πυλ') || name.includes('σκοπ') || name.includes('περιπολ') ||
+      id.includes('πυλ') || id.includes('σκοπ') || id.includes('περιπολ');
+  }
+
+  private hasStandardGuardHours(duty: DutyAssignment): boolean {
+    if (duty.slots.length === 0) return false;
+    return duty.slots.every(slot => {
+      const groupIndex = slot.groupIndex;
+      const standardIntervals = groupIndex ? STANDARD_GUARD_INTERVALS[groupIndex - 1] : undefined;
+      if (!standardIntervals || !slot.intervals?.length) return false;
+      return this.intervalSignature(slot.intervals) === this.intervalSignature(standardIntervals);
+    });
+  }
+
+  private intervalSignature(intervals: TimeInterval[]): string {
+    return intervals.map(interval => `${interval.from}-${interval.to}`).join('|');
+  }
+
+  private formatDutyDateOffset(dayOffset: number, date1: string, date2: string): string {
+    if (dayOffset === 0) return date1;
+    if (dayOffset === 1) return date2;
+
+    const [year, month, day] = this.date().split('-').map(Number);
+    const shiftedDate = new Date(year, month - 1, day + dayOffset);
+    return this.formatShortDate(formatLocalDate(shiftedDate));
+  }
 
   readonly col3Data = computed(() => {
     const d1 = this.date1Formatted();
@@ -531,11 +612,7 @@ export class PrintViewComponent {
       }));
       this.signatures.set(defaultSlots);
     } else {
-      this.signatures.set([
-        { roleTitle: 'ΔΙΟΙΚΗΤΗΣ ΜΟΙΡΑΣ', fullName: 'ΖΑΒΙΤΣΑΝΟΣ ΔΗΜΗΤΡΙΟΣ', rank: 'ΑΝΧΗΣ (ΠΒ)' },
-        { roleTitle: 'ΔΚΤΗΣ ΠΥΡΧΙΑΣ', fullName: 'ΛΙΝΑΡΔΟΣ ΜΑΡΙΟΣ', rank: 'ΥΠΛΓΟΣ (ΠΖ)' },
-        { roleTitle: 'ΑΛΧΙΑΣ ΠΥΡΧΙΑΣ', fullName: 'ΤΕΡΖΟΓΛΟΥ ΕΥΜΟΡΦΙΑ', rank: 'ΑΝΘΛΓΟΣ (ΠΒ)' }
-      ]);
+      this.signatures.set([]);
     }
   }
 
@@ -566,7 +643,7 @@ export class PrintViewComponent {
       rank: nextAvailable.rank,
       higherPersonnelId: nextAvailable.id
     } : {
-      roleTitle: 'ΑΞΙΩΜΑΤΙΚΟΣ ΥΠΗΡΕΣΙΑΣ',
+      roleTitle: '',
       fullName: '',
       rank: ''
     };
