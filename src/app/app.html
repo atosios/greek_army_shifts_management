@@ -1,6 +1,6 @@
-<div class="app-container">
+<div class="app-container" [class.sidebar-collapsed]="sidebarCollapsed()">
   <!-- Left Sidebar Navigation (Deep Iron #262B31) -->
-  <aside class="sidebar no-print">
+  <aside id="primary-sidebar" class="sidebar no-print" [attr.inert]="sidebarCollapsed() ? '' : null" [attr.aria-hidden]="sidebarCollapsed()">
     <!-- Sidebar Header / Branding -->
     <div class="sidebar-header" routerLink="/">
       <div class="sidebar-crest">
@@ -182,6 +182,20 @@
     <!-- Top Utility Bar -->
     <header class="top-bar no-print">
       <div class="top-bar-left">
+        <button
+          type="button"
+          class="sidebar-toggle"
+          [attr.aria-label]="sidebarCollapsed() ? 'Άνοιγμα πλευρικής πλοήγησης' : 'Κλείσιμο πλευρικής πλοήγησης'"
+          [attr.aria-expanded]="!sidebarCollapsed()"
+          aria-controls="primary-sidebar"
+          [title]="sidebarCollapsed() ? 'Άνοιγμα πλευρικής πλοήγησης' : 'Κλείσιμο πλευρικής πλοήγησης'"
+          (click)="toggleSidebar()">
+          <svg [class.is-collapsed]="sidebarCollapsed()" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M9 3v18"/>
+            <path d="m15 8-4 4 4 4"/>
+          </svg>
+        </button>
         <span class="unit-title-pill">{{ storage.unitInfo().name }}</span>
         <span class="top-breadcrumb">Σύστημα Διαχείρισης & Κατανομής Υπηρεσιών</span>
       </div>
