@@ -14,6 +14,14 @@ export interface HkapRowItem {
   isEmpty: boolean;
 }
 
+export interface HkapPrintPage {
+  pageNumber: number;
+  type: 'REQUESTS' | 'PENALTIES';
+  title: string;
+  rows: HkapRowItem[];
+  isEmpty: boolean;
+}
+
 @Component({
   selector: 'app-hkap',
   standalone: true,
@@ -98,31 +106,106 @@ export class HkapComponent {
     return dateStr;
   }
 
+  private buildEmptyRow(): HkapRowItem {
+    return {
+      numberText: '0',
+      soldierName: '-',
+      content: '-',
+      notes: '-',
+      isEmpty: true
+    };
+  }
+
+  private buildRowsForRecord(record: SoldierRecord, index: number): HkapRowItem {
+    return {
+      numberText: String(index + 1),
+      record,
+      soldierName: toGreekCaps(formatRecordPersonName(record.personName)),
+      content: toGreekCaps(record.reason),
+      notes: record.notes ? toGreekCaps(record.notes) : '-',
+      isEmpty: false
+    };
+  }
+
+  private calculateRowsPerPage(rows: HkapRowItem[]): number {
+    if (rows.length <= 1) return 1;
+
+    const longTextCount = rows.filter(row => {
+      const textLength = `${row.content || ''}${row.notes || ''}`.length;
+      return textLength > 180;
+    }).length;
+
+    const baseRows = 9;
+    const shrinkBy = Math.min(3, Math.floor(longTextCount / 2));
+    return Math.max(5, baseRows - shrinkBy);
+  }
+
+  private buildPageGroups(rows: HkapRowItem[], type: 'REQUESTS' | 'PENALTIES'): HkapPrintPage[] {
+    const effectiveRows = rows.length > 0 ? rows : [this.buildEmptyRow()];
+    const capacity = this.calculateRowsPerPage(effectiveRows);
+    const pages: HkapPrintPage[] = [];
+
+    for (let start = 0; start < effectiveRows.length; start += capacity) {
+      const slice = effectiveRows.slice(start, start + capacity);
+      pages.push({
+        pageNumber: pages.length + 1,
+        type,
+        title: type === 'REQUESTS'
+          ? `ΑΙΤΗΣΕΩΝ – ΑΝΑΦΟΡΩΝ ΟΠΛΙΤΩΝ ΤΗΣ ${this.formatTitleDate(this.date())}`
+          : `ΠΟΙΝΩΝ ΟΠΛΙΤΩΝ ΤΗΣ ${this.formatTitleDate(this.date())}`,
+        rows: slice,
+        isEmpty: slice.every(row => row.isEmpty)
+      });
+    }
+
+    return pages;
+  }
+
+  readonly requestPages = computed<HkapPrintPage[]>(() => {
+    const selectedIds = this.selectedRecordIds();
+    const rows = this.allRecords()
+      .filter(r => r.type === 'ΑΙΤΗΜΑ' && selectedIds.has(r.id))
+      .map((r, idx) => this.buildRowsForRecord(r, idx));
+
+    return this.buildPageGroups(rows, 'REQUESTS');
+  });
+
+  readonly penaltyPages = computed<HkapPrintPage[]>(() => {
+    const selectedIds = this.selectedRecordIds();
+    const rows = this.allRecords()
+      .filter(r => r.type === 'ΠΟΙΝΗ' && selectedIds.has(r.id))
+      .map((r, idx) => this.buildRowsForRecord(r, idx));
+
+    return this.buildPageGroups(rows, 'PENALTIES');
+  });
+
+  readonly printPages = computed<HkapPrintPage[]>(() => {
+    const pages: HkapPrintPage[] = [];
+    let pageNumber = 1;
+
+    this.requestPages().forEach(page => {
+      pages.push({ ...page, pageNumber: pageNumber++ });
+    });
+
+    this.penaltyPages().forEach(page => {
+      pages.push({ ...page, pageNumber: pageNumber++ });
+    });
+
+    return pages;
+  });
+
+  readonly estimatedPrintPages = computed(() => this.printPages().length);
+
   // Selected requests to print
   readonly printableRequests = computed<HkapRowItem[]>(() => {
     const selectedIds = this.selectedRecordIds();
     const records = this.allRecords().filter(r => r.type === 'ΑΙΤΗΜΑ' && selectedIds.has(r.id));
 
-    // By default: 1 row with number 0 and '-' on text areas
     if (records.length === 0) {
-      return [{
-        numberText: '0',
-        soldierName: '-',
-        content: '-',
-        notes: '-',
-        isEmpty: true
-      }];
+      return [this.buildEmptyRow()];
     }
 
-    // When filled: number starting from 1, exactly one row per selected entry
-    return records.map((r, idx) => ({
-      numberText: String(idx + 1),
-      record: r,
-      soldierName: toGreekCaps(formatRecordPersonName(r.personName)),
-      content: toGreekCaps(r.reason),
-      notes: r.notes ? toGreekCaps(r.notes) : '-',
-      isEmpty: false
-    }));
+    return records.map((r, idx) => this.buildRowsForRecord(r, idx));
   });
 
   // Selected penalties to print
@@ -130,26 +213,11 @@ export class HkapComponent {
     const selectedIds = this.selectedRecordIds();
     const records = this.allRecords().filter(r => r.type === 'ΠΟΙΝΗ' && selectedIds.has(r.id));
 
-    // By default: 1 row with number 0 and '-' on text areas
     if (records.length === 0) {
-      return [{
-        numberText: '0',
-        soldierName: '-',
-        content: '-',
-        notes: '-',
-        isEmpty: true
-      }];
+      return [this.buildEmptyRow()];
     }
 
-    // When filled: number starting from 1, exactly one row per selected entry
-    return records.map((r, idx) => ({
-      numberText: String(idx + 1),
-      record: r,
-      soldierName: toGreekCaps(formatRecordPersonName(r.personName)),
-      content: toGreekCaps(r.reason),
-      notes: r.notes ? toGreekCaps(r.notes) : '-',
-      isEmpty: false
-    }));
+    return records.map((r, idx) => this.buildRowsForRecord(r, idx));
   });
 
   constructor() {
@@ -204,7 +272,6 @@ export class HkapComponent {
   initDefaultSignatures() {
     const hp = this.higherPersonnel();
     if (hp && hp.length > 0) {
-      // Look for Commander and Battery Commander / Duty Officer first
       const cmd = hp.find(p => p.roleTitle.includes('ΔΙΟΙΚΗΤΗΣ') || p.roleTitle.includes('ΔΚΤΗΣ ΜΟΙΡΑΣ'));
       const duty = hp.find(p => p.roleTitle.includes('ΠΥΡΧΙΑΣ') || p.roleTitle.includes('ΥΠΗΡΕΣΙΑΣ'));
 
@@ -226,7 +293,6 @@ export class HkapComponent {
         });
       }
 
-      // If less than 2, fill up to 2 from hp
       for (const p of hp) {
         if (defaultSlots.length >= 2) break;
         if (!defaultSlots.some(s => s.higherPersonnelId === p.id)) {
