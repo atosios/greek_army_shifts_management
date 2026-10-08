@@ -57,6 +57,24 @@
   padding: 0.35rem 0.6rem;
 }
 
+.print-summary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.print-summary-pill strong {
+  color: #111827;
+}
+
 .btn-drawer-toggle {
   display: inline-flex;
   align-items: center;
@@ -856,7 +874,6 @@
     justify-content: space-between !important;
     width: 100% !important;
     height: 100vh !important;
-    /* 100vh in print equals exactly one page height */
     max-width: none !important;
     min-height: 0 !important;
     max-height: none !important;
@@ -870,7 +887,6 @@
     page-break-inside: avoid !important;
   }
 
-  /* Page 2 logic remains the same */
   .hkap-sheet.hkap-page-2 {
     page-break-before: always !important;
     break-before: page !important;
