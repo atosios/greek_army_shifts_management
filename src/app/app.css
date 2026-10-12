@@ -22,6 +22,13 @@
   top: 0;
   height: 100vh;
   z-index: 100;
+  overflow: hidden;
+  transition: width 0.2s ease;
+}
+
+.sidebar-collapsed .sidebar {
+  width: 0;
+  border-right-width: 0;
 }
 
 .sidebar-header {
@@ -212,6 +219,39 @@
   gap: 0.75rem;
 }
 
+.sidebar-toggle {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: var(--steel-blue-gray);
+  background: #FFFFFF;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-toggle:hover {
+  color: var(--midnight-charcoal);
+  background: var(--bg-subtle);
+}
+
+.sidebar-toggle:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.sidebar-toggle svg {
+  transition: transform 0.2s ease;
+}
+
+.sidebar-toggle svg.is-collapsed {
+  transform: rotate(180deg);
+}
+
 .unit-title-pill {
   background: #EEF2F6;
   border: 1px solid var(--border-medium);
@@ -319,4 +359,73 @@
   color: var(--text-muted);
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+@media (max-width: 900px) {
+  .top-bar {
+    padding: 0.6rem 0.9rem;
+  }
+
+  .top-bar-left {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .top-breadcrumb {
+    display: none;
+  }
+
+  .top-bar-right {
+    gap: 0.5rem;
+  }
+
+  .content-body {
+    padding: 1rem 1.1rem 1.5rem;
+  }
+
+  .app-footer-bar {
+    padding: 0.55rem 1.1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .top-bar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .top-bar-left,
+  .top-bar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .last-save-pill {
+    display: none;
+  }
+
+  .content-body {
+    padding: 0.75rem 0.65rem 1rem;
+  }
+
+  .app-footer-bar {
+    padding: 0.5rem 0.65rem;
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-height: 620px) {
+  .app-footer-bar {
+    display: none;
+  }
+
+  .sidebar-header {
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+  }
+
+  .sidebar-unit-card {
+    margin-top: 0.5rem;
+  }
 }

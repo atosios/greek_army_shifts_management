@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -423,11 +423,13 @@ function ensureDataFile() {
 }
 
 function createWindow() {
+  const { width: displayWidth, height: displayHeight } = screen.getPrimaryDisplay().workAreaSize;
   mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    minWidth: 1024,
-    minHeight: 700,
+    width: Math.min(1400, displayWidth),
+    height: Math.min(900, displayHeight),
+    minWidth: Math.min(760, displayWidth),
+    minHeight: Math.min(520, displayHeight),
+    center: true,
     title: 'Διαχείριση Υπηρεσιών Ελληνικού Στρατού',
     backgroundColor: '#0f172a',
     webPreferences: {
@@ -441,6 +443,22 @@ function createWindow() {
 
   // Remove default menu for clean, distraction-free native desktop look
   mainWindow.setMenuBarVisibility(false);
+
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (!(input.control || input.meta) || input.type !== 'keyDown') return;
+
+    const currentZoom = mainWindow.webContents.getZoomFactor();
+    if (input.key === '+' || input.key === '=' || input.key === 'Add') {
+      event.preventDefault();
+      mainWindow.webContents.setZoomFactor(Math.min(currentZoom + 0.1, 2));
+    } else if (input.key === '-' || input.key === 'Subtract') {
+      event.preventDefault();
+      mainWindow.webContents.setZoomFactor(Math.max(currentZoom - 0.1, 0.5));
+    } else if (input.key === '0') {
+      event.preventDefault();
+      mainWindow.webContents.setZoomFactor(1);
+    }
+  });
 
   // Load Angular output or localhost in dev
   const indexPath = path.join(__dirname, 'dist', 'army-shift-app', 'browser', 'index.html');

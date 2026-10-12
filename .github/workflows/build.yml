@@ -8,6 +8,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -29,7 +32,7 @@ jobs:
         run: npm run app:build
 
       - name: Build Electron portable exe
-        run: npx electron-builder --win portable --x64
+        run: npx electron-builder --win portable --x64 --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

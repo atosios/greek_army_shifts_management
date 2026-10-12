@@ -14,9 +14,11 @@ export class App implements OnInit, OnDestroy {
   storage = inject(StorageService);
 
   readonly currentTime = signal<string>('');
+  readonly sidebarCollapsed = signal(false);
   private timerInterval: any = null;
 
   ngOnInit() {
+    this.sidebarCollapsed.set(window.matchMedia('(max-width: 1100px)').matches);
     this.updateClock();
     this.timerInterval = setInterval(() => this.updateClock(), 1000);
   }
@@ -37,6 +39,10 @@ export class App implements OnInit, OnDestroy {
     }) + ' | ' + now.toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
     this.currentTime.set(formatted);
+  }
+
+  toggleSidebar() {
+    this.sidebarCollapsed.update(collapsed => !collapsed);
   }
 
   minimizeWindow() {

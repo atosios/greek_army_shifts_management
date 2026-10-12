@@ -437,6 +437,40 @@ body {
   background: #F8F9FA;
 }
 
+@media (max-width: 900px) {
+  .card {
+    padding: 1rem;
+  }
+
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding: 0.85rem 1rem;
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-header {
+    align-items: flex-start;
+  }
+
+  .page-title {
+    font-size: 1.2rem;
+  }
+
+  .modal-overlay {
+    padding: 0.5rem;
+  }
+
+  .modal-content {
+    max-height: 96vh;
+  }
+}
+
 /* Utilities */
 .text-muted {
   color: var(--text-muted);
