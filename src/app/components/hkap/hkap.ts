@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { StorageService } from '../../services/storage.service';
+import { ExcelExportService } from '../../services/excel-export.service';
 import { SoldierRecord, SignatureSlot, formatGreekDate, formatLocalDate, formatRecordPersonName, normalizeGreek, toGreekCaps } from '../../models/shift.model';
 
 export interface HkapRowItem {
@@ -23,6 +24,7 @@ export interface HkapRowItem {
 })
 export class HkapComponent {
   storage = inject(StorageService);
+  excelService = inject(ExcelExportService);
 
   readonly formatGreekDate = formatGreekDate;
   readonly formatRecordPersonName = formatRecordPersonName;
@@ -51,6 +53,9 @@ export class HkapComponent {
   // Selection drawer & header config state
   isSelectionPanelOpen = signal<boolean>(false);
   isHeaderConfigOpen = signal<boolean>(false);
+
+  // Copy text state
+  copiedKey = signal<string | null>(null);
 
   // All soldier records from storage
   readonly allRecords = this.storage.soldierRecords;
@@ -142,14 +147,22 @@ export class HkapComponent {
     }
 
     // When filled: number starting from 1, exactly one row per selected entry
-    return records.map((r, idx) => ({
-      numberText: String(idx + 1),
-      record: r,
-      soldierName: toGreekCaps(formatRecordPersonName(r.personName)),
-      content: toGreekCaps(r.reason),
-      notes: r.notes ? toGreekCaps(r.notes) : '-',
-      isEmpty: false
-    }));
+    return records.map((r, idx) => {
+      const prog = this.storage.calculatePenaltyProgress(r);
+      let contentText = toGreekCaps(r.reason);
+      if (prog.totalDays > 0) {
+        contentText += ` (${prog.servedDays}/${prog.totalDays} ΗΜ.)`;
+      }
+
+      return {
+        numberText: String(idx + 1),
+        record: r,
+        soldierName: toGreekCaps(formatRecordPersonName(r.personName)),
+        content: contentText,
+        notes: r.notes ? toGreekCaps(r.notes) : '-',
+        isEmpty: false
+      };
+    });
   });
 
   constructor() {
@@ -359,5 +372,43 @@ export class HkapComponent {
     } else {
       window.print();
     }
+  }
+
+  async exportExcel() {
+    const headerLines = [
+      this.headerLine1(),
+      this.headerLine2(),
+      this.headerLine3(),
+      this.headerLine4()
+    ].filter(l => !!l.trim());
+
+    await this.excelService.exportHkapToExcel({
+      date: this.date(),
+      headerLines,
+      requests: this.printableRequests(),
+      penalties: this.printablePenalties(),
+      signatures: this.signatures()
+    });
+  }
+
+  async copyText(text: string, key: string) {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    this.copiedKey.set(key);
+    this.storage.notify('Το κείμενο αντιγράφηκε στο πρόχειρο.', 'info');
+    setTimeout(() => {
+      if (this.copiedKey() === key) {
+        this.copiedKey.set(null);
+      }
+    }, 2000);
   }
 }

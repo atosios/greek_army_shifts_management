@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { StorageService } from '../../services/storage.service';
-import { SoldierRecord, SoldierRecordType, Personnel, HigherPersonnel, formatGreekDate, formatLocalDate, formatRecordPersonName, normalizeGreek } from '../../models/shift.model';
+import { ExcelExportService } from '../../services/excel-export.service';
+import { SoldierRecord, SoldierRecordType, PenaltySubtype, Personnel, HigherPersonnel, formatGreekDate, formatLocalDate, formatRecordPersonName, normalizeGreek } from '../../models/shift.model';
 
 @Component({
   selector: 'app-requests-penalties',
@@ -14,6 +15,7 @@ import { SoldierRecord, SoldierRecordType, Personnel, HigherPersonnel, formatGre
 })
 export class RequestsPenaltiesComponent {
   storage = inject(StorageService);
+  excelService = inject(ExcelExportService);
 
   readonly formatGreekDate = formatGreekDate;
   readonly formatRecordPersonName = formatRecordPersonName;
@@ -34,9 +36,14 @@ export class RequestsPenaltiesComponent {
     'Εκκρεμεί', 'Εγκρίθηκε', 'Απορρίφθηκε', 'Ολοκληρώθηκε'
   ];
 
+  readonly penaltyTypes: PenaltySubtype[] = ['ΣΤ ΕΞΟΔΟΥ', 'Κ', 'Φ', 'ΑΛΛΟ'];
+
   // Modal State
   isModalOpen = signal<boolean>(false);
   editingRecordId = signal<string | null>(null);
+
+  // Copy text state
+  copiedRecordKey = signal<string | null>(null);
 
   // Soldier combobox selector state
   personSearchQuery = signal<string>('');
@@ -52,6 +59,10 @@ export class RequestsPenaltiesComponent {
     reason: string;
     notes: string;
     status: 'Εκκρεμεί' | 'Εγκρίθηκε' | 'Απορρίφθηκε' | 'Ολοκληρώθηκε';
+    penaltyType: PenaltySubtype;
+    totalDays: number | null;
+    servedDays: number | null;
+    isManualServedDays: boolean;
   } = {
     type: 'ΑΙΤΗΜΑ',
     personId: '',
@@ -59,7 +70,11 @@ export class RequestsPenaltiesComponent {
     date: formatLocalDate(new Date()),
     reason: '',
     notes: '',
-    status: 'Εκκρεμεί'
+    status: 'Εκκρεμεί',
+    penaltyType: 'ΣΤ ΕΞΟΔΟΥ',
+    totalDays: 3,
+    servedDays: 0,
+    isManualServedDays: false
   };
 
   readonly activePersonnel = this.storage.activePersonnel;
@@ -350,6 +365,38 @@ export class RequestsPenaltiesComponent {
     return false;
   }
 
+  getRecordProgress(record: SoldierRecord) {
+    return this.storage.calculatePenaltyProgress(record);
+  }
+
+  getProgressTooltip(record: SoldierRecord, prog: any): string {
+    let rule = '';
+    if (prog.penaltyType === 'ΣΤ ΕΞΟΔΟΥ') {
+      rule = 'Στέρηση Εξόδου: Προσμετράται ημέρα μόνο όταν ο στρατιώτης δεν έχει υπηρεσία (είναι εξοδούχος).';
+    } else {
+      rule = `${prog.penaltyType}: Προσμετράται για κάθε ημερολογιακή ημέρα που παρέρχεται.`;
+    }
+    const mode = prog.isManual ? ' (Χειροκίνητη ρύθμιση)' : ' (Αυτόματος υπολογισμός)';
+    return `Έκτιση: ${prog.servedDays}/${prog.totalDays} ημέρες. ${rule}${mode}`;
+  }
+
+  adjustProgress(record: SoldierRecord, delta: number, event?: Event) {
+    if (event) event.stopPropagation();
+    this.storage.adjustPenaltyServedDays(record.id, delta);
+  }
+
+  resetAutoProgress(record: SoldierRecord, event?: Event) {
+    if (event) event.stopPropagation();
+    this.storage.resetPenaltyAutoCount(record.id);
+  }
+
+  async exportPenaltiesExcel() {
+    const penalties = this.filteredRecords().filter(r => r.type === 'ΠΟΙΝΗ');
+    const recordsToExport = penalties.length > 0 ? penalties : this.storage.soldierRecords().filter(r => r.type === 'ΠΟΙΝΗ');
+    const asOfDate = this.dateFilter() || this.todayStr;
+    await this.excelService.exportPenaltiesToExcel(recordsToExport, asOfDate);
+  }
+
   openAddModal(type: SoldierRecordType = 'ΑΙΤΗΜΑ') {
     this.editingRecordId.set(null);
     this.closeReasonAutocomplete();
@@ -362,7 +409,11 @@ export class RequestsPenaltiesComponent {
       date: today,
       reason: '',
       notes: '',
-      status: 'Εκκρεμεί'
+      status: 'Εκκρεμεί',
+      penaltyType: 'ΣΤ ΕΞΟΔΟΥ',
+      totalDays: type === 'ΠΟΙΝΗ' ? 3 : null,
+      servedDays: 0,
+      isManualServedDays: false
     };
     this.personSearchQuery.set('');
     this.isPersonDropdownOpen.set(false);
@@ -372,6 +423,8 @@ export class RequestsPenaltiesComponent {
   openEditModal(r: SoldierRecord) {
     this.editingRecordId.set(r.id);
     this.closeReasonAutocomplete();
+    const prog = this.storage.calculatePenaltyProgress(r);
+
     this.formModel = {
       type: r.type,
       personId: r.personId,
@@ -379,7 +432,11 @@ export class RequestsPenaltiesComponent {
       date: r.date,
       reason: r.reason,
       notes: r.notes || '',
-      status: r.status || 'Εκκρεμεί'
+      status: r.status || 'Εκκρεμεί',
+      penaltyType: (r.penaltyType as PenaltySubtype) || prog.penaltyType || 'ΣΤ ΕΞΟΔΟΥ',
+      totalDays: r.totalDays !== undefined ? r.totalDays : (r.type === 'ΠΟΙΝΗ' ? (prog.totalDays || 3) : null),
+      servedDays: r.servedDays !== undefined ? r.servedDays : prog.servedDays,
+      isManualServedDays: Boolean(r.isManualServedDays)
     };
     this.personSearchQuery.set(r.personName);
     this.isPersonDropdownOpen.set(false);
@@ -409,10 +466,39 @@ export class RequestsPenaltiesComponent {
       return;
     }
 
+    const isPenalty = this.formModel.type === 'ΠΟΙΝΗ';
+    let totalDays: number | undefined = undefined;
+    let servedDays: number | undefined = undefined;
+
+    if (isPenalty) {
+      totalDays = this.formModel.totalDays ? Math.max(1, Number(this.formModel.totalDays)) : 3;
+      servedDays = this.formModel.servedDays !== null && this.formModel.servedDays !== undefined 
+        ? Math.max(0, Math.min(totalDays, Number(this.formModel.servedDays))) 
+        : 0;
+    }
+
+    const payload = {
+      type: this.formModel.type,
+      personId: this.formModel.personId,
+      personName: this.formModel.personName,
+      date: this.formModel.date,
+      reason: this.formModel.reason,
+      notes: this.formModel.notes,
+      status: this.formModel.status,
+      penaltyType: isPenalty ? this.formModel.penaltyType : undefined,
+      totalDays: isPenalty ? totalDays : undefined,
+      servedDays: isPenalty && this.formModel.isManualServedDays ? servedDays : undefined,
+      isManualServedDays: isPenalty ? Boolean(this.formModel.isManualServedDays) : undefined
+    };
+
+    if (isPenalty && totalDays && servedDays !== undefined && servedDays >= totalDays && this.formModel.status === 'Εκκρεμεί') {
+      payload.status = 'Ολοκληρώθηκε';
+    }
+
     if (this.editingRecordId()) {
-      this.storage.updateSoldierRecord(this.editingRecordId()!, this.formModel);
+      this.storage.updateSoldierRecord(this.editingRecordId()!, payload);
     } else {
-      this.storage.addSoldierRecord(this.formModel);
+      this.storage.addSoldierRecord(payload);
     }
 
     this.closeModal();
@@ -431,5 +517,26 @@ export class RequestsPenaltiesComponent {
 
   clearDateFilter() {
     this.dateFilter.set('');
+  }
+
+  async copyText(text: string, key: string, label = 'Το κείμενο') {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    this.copiedRecordKey.set(key);
+    this.storage.notify(`${label} αντιγράφηκε στο πρόχειρο.`, 'info');
+    setTimeout(() => {
+      if (this.copiedRecordKey() === key) {
+        this.copiedRecordKey.set(null);
+      }
+    }, 2000);
   }
 }

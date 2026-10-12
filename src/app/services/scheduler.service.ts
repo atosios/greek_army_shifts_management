@@ -9,8 +9,12 @@ import {
   ShiftConflict, 
   Leave,
   WeekendPlan,
+  WeekendPreference,
+  DailyExodouchoiPlan,
+  DailyExodouchoiSoldier,
   getLeaveTypeMeta,
-  formatGreekDate
+  formatGreekDate,
+  normalizeGreek
 } from '../models/shift.model';
 import { formatIntervalsToString, getDutySlotsForDate, getDayHandoverNote, isSlotConflictingWithDayOff } from '../data/time-presets';
 
@@ -754,8 +758,58 @@ export class SchedulerService {
   // Helper to build an empty duties skeleton for a given date
   buildDutiesSkeletonForDate(dateStr: string): DutyAssignment[] {
     const activeDuties = this.storage.activeDutyTypes();
+    const prevDate = this.getPreviousDate(dateStr);
+    const prevSchedule = this.storage.getScheduleForDate(prevDate);
+
+    let dutiesToInclude: DutyType[] = [];
+
+    // 1. Every next day by default has the duties set on the previous date
+    if (prevSchedule && prevSchedule.duties && prevSchedule.duties.length > 0) {
+      const prevDutyIds = prevSchedule.duties.map(d => d.dutyTypeId);
+      for (const id of prevDutyIds) {
+        const found = activeDuties.find(ad => ad.id === id);
+        if (found) dutiesToInclude.push(found);
+      }
+    }
+
+    // 2. If no previous day schedule exists, use the default template for this date
+    if (dutiesToInclude.length === 0) {
+      const defaultTemplate = this.storage.getDefaultTemplateForDate(dateStr);
+      if (defaultTemplate && defaultTemplate.dutyTypeIds.length > 0) {
+        for (const id of defaultTemplate.dutyTypeIds) {
+          const found = activeDuties.find(ad => ad.id === id);
+          if (found) dutiesToInclude.push(found);
+        }
+      }
+    }
+
+    // 3. Fallback to standard baseline duties (KEN THIVAS standard duties)
+    if (dutiesToInclude.length === 0) {
+      const fallbackIds = [
+        'duty-oplofylakas',
+        'duty-thalamofylakas',
+        'duty-skopia',
+        'duty-dekaneis',
+        'duty-yparchifylakas',
+        'duty-am',
+        'duty-estiatoria',
+        'duty-artoklivanos',
+        'duty-epifylaki',
+        'duty-xenokratis',
+        'duty-kathariotites'
+      ];
+      for (const id of fallbackIds) {
+        const found = activeDuties.find(ad => ad.id === id);
+        if (found) dutiesToInclude.push(found);
+      }
+    }
+
+    if (dutiesToInclude.length === 0) {
+      dutiesToInclude = [...activeDuties];
+    }
+
     const getDutyWeight = (d: { weight?: number | null }) => (d.weight !== undefined && d.weight !== null ? d.weight : 1);
-    const sortedDuties = [...activeDuties].sort((a, b) => getDutyWeight(b) - getDutyWeight(a));
+    const sortedDuties = [...dutiesToInclude];
     const dutiesAssignments: DutyAssignment[] = [];
 
     for (const duty of sortedDuties) {
@@ -807,11 +861,16 @@ export class SchedulerService {
     const assignedPersonIds = new Set<string>();
     const dutiesAssignments: DutyAssignment[] = [];
 
-    // Pre-populate assignedPersonIds with any slots that already have a pre-assigned person (e.g. manual override or linked weekend slots)
+    // If existingDuties is not passed or empty, build duties skeleton based on previous day or templates
+    if (!existingDuties || existingDuties.length === 0) {
+      existingDuties = this.buildDutiesSkeletonForDate(targetDateStr);
+    }
+
+    // Pre-populate assignedPersonIds with any slots that already have a manual override assignment
     if (existingDuties && existingDuties.length > 0) {
       for (const d of existingDuties) {
         for (const slot of d.slots) {
-          if (slot.personId && (slot.manualOverride || !assignedPersonIds.has(slot.personId))) {
+          if (slot.personId && slot.manualOverride) {
             assignedPersonIds.add(slot.personId);
           }
         }
@@ -827,8 +886,8 @@ export class SchedulerService {
         for (let sIdx = 0; sIdx < d.slots.length; sIdx++) {
           const origSlot = d.slots[sIdx];
 
-          // If manually overridden / pre-assigned and person is valid, retain it
-          if (origSlot.personId && (origSlot.manualOverride || assignedPersonIds.has(origSlot.personId))) {
+          // If manually overridden, retain it
+          if (origSlot.personId && origSlot.manualOverride) {
             slots.push({ ...origSlot });
             continue;
           }
@@ -866,22 +925,24 @@ export class SchedulerService {
               const elig = this.isEligibleForDuty(p, dutyType, targetDateStr);
               if (!elig.eligible) return false;
             }
-            if (plan) {
-              const isSatOff = plan.saturdayOffIds?.includes(p.id) ?? false;
-              const isSunOff = plan.sundayOffIds?.includes(p.id) ?? false;
+            const hasExplicitPlan = Boolean(plan && ((plan.saturdayOffIds?.length || 0) > 0 || (plan.sundayOffIds?.length || 0) > 0));
+            if (hasExplicitPlan) {
+              const isSatOff = plan!.saturdayOffIds?.includes(p.id) ?? false;
+              const isSunOff = plan!.sundayOffIds?.includes(p.id) ?? false;
               if (isSlotConflictingWithDayOff(origSlot, day, isSatOff, isSunOff)) return false;
             }
             return true;
           });
 
           // Enforce weekend cover day-off constraints
-          if (plan) {
+          const hasExplicitPlan = Boolean(plan && ((plan.saturdayOffIds?.length || 0) > 0 || (plan.sundayOffIds?.length || 0) > 0));
+          if (hasExplicitPlan) {
             if (day === 5 && isSlotCover12) {
-              candidates = candidates.filter(p => !plan.saturdayOffIds.includes(p.id));
+              candidates = candidates.filter(p => !plan!.saturdayOffIds.includes(p.id));
             } else if (day === 6 && isSlotCover10) {
-              candidates = candidates.filter(p => !plan.sundayOffIds.includes(p.id));
+              candidates = candidates.filter(p => !plan!.sundayOffIds.includes(p.id));
             } else if (day === 6 && isSlotCover12) {
-              candidates = candidates.filter(p => !plan.sundayOffIds.includes(p.id));
+              candidates = candidates.filter(p => !plan!.sundayOffIds.includes(p.id));
             }
           }
 
@@ -979,22 +1040,24 @@ export class SchedulerService {
             if (assignedPersonIds.has(p.id)) return false;
             const elig = this.isEligibleForDuty(p, duty, targetDateStr);
             if (!elig.eligible) return false;
-            if (plan) {
-              const isSatOff = plan.saturdayOffIds?.includes(p.id) ?? false;
-              const isSunOff = plan.sundayOffIds?.includes(p.id) ?? false;
+            const hasExplicitPlan = Boolean(plan && ((plan.saturdayOffIds?.length || 0) > 0 || (plan.sundayOffIds?.length || 0) > 0));
+            if (hasExplicitPlan) {
+              const isSatOff = plan!.saturdayOffIds?.includes(p.id) ?? false;
+              const isSunOff = plan!.sundayOffIds?.includes(p.id) ?? false;
               if (isSlotConflictingWithDayOff(slotDef, day, isSatOff, isSunOff)) return false;
             }
             return true;
           });
 
           // Enforce weekend cover day-off constraints:
-          if (plan) {
+          const hasExplicitPlan = Boolean(plan && ((plan.saturdayOffIds?.length || 0) > 0 || (plan.sundayOffIds?.length || 0) > 0));
+          if (hasExplicitPlan) {
             if (day === 5 && isSlotCover12) {
-              candidates = candidates.filter(p => !plan.saturdayOffIds.includes(p.id));
+              candidates = candidates.filter(p => !plan!.saturdayOffIds.includes(p.id));
             } else if (day === 6 && isSlotCover10) {
-              candidates = candidates.filter(p => !plan.sundayOffIds.includes(p.id));
+              candidates = candidates.filter(p => !plan!.sundayOffIds.includes(p.id));
             } else if (day === 6 && isSlotCover12) {
-              candidates = candidates.filter(p => !plan.sundayOffIds.includes(p.id));
+              candidates = candidates.filter(p => !plan!.sundayOffIds.includes(p.id));
             }
           }
 
@@ -1079,14 +1142,15 @@ export class SchedulerService {
     return schedule;
   }
 
-  // Generates Friday, Saturday, and Sunday in one coordinated batch honoring the weekend day-off allocation
+  // Generates Friday, Saturday, and Sunday in one coordinated batch and derives the weekend day-offs based on the duties set
   generateWeekendSchedules(
     fridayDateStr: string,
-    weekendPlan: WeekendPlan,
+    weekendPlan?: WeekendPlan,
     customFridayDuties?: DutyAssignment[]
   ): { friday: DailySchedule; saturday: DailySchedule; sunday: DailySchedule } {
     const dates = this.getWeekendDates(fridayDateStr);
     const allPersonnel = this.storage.personnel();
+    let currentPlan = weekendPlan || this.storage.getWeekendPlan(dates.friday);
 
     const isSlot12to14 = (slot: ShiftSlotAssignment) => 
       Boolean((slot.intervals?.some(i => i.from === '12:00' && i.to === '14:00') && slot.intervals.length === 1) ||
@@ -1102,20 +1166,22 @@ export class SchedulerService {
     const isSlotSunPos4 = (slot: ShiftSlotAssignment) => 
       Boolean(slot.intervals?.some(i => i.from === '20:00') && slot.intervals?.some(i => i.from === '04:00') && slot.intervals.length === 3);
 
-    // Save plan
-    this.storage.saveWeekendPlan(weekendPlan);
+    // Save initial plan if provided
+    if (currentPlan) {
+      this.storage.saveWeekendPlan(currentPlan);
+    }
 
     // 1. Generate Friday (honoring custom Friday duties if any)
-    const friday = this.generateDailySchedule(dates.friday, customFridayDuties, weekendPlan);
-    friday.weekendPlan = weekendPlan;
+    const friday = this.generateDailySchedule(dates.friday, customFridayDuties, currentPlan);
+    if (currentPlan) friday.weekendPlan = currentPlan;
     this.enforceNoDoubleAssignments(friday);
 
     // 2. Prepare Saturday skeleton
     const satDutiesSkeleton = this.buildDutiesSkeletonForDate(dates.saturday);
 
     // Generate Saturday (now knows who served Friday)
-    const saturday = this.generateDailySchedule(dates.saturday, satDutiesSkeleton, weekendPlan);
-    saturday.weekendPlan = weekendPlan;
+    const saturday = this.generateDailySchedule(dates.saturday, satDutiesSkeleton, currentPlan);
+    if (currentPlan) saturday.weekendPlan = currentPlan;
     this.enforceNoDoubleAssignments(saturday);
 
     // 3. Prepare Sunday skeleton with Saturday's cover soldiers pre-reserved in Sunday Pos 3 & Pos 4
@@ -1168,11 +1234,11 @@ export class SchedulerService {
     });
 
     // Generate Sunday (now knows who served Saturday, and has Pos 3/4 soldiers pre-reserved)
-    const sunday = this.generateDailySchedule(dates.sunday, sunDutiesSkeleton, weekendPlan);
-    sunday.weekendPlan = weekendPlan;
+    const sunday = this.generateDailySchedule(dates.sunday, sunDutiesSkeleton, currentPlan);
+    if (currentPlan) sunday.weekendPlan = currentPlan;
     // Clear temporary manualOverride flag
     sunday.duties.forEach(d => d.slots.forEach(s => { if (isSlotSunPos3(s) || isSlotSunPos4(s)) s.manualOverride = false; }));
-    this.backgroundCheckSchedule(sunday, dates.sunday, weekendPlan);
+    this.backgroundCheckSchedule(sunday, dates.sunday, currentPlan);
 
     // Synchronize weekend cover slots across Friday, Saturday, and Sunday for rolling cycle duties
     this.syncWeekendLinkedCoverSlots(friday, saturday, sunday);
@@ -1180,16 +1246,167 @@ export class SchedulerService {
     // Synchronize Friday restaurant soldiers with Monday morning (05:20 - 16:00)
     this.syncFridayRestaurantToMonday(friday, dates.friday, allPersonnel);
 
+    // Automatically derive and produce the εξοδούχους based on the duties set!
+    const derivedPlan = this.deriveWeekendPlanFromSchedules(friday, saturday, sunday);
+    friday.weekendPlan = derivedPlan;
+    saturday.weekendPlan = derivedPlan;
+    sunday.weekendPlan = derivedPlan;
+
     // Final background check pass: strictly enforce all times, day-offs, leaves, and double assignments on Friday, Saturday, Sunday
-    this.backgroundCheckSchedule(friday, dates.friday, weekendPlan);
-    this.backgroundCheckSchedule(saturday, dates.saturday, weekendPlan);
-    this.backgroundCheckSchedule(sunday, dates.sunday, weekendPlan);
+    this.backgroundCheckSchedule(friday, dates.friday, derivedPlan);
+    this.backgroundCheckSchedule(saturday, dates.saturday, derivedPlan);
+    this.backgroundCheckSchedule(sunday, dates.sunday, derivedPlan);
 
     this.storage.saveSchedule(friday);
     this.storage.saveSchedule(saturday);
     this.storage.saveSchedule(sunday);
 
+    // Automatically synchronize the Daily Exodouchoi plans for Friday, Saturday, and Sunday
+    this.generateDailyExodouchoiPlan(dates.friday);
+    this.generateDailyExodouchoiPlan(dates.saturday);
+    this.generateDailyExodouchoiPlan(dates.sunday);
+
     return { friday, saturday, sunday };
+  }
+
+  /**
+   * Produces the weekend pass allocation (Εξοδούχοι Σαββάτου / Εξοδούχοι Κυριακής)
+   * based on the actual duties assigned across Friday, Saturday, and Sunday.
+   * Also respects personal preferences for personnel without duties.
+   */
+  deriveWeekendPlanFromSchedules(
+    friday: DailySchedule,
+    saturday: DailySchedule,
+    sunday: DailySchedule
+  ): WeekendPlan {
+    const dates = this.getWeekendDates(friday.date);
+    const activePersonnel = this.storage.activePersonnel();
+
+    const isSlot12to14 = (slot: ShiftSlotAssignment) => 
+      Boolean((slot.intervals?.some(i => i.from === '12:00' && i.to === '14:00') && slot.intervals.length === 1) ||
+      (slot.hoursNote?.includes('12:00-14:00') && !slot.hoursNote?.includes('20:00')));
+    const isSlot10to12 = (slot: ShiftSlotAssignment) => 
+      Boolean((slot.intervals?.some(i => i.from === '10:00' && i.to === '12:00') && slot.intervals.length === 1) ||
+      (slot.hoursNote?.includes('10:00-12:00') && !slot.hoursNote?.includes('18:00')));
+
+    // 1. Identify personnel with Saturday duties (excluding morning cover soldiers who depart after morning)
+    const satDutySoldierIds = new Set<string>();
+    saturday.duties.forEach(d => {
+      d.slots.forEach(s => {
+        if (!s.personId) return;
+        // Saturday morning cover slots (10-12, 12-14) leave camp after 12:00/14:00 -> not blocked from Saturday pass
+        if (isSlot10to12(s) || isSlot12to14(s)) {
+          return;
+        }
+        satDutySoldierIds.add(s.personId);
+      });
+    });
+
+    // 2. Identify personnel with Sunday duties
+    const sunDutySoldierIds = new Set<string>();
+    sunday.duties.forEach(d => {
+      d.slots.forEach(s => {
+        if (s.personId) sunDutySoldierIds.add(s.personId);
+      });
+    });
+
+    // 3. Identify personnel who served Friday
+    const friDutySoldierIds = new Set<string>();
+    friday.duties.forEach(d => {
+      d.slots.forEach(s => {
+        if (s.personId) friDutySoldierIds.add(s.personId);
+      });
+    });
+
+    const satOffIds: string[] = [];
+    const sunOffIds: string[] = [];
+    const inCampIds: string[] = [];
+
+    // Classify each active soldier
+    for (const p of activePersonnel) {
+      if (p.exemptFromAllDuties) continue;
+
+      const onSat = satDutySoldierIds.has(p.id);
+      const onSun = sunDutySoldierIds.has(p.id);
+      const onFri = friDutySoldierIds.has(p.id);
+
+      const hasSatPenalty = this.storage.hasActivePenaltyOnDate(p.id, dates.saturday);
+      const hasSunPenalty = this.storage.hasActivePenaltyOnDate(p.id, dates.sunday);
+
+      if (hasSatPenalty && hasSunPenalty) {
+        // Active penalty on both days: must stay in camp
+        inCampIds.push(p.id);
+      } else if (onSat && onSun) {
+        // Both days on duty
+        inCampIds.push(p.id);
+      } else if (onSat) {
+        // Serving Saturday -> Day off is Sunday!
+        if (hasSunPenalty) {
+          inCampIds.push(p.id); // Cannot go out Sunday due to penalty
+        } else {
+          sunOffIds.push(p.id);
+        }
+      } else if (onSun) {
+        // Serving Sunday -> Day off is Saturday!
+        if (hasSatPenalty) {
+          inCampIds.push(p.id); // Cannot go out Saturday due to penalty
+        } else {
+          satOffIds.push(p.id);
+        }
+      } else if (onFri) {
+        // Served Friday, free on Saturday & Sunday -> Day off is Saturday
+        if (hasSatPenalty) {
+          if (hasSunPenalty) {
+            inCampIds.push(p.id);
+          } else {
+            sunOffIds.push(p.id);
+          }
+        } else {
+          satOffIds.push(p.id);
+        }
+      } else {
+        // Free throughout the weekend:
+        if (hasSatPenalty && !hasSunPenalty) {
+          sunOffIds.push(p.id); // Saturday penalized, Sunday free
+        } else if (hasSunPenalty && !hasSatPenalty) {
+          satOffIds.push(p.id); // Sunday penalized, Saturday free
+        } else {
+          // Free throughout and no day-specific penalty blocker: allocate based on preference or balance
+          if (p.weekendPreference === 'Σάββατο') {
+            satOffIds.push(p.id);
+          } else if (p.weekendPreference === 'Κυριακή') {
+            sunOffIds.push(p.id);
+          } else {
+            if (satOffIds.length <= sunOffIds.length) {
+              satOffIds.push(p.id);
+            } else {
+              sunOffIds.push(p.id);
+            }
+          }
+        }
+      }
+    }
+
+    const plan: WeekendPlan = {
+      fridayDate: dates.friday,
+      saturdayDate: dates.saturday,
+      sundayDate: dates.sunday,
+      saturdayOffIds: Array.from(new Set(satOffIds)),
+      sundayOffIds: Array.from(new Set(sunOffIds)),
+      inCampIds: Array.from(new Set(inCampIds)),
+      updatedAt: new Date().toISOString()
+    };
+
+    this.storage.saveWeekendPlan(plan);
+    return plan;
+  }
+
+  deriveWeekendPlanForFriday(fridayDateStr: string): WeekendPlan {
+    const dates = this.getWeekendDates(fridayDateStr);
+    const fri = this.storage.getScheduleForDate(dates.friday) || { date: dates.friday, isHolidayOrWeekend: false, duties: [] };
+    const sat = this.storage.getScheduleForDate(dates.saturday) || { date: dates.saturday, isHolidayOrWeekend: true, duties: [] };
+    const sun = this.storage.getScheduleForDate(dates.sunday) || { date: dates.sunday, isHolidayOrWeekend: true, duties: [] };
+    return this.deriveWeekendPlanFromSchedules(fri, sat, sun);
   }
 
   // Synchronizes Friday restaurant half-shift soldiers (16:00-22:00) to Monday morning (05:20-16:00)
@@ -1341,43 +1558,44 @@ export class SchedulerService {
       const wkndScore = c.weekendDutyScore || 0;
       const daysRest = this.getDaysSinceLastDuty(c, targetDateStr);
 
-      // Weekend Plan Shift Trick:
+      // Weekend Plan & Preferences Shift Trick:
       let weekendPlanScore = 0;
-      if (weekendPlan) {
-        const isSatOff = weekendPlan.saturdayOffIds.includes(c.id);
-        const isSunOff = weekendPlan.sundayOffIds.includes(c.id);
-        const isCover = slotGroupTag === 'COVER' || slotGroupTag?.includes('Κάλυψη');
+      const pref = c.weekendPreference;
+      const hasPlanSat = Boolean(weekendPlan && weekendPlan.saturdayOffIds?.includes(c.id));
+      const hasPlanSun = Boolean(weekendPlan && weekendPlan.sundayOffIds?.includes(c.id));
+      const isSatOff = hasPlanSat || (!hasPlanSat && !hasPlanSun && pref === 'Σάββατο');
+      const isSunOff = hasPlanSun || (!hasPlanSat && !hasPlanSun && pref === 'Κυριακή');
+      const isCover = slotGroupTag === 'COVER' || slotGroupTag?.includes('Κάλυψη');
 
-        if (dayOfWeek === 5) {
-          // Friday
-          if (!isCover) {
-            // Main Friday shift: Soldiers with Saturday off are assigned to Friday duty!
-            if (isSatOff) weekendPlanScore -= 300;
-            if (isSunOff) weekendPlanScore += 250; // Reserve Sunday-off soldiers for Saturday main duty
-          } else {
-            // Coverage shift Saturday (12:00-14:00, bakery, mess hall):
-            // Soldiers with Saturday off leave at 12:00 -> CANNOT take these shifts!
-            if (isSatOff) weekendPlanScore += 800;
-            if (isSunOff) weekendPlanScore -= 400; // In camp Saturday morning
-          }
-        } else if (dayOfWeek === 6) {
-          // Saturday
-          if (!isCover) {
-            // Main Saturday shift: Soldiers with Sunday off are assigned to Saturday duty!
-            if (isSunOff) weekendPlanScore -= 300;
-            if (isSatOff) weekendPlanScore += 800; // Saturday day off
-          } else {
-            // Sunday morning coverage (10-12, 12-14): Soldiers with Sunday off leave morning!
-            if (isSunOff) weekendPlanScore += 800;
-            if (!isSunOff && !isSatOff) weekendPlanScore -= 300; // In-camp
-            else if (isSatOff) weekendPlanScore -= 200; // Returned from Saturday day off
-          }
-        } else if (dayOfWeek === 0) {
-          // Sunday
-          if (isSunOff) weekendPlanScore += 800; // Sunday day off!
-          if (isSatOff) weekendPlanScore -= 250; // Fresh from Saturday day off
-          if (!isSunOff && !isSatOff) weekendPlanScore -= 300; // In-camp
+      if (dayOfWeek === 5) {
+        // Friday
+        if (!isCover) {
+          // Main Friday shift: Soldiers with Saturday off are assigned to Friday duty!
+          if (isSatOff) weekendPlanScore -= 300;
+          if (isSunOff) weekendPlanScore += 250; // Reserve Sunday-off soldiers for Saturday main duty
+        } else {
+          // Coverage shift Saturday (12:00-14:00, bakery, mess hall):
+          // Soldiers with Saturday off leave at 12:00 -> CANNOT take these shifts!
+          if (isSatOff) weekendPlanScore += 800;
+          if (isSunOff) weekendPlanScore -= 400; // In camp Saturday morning
         }
+      } else if (dayOfWeek === 6) {
+        // Saturday
+        if (!isCover) {
+          // Main Saturday shift: Soldiers with Sunday off are assigned to Saturday duty!
+          if (isSunOff) weekendPlanScore -= 300;
+          if (isSatOff) weekendPlanScore += 800; // Saturday day off
+        } else {
+          // Sunday morning coverage (10-12, 12-14): Soldiers with Sunday off leave morning!
+          if (isSunOff) weekendPlanScore += 800;
+          if (!isSunOff && !isSatOff) weekendPlanScore -= 300; // In-camp
+          else if (isSatOff) weekendPlanScore -= 200; // Returned from Saturday day off
+        }
+      } else if (dayOfWeek === 0) {
+        // Sunday
+        if (isSunOff) weekendPlanScore += 800; // Sunday day off!
+        if (isSatOff) weekendPlanScore -= 250; // Fresh from Saturday day off
+        if (!isSunOff && !isSatOff) weekendPlanScore -= 300; // In-camp
       }
 
       const score = (didServeYesterday * 50) + (dutyScore * 10) + (isWknd ? wkndScore * 15 : 0) - Math.min(daysRest * 2, 20) + weekendPlanScore;
@@ -1555,5 +1773,226 @@ export class SchedulerService {
     });
 
     this.storage.bulkUpdateDutyScores(updates);
+  }
+
+  /**
+   * Generates or updates the daily list of soldiers eligible for evening pass (Εξοδούχοι).
+   * Rules:
+   * 1. Personnel without active evening duties can go out.
+   * 2. Duties on today's sheet scheduled for tomorrow morning (e.g. Αρτοκλίβανος 06:50-14:00 επομ., weekend cover slots) do NOT block tonight's pass.
+   * 3. Καθαριότητα on weekdays does NOT count as a blocking duty (soldiers can go out).
+   *    On weekends, Καθαριότητα DOES count as duty (soldiers cannot go out).
+   * 4. Leaves (Άδεια, Νοσοκομείο, ΣΤΕΠ, Ε.Υ.) and active Penalties (ΣΤ ΕΞΟΔΟΥ, Κ, Φ) block pass.
+   * 5. Preserves user manual overrides (manual modifications are respected).
+   */
+  generateDailyExodouchoiPlan(dateStr: string, existingPlan?: DailyExodouchoiPlan): DailyExodouchoiPlan {
+    const parts = dateStr.split('-').map(Number);
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    const day = d.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const isWeekend = day === 0 || day === 6;
+
+    const activePersonnel = this.storage.activePersonnel();
+    const schedule = this.storage.getScheduleForDate(dateStr);
+    const soldierRecords = this.storage.soldierRecords();
+
+    // Check weekend plan if Saturday or Sunday
+    const weekendDates = this.getWeekendDates(dateStr);
+    const weekendPlan = this.storage.getWeekendPlan(weekendDates.friday);
+
+    const existingMap = new Map<string, DailyExodouchoiSoldier>();
+    if (existingPlan && existingPlan.soldiers) {
+      existingPlan.soldiers.forEach(s => existingMap.set(s.personId, s));
+    }
+
+    const soldiers: DailyExodouchoiSoldier[] = [];
+
+    for (const person of activePersonnel) {
+      let isGoingOut = true;
+      let hasDutyTonight = false;
+      let isOnLeaveTonight = false;
+      let hasPenaltyTonight = false;
+      let dutyStatusText = 'Χωρίς Υπηρεσία';
+      const dutyDetails: string[] = [];
+
+      // 1. Check Leaves & Absences
+      const leave = this.getPersonLeave(person.id, dateStr);
+      if (leave) {
+        const meta = getLeaveTypeMeta(leave.type);
+        if (meta.isInformative) {
+          // Informative exemption (Εαρβ, Εξυρ) -> Does not block evening pass
+          dutyDetails.push(`${leave.type} (Ενημερωτικό)`);
+        } else if (leave.type === 'Ελεύθερος Ορθοστασίας (ΕΟ)') {
+          dutyDetails.push('Ελεύθερος Ορθοστασίας (ΕΟ)');
+        } else if (leave.type === 'Ελεύθερος Ασκήσεων (ΕΑ)') {
+          dutyDetails.push('Ελεύθερος Ασκήσεων (ΕΑ)');
+        } else if (leave.type === 'Άδεια' || leave.type === 'Εισαγωγή Νοσοκομείο') {
+          isOnLeaveTonight = true;
+          isGoingOut = false;
+          dutyStatusText = `${leave.type} (Απών εκτός μονάδας)`;
+        } else if (leave.type === 'Εισαγωγή Στεπ') {
+          isOnLeaveTonight = true;
+          isGoingOut = false;
+          dutyStatusText = 'Κωλυόμενος (ΣΤΕΠ)';
+        } else if (leave.type === 'Ελεύθερος Υπηρεσίας (ΕΥ)') {
+          isOnLeaveTonight = true;
+          isGoingOut = false;
+          dutyStatusText = 'Ελεύθερος Υπηρεσίας (ΕΥ)';
+        } else {
+          isOnLeaveTonight = true;
+          isGoingOut = false;
+          dutyStatusText = leave.type;
+        }
+      }
+
+      // 2. Check Duties on Today's Schedule Sheet
+      if (!isOnLeaveTonight && schedule && schedule.duties) {
+        for (const d of schedule.duties) {
+          for (const s of d.slots) {
+            if (s.personId === person.id) {
+              const normName = normalizeGreek(d.dutyName || '');
+              const normShort = normalizeGreek(d.shortName || '');
+              const normTag = normalizeGreek(s.groupTag || '');
+              const normNote = normalizeGreek(s.hoursNote || '');
+
+              const isCleaning = d.dutyTypeId === 'duty-kathariotites' || 
+                                 normName.includes('καθαριοτητ') || 
+                                 normShort === 'καθ';
+
+              const isBakery = d.dutyTypeId === 'duty-artoklivanos' || 
+                               normName.includes('αρτοκλιβαν') || 
+                               normShort === 'αρτ';
+
+              // Cleaning Rule:
+              // Weekdays (Mon-Fri) -> Doesn't matter, can go out!
+              // Weekends (Sat-Sun) -> Counts as duty, cannot go out!
+              if (isCleaning) {
+                if (!isWeekend) {
+                  // Weekday cleaning: person can still go out
+                  dutyDetails.push('Καθαριότητες (Καθημερινή)');
+                } else {
+                  // Weekend cleaning: blocks evening pass
+                  hasDutyTonight = true;
+                  isGoingOut = false;
+                  dutyStatusText = 'Καθαριότητες (Σ/Κ - Υπηρεσία)';
+                }
+                continue;
+              }
+
+              // Bakery Rule:
+              // Shift is 06:50 - 14:00 next day morning. No duty tonight!
+              if (isBakery || normNote.includes('επομ')) {
+                if (isBakery) {
+                  dutyDetails.push('Αρτοκλίβανος (Πρωινό Επομένης 06:50-14:00)');
+                  continue;
+                }
+              }
+
+              // Weekend Cover Slots for Tomorrow:
+              // Friday slot 5: Cover 4th pos (Saturday 12:00-14:00)
+              if (day === 5 && (s.groupTag === 'COVER' || normTag.includes('καλυψη') || normNote.includes('καλυψη') || (s.intervals?.length === 1 && s.intervals[0].from === '12:00' && s.intervals[0].to === '14:00'))) {
+                dutyDetails.push('Κάλυψη 4ης Θέσης (Σάββατο 12:00-14:00)');
+                continue;
+              }
+
+              // Saturday slots for Sunday cover:
+              if (day === 6 && (s.groupTag === 'COVER' || normTag.includes('καλυψη') || normNote.includes('καλυψη'))) {
+                dutyDetails.push('Κάλυψη Θέσης (Κυριακή)');
+                continue;
+              }
+
+              // Monday morning restaurant completion (ends 16:00):
+              if (day === 1 && s.intervals?.length === 1 && s.intervals[0].from === '05:20' && s.intervals[0].to === '16:00') {
+                dutyDetails.push('Εστιατόρια (Πρωινό Δευτέρας 05:20-16:00)');
+                continue;
+              }
+
+              // Standard duty that runs tonight (ΘΦ, ΟΠΛ, Εστιατόρια, Επιφυλακή, κ.λπ.)
+              hasDutyTonight = true;
+              isGoingOut = false;
+              const hoursText = s.hoursNote || formatIntervalsToString(s.intervals || []);
+              dutyStatusText = `${d.dutyName}${hoursText && hoursText !== 'Χωρίς ωράριο' ? ` (${hoursText})` : ''}`;
+              break;
+            }
+          }
+          if (hasDutyTonight) break;
+        }
+      }
+
+      // 3. Check Penalties (Στέρηση Εξόδου, Κράτηση, Φυλάκιση)
+      // "if someone has στ εξοδου that means that he must no go out if he has a day off. Only then it counts a punishment day passed"
+      if (!isOnLeaveTonight) {
+        const activePenalties = this.storage.getActivePenaltiesForPerson(person.id, dateStr);
+
+        if (activePenalties.length > 0) {
+          hasPenaltyTonight = true;
+          isGoingOut = false; // Strictly prevented from going out
+          const pen = activePenalties[0];
+          const prog = this.storage.calculatePenaltyProgress(pen, dateStr);
+          const penType = (pen.penaltyType || prog.penaltyType || 'ΣΤ ΕΞΟΔΟΥ').trim();
+          const dayNum = Math.min(prog.totalDays, prog.servedDays || 1);
+
+          if (!hasDutyTonight) {
+            // Day off in camp: serving the punishment!
+            dutyStatusText = `Στέρηση Εξόδου (${dayNum}η/${prog.totalDays} ημέρα - Μέσα)`;
+          } else {
+            // Has duty: serves duty, and penalty is noted
+            dutyStatusText = `${dutyStatusText} [${penType}: ${dayNum}η/${prog.totalDays}]`;
+          }
+        }
+      }
+
+      // If still eligible to go out, summarize status text
+      if (isGoingOut) {
+        if (dutyDetails.length > 0) {
+          dutyStatusText = `${dutyDetails.join(' & ')} — Εξοδούχος`;
+        } else if (weekendPlan && (day === 6 || day === 0)) {
+          if (day === 6 && weekendPlan.saturdayOffIds?.includes(person.id)) {
+            dutyStatusText = 'Έξοδος Σαββάτου (Πρόγραμμα Σ/Κ)';
+          } else if (day === 0 && weekendPlan.sundayOffIds?.includes(person.id)) {
+            dutyStatusText = 'Έξοδος Κυριακής (Πρόγραμμα Σ/Κ)';
+          } else {
+            dutyStatusText = 'Χωρίς Υπηρεσία (Εξοδούχος)';
+          }
+        } else {
+          dutyStatusText = 'Χωρίς Υπηρεσία (Εξοδούχος)';
+        }
+      }
+
+      // Check existing manual overrides
+      const existing = existingMap.get(person.id);
+      let manualOverride = false;
+      let notes = existing?.notes || '';
+
+      if (existing && existing.manualOverride) {
+        isGoingOut = existing.isGoingOut;
+        manualOverride = true;
+      }
+
+      soldiers.push({
+        personId: person.id,
+        fullName: person.fullName,
+        rankShort: person.rankShort || 'ΣΤΡ',
+        asm: person.asm || '-',
+        specialty: person.specialty || 'ΠΖ',
+        corps: person.corps,
+        company: person.company,
+        barracksRoom: person.barracksRoom,
+        bedNumber: person.bedNumber,
+        phone: person.phone,
+        isGoingOut,
+        dutyStatusText,
+        hasDutyTonight,
+        isOnLeaveTonight,
+        hasPenaltyTonight,
+        manualOverride,
+        notes
+      });
+    }
+
+    return {
+      date: dateStr,
+      soldiers,
+      updatedAt: new Date().toISOString()
+    };
   }
 }

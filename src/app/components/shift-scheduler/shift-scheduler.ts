@@ -10,6 +10,7 @@ import {
   ShiftSlotAssignment, 
   Personnel, 
   DutyType,
+  ScheduleTemplate,
   getLeaveTypeMeta,
   formatGreekDate,
   formatLocalDate 
@@ -115,119 +116,89 @@ export class ShiftSchedulerComponent {
   finalizeModal = signal<FinalizeModalData | null>(null);
   resetFinalizeModal = signal<boolean>(false);
 
+  // Edit Duty in Day Modal state
+  isEditDutyInDayModalOpen = signal<boolean>(false);
+  editingDutyIndex = signal<number>(-1);
+  editDutyFormName = signal<string>('');
+  editDutyFormShortName = signal<string>('');
+  editDutyFormCategory = signal<string>('');
+  editDutyFormWeight = signal<number>(1);
+  editDutyFormSlots = signal<ShiftSlotAssignment[]>([]);
+  isCustomizedForDayCurrently = signal<boolean>(false);
+
+  // Templates State
+  isTemplatesDropdownOpen = signal<boolean>(false);
+  isManageTemplatesModalOpen = signal<boolean>(false);
+  isSaveAsTemplateModalOpen = signal<boolean>(false);
+  isTemplateEditorModalOpen = signal<boolean>(false);
+
+  // Template Editor state
+  editingTemplateId = signal<string | null>(null);
+  templateFormName = signal<string>('');
+  templateFormDescription = signal<string>('');
+  templateFormDutyIds = signal<string[]>([]);
+  templateFormIsDefaultWeekday = signal<boolean>(false);
+  templateFormIsDefaultWeekend = signal<boolean>(false);
+  templateDutySearchQuery = signal<string>('');
+
+  // Save current roster as template form state
+  saveAsTemplateName = signal<string>('');
+  saveAsTemplateDescription = signal<string>('');
+  saveAsTemplateDutyIds = signal<string[]>([]);
+  saveAsTemplateIsDefaultWeekday = signal<boolean>(false);
+  saveAsTemplateIsDefaultWeekend = signal<boolean>(false);
+
+  readonly scheduleTemplates = this.storage.scheduleTemplates;
+
+  readonly filteredDutiesForTemplateEditor = computed(() => {
+    const q = this.templateDutySearchQuery().trim().toLowerCase();
+    const duties = this.activeDuties();
+    if (!q) return duties;
+    return duties.filter(d => 
+      d.name.toLowerCase().includes(q) || 
+      d.shortName.toLowerCase().includes(q) ||
+      (d.category && d.category.toLowerCase().includes(q))
+    );
+  });
+
   readonly isCurrentScheduleFinalized = computed(() => {
     return Boolean(this.currentSchedule()?.isFinalized);
   });
 
-  // Search filtered personnel for the active picker (only available personnel who can be placed)
+  // Search filtered personnel for the active picker (shows all personnel with badges and manual override support)
   readonly filteredPersonnelForPicker = computed(() => {
     const q = this.personSearchQuery().trim().toLowerCase();
     const all = this.activePersonnel();
     const active = this.activePickerSlot();
     const sched = this.currentSchedule();
 
+    let list = all;
+    if (q) {
+      list = all.filter(p => 
+        p.fullName.toLowerCase().includes(q) ||
+        p.rankShort.toLowerCase().includes(q) ||
+        p.rank.toLowerCase().includes(q) ||
+        (p.specialty && p.specialty.toLowerCase().includes(q)) ||
+        (p.company && p.company.toLowerCase().includes(q))
+      );
+    }
+
     if (!active || !sched) {
-      return all;
+      return list;
     }
 
-    const activeDuty = sched.duties[active.dutyIdx];
-    const activeSlot = activeDuty?.slots[active.slotIdx];
-    const dutyDef = this.storage.dutyTypes().find(dt => dt.id === activeDuty?.dutyTypeId);
-    const date = sched.date;
-    const day = new Date(date).getDay();
-    const dates = this.scheduler.getWeekendDates(date);
-    const plan = this.storage.getWeekendPlan(dates.friday);
-
-    const isSlot12to14 = activeSlot ? this.isSlot12to14(activeSlot) : false;
-    const isSlot10to12 = activeSlot ? this.isSlot10to12(activeSlot) : false;
-
-    // Collect all person IDs already assigned on this same date (regardless of whether the day is validated or in draft)
-    // We check both currentSchedule duties and the storage schedule for this date to ensure 100% consistency.
-    const assignedPersonIdsOnDate = new Set<string>();
-
-    const checkDutyList = (duties: DutyAssignment[]) => {
-      for (let dIdx = 0; dIdx < duties.length; dIdx++) {
-        const d = duties[dIdx];
-        for (let sIdx = 0; sIdx < d.slots.length; sIdx++) {
-          const slot = d.slots[sIdx];
-          // Exclude the active slot itself so the currently assigned person can be shown as selected
-          const isCurrentSlot = 
-            (dIdx === active.dutyIdx || (activeDuty && d.dutyTypeId === activeDuty.dutyTypeId)) && 
-            sIdx === active.slotIdx;
-          if (isCurrentSlot) continue;
-          if (slot.personId && slot.personId.trim()) {
-            assignedPersonIdsOnDate.add(slot.personId.trim());
-          }
-        }
+    // Sort available (no danger/warning badge) first, then restricted (warning then danger),
+    // and within each group by dutyScore ascending
+    return [...list].sort((a, b) => {
+      const aNote = this.getPersonBadgeNote(a.id);
+      const bNote = this.getPersonBadgeNote(b.id);
+      const aWeight = aNote?.type === 'danger' ? 2 : (aNote?.type === 'warning' ? 1 : 0);
+      const bWeight = bNote?.type === 'danger' ? 2 : (bNote?.type === 'warning' ? 1 : 0);
+      if (aWeight !== bWeight) {
+        return aWeight - bWeight; // Available first, warnings next, danger last
       }
-    };
-
-    if (sched.duties) {
-      checkDutyList(sched.duties);
-    }
-    const storedSched = this.storage.getScheduleForDate(sched.date);
-    if (storedSched && storedSched.duties) {
-      checkDutyList(storedSched.duties);
-    }
-
-    // Filter available personnel only
-    const available = all.filter(p => {
-      // 1. Cannot be placed if already assigned elsewhere on this same date
-      // Even if the day is not validated/finalized, assigned soldiers must not appear on other duties dropdowns
-      if (assignedPersonIdsOnDate.has(p.id.trim())) {
-        return false;
-      }
-
-      // 2. Full exemption
-      if (p.exemptFromAllDuties) return false;
-
-      // 3. Leave / ΕΥ / Hospital / STEP / EO
-      const leave = this.scheduler.getPersonLeave(p.id, date);
-      if (leave) {
-        const meta = getLeaveTypeMeta(leave.type);
-        if (meta.blocksDuty) return false;
-        if (leave.type === 'Ελεύθερος Ορθοστασίας (ΕΟ)') {
-          if (dutyDef?.armsRequired === 'Ένοπλος' || dutyDef?.name?.toLowerCase().includes('σκοπός') || dutyDef?.name?.toLowerCase().includes('πύλη') || dutyDef?.name?.toLowerCase().includes('περίπολος')) {
-            return false;
-          }
-        }
-      }
-
-      // 4. Weekend Day-Off constraints:
-      if (plan) {
-        const isSatOff = plan.saturdayOffIds?.includes(p.id) ?? false;
-        const isSunOff = plan.sundayOffIds?.includes(p.id) ?? false;
-
-        // General departure constraint (Saturday 12:00, Sunday 10:00)
-        if (isSlotConflictingWithDayOff(activeSlot, day, isSatOff, isSunOff)) return false;
-
-        // Specific cover constraints:
-        // Friday cover 12-14: must not have Saturday off
-        if (day === 5 && isSlot12to14 && isSatOff) return false;
-        // Saturday cover 10-12: must not have Sunday off
-        if (day === 6 && isSlot10to12 && isSunOff) return false;
-        // Saturday cover 12-14: must not have Sunday off
-        if (day === 6 && isSlot12to14 && isSunOff) return false;
-      }
-
-      // 5. Duty type eligibility (arms, rank, specialty, eligibleDutyIds)
-      if (dutyDef) {
-        const elig = this.scheduler.isEligibleForDuty(p, dutyDef, date);
-        if (!elig.eligible) return false;
-      }
-
-      return true;
+      return (a.dutyScore || 0) - (b.dutyScore || 0);
     });
-
-    if (!q) return available;
-
-    return available.filter(p => 
-      p.fullName.toLowerCase().includes(q) ||
-      p.rankShort.toLowerCase().includes(q) ||
-      p.rank.toLowerCase().includes(q) ||
-      (p.specialty && p.specialty.toLowerCase().includes(q)) ||
-      (p.company && p.company.toLowerCase().includes(q))
-    );
   });
 
   constructor() {
@@ -245,15 +216,23 @@ export class ShiftSchedulerComponent {
     if (!target.closest('.searchable-picker-anchor')) {
       this.closePersonPicker();
     }
+    if (!target.closest('.templates-menu-anchor')) {
+      this.closeTemplatesDropdown();
+    }
   }
 
   @HostListener('document:keydown.escape')
   onEscape() {
     this.closePersonPicker();
+    this.closeTemplatesDropdown();
     this.cancelSafetyRemoval();
     this.closeAddDutyModal();
     this.closeFinalizeModal();
     this.closeResetFinalizeModal();
+    this.closeManageTemplatesModal();
+    this.closeSaveAsTemplateModal();
+    this.closeTemplateEditorModal();
+    this.closeEditDutyInDayModal();
   }
 
   getDefaultTargetDate(): string {
@@ -304,6 +283,10 @@ export class ShiftSchedulerComponent {
     if (existing) {
       let modified = false;
       existing.duties.forEach(duty => {
+        // Skip sync for duties customized specifically for this day
+        if (duty.isCustomizedForDay) {
+          return;
+        }
         const ad = activeDuties.find(d => d.id === duty.dutyTypeId);
         if (ad) {
           const slotDefs = getDutySlotsForDate(ad, date);
@@ -366,42 +349,6 @@ export class ShiftSchedulerComponent {
         }
       });
 
-      // Add any active duties that are missing from existing schedule
-      activeDuties.forEach(ad => {
-        if (!existing.duties.some(d => d.dutyTypeId === ad.id)) {
-          modified = true;
-          const slotDefs = getDutySlotsForDate(ad, date);
-          const slotsCount = slotDefs.length > 0 ? slotDefs.length : (ad.slots || 1);
-          const slots: ShiftSlotAssignment[] = [];
-          for (let i = 0; i < slotsCount; i++) {
-            const def = slotDefs[i];
-            let hoursNote = ad.type === '24ωρη' ? '08:00 - 08:00' : `Βάρδια ${i + 1}`;
-            if (ad.timePresetType === 'STANDBY' || ad.name.toLowerCase().includes('επιφυλακ')) {
-              hoursNote = def?.label || 'Επιφυλακή';
-            } else if (def) {
-              const str = formatIntervalsToString(def.intervals);
-              hoursNote = def.label ? (def.label.includes(str) ? def.label : `${def.label}: ${str}`) : str;
-            }
-            slots.push({
-              slotIndex: i + 1,
-              groupIndex: def?.groupIndex,
-              personId: null,
-              personName: '',
-              hoursNote: this.stripGroupText(hoursNote),
-              intervals: def?.intervals ? [...def.intervals] : undefined
-            });
-          }
-          existing.duties.push({
-            dutyTypeId: ad.id,
-            dutyName: ad.name,
-            shortName: ad.shortName,
-            category: ad.category,
-            weight: ad.weight !== undefined && ad.weight !== null ? ad.weight : 1,
-            slots
-          });
-        }
-      });
-
       this.revalidateSchedule(existing);
       if (modified) {
         this.storage.saveSchedule(existing);
@@ -413,7 +360,53 @@ export class ShiftSchedulerComponent {
   }
 
   createEmptyScheduleForDate(date: string): DailySchedule {
-    const duties: DutyAssignment[] = this.activeDuties().map(duty => {
+    const activeDuties = this.activeDuties();
+    const prevDate = this.scheduler.getPreviousDate(date);
+    const prevSchedule = this.storage.getScheduleForDate(prevDate);
+    
+    let dutiesToInclude: DutyType[] = [];
+    let appliedTemplateId: string | undefined = undefined;
+    let appliedTemplateName: string | undefined = undefined;
+
+    // 1. Inherit duties set on the previous date (using their default definitions)
+    if (prevSchedule && prevSchedule.duties && prevSchedule.duties.length > 0) {
+      const prevDutyIds = prevSchedule.duties.map(d => d.dutyTypeId);
+      for (const id of prevDutyIds) {
+        const found = activeDuties.find(d => d.id === id);
+        if (found) dutiesToInclude.push(found);
+      }
+    }
+
+    // 2. If no previous day schedule exists, use the default template for this date
+    if (dutiesToInclude.length === 0) {
+      const defaultTemplate = this.storage.getDefaultTemplateForDate(date);
+      if (defaultTemplate && defaultTemplate.dutyTypeIds.length > 0) {
+        appliedTemplateId = defaultTemplate.id;
+        appliedTemplateName = defaultTemplate.name;
+        for (const id of defaultTemplate.dutyTypeIds) {
+          const found = activeDuties.find(d => d.id === id);
+          if (found) dutiesToInclude.push(found);
+        }
+      }
+    }
+
+    // 3. Fallback to standard baseline duties (do not auto-include newly created duties)
+    if (dutiesToInclude.length === 0) {
+      const isWknd = this.scheduler.isWeekend(date);
+      const fallbackIds = isWknd
+        ? ['duty-thalamofylakas', 'duty-oplofylakas', 'duty-estiatoria', 'duty-artoklivanos']
+        : ['duty-thalamofylakas', 'duty-oplofylakas', 'duty-kathariotites', 'duty-estiatoria', 'duty-artoklivanos'];
+      for (const id of fallbackIds) {
+        const found = activeDuties.find(ad => ad.id === id);
+        if (found) dutiesToInclude.push(found);
+      }
+    }
+
+    if (dutiesToInclude.length === 0) {
+      dutiesToInclude = [...activeDuties];
+    }
+
+    const duties: DutyAssignment[] = dutiesToInclude.map(duty => {
       const slots: ShiftSlotAssignment[] = [];
       const slotDefs = getDutySlotsForDate(duty, date);
       const slotsCount = slotDefs.length > 0 ? slotDefs.length : (duty.slots || 1);
@@ -459,6 +452,8 @@ export class ShiftSchedulerComponent {
       isHolidayOrWeekend: this.scheduler.isWeekend(date),
       dayNote: getDayHandoverNote(date),
       duties,
+      appliedTemplateId,
+      appliedTemplateName,
       savedAt: undefined
     };
   }
@@ -587,7 +582,7 @@ export class ShiftSchedulerComponent {
       (slot.groupIndex != null && sd.groupIndex === slot.groupIndex) || sd.slotIndex === slot.slotIndex
     );
 
-    const typedName = (def?.groupName || '').trim();
+    const typedName = (def?.groupName || def?.label || '').trim();
     if (!typedName) return '';
 
     // If it's just generic default position names (e.g. "1η Θέση", "2η Θέση", "Θέση #1", etc.), treat as blank
@@ -748,54 +743,143 @@ export class ShiftSchedulerComponent {
     return false;
   }
 
-  getPersonBadgeNote(personId: string): { text: string; isLeave?: boolean; isServed?: boolean; isWeekendTrick?: boolean } | null {
+  getPersonBadgeNote(personId: string): { 
+    text: string; 
+    type: 'danger' | 'warning' | 'served' | 'trick'; 
+    isLeave?: boolean; 
+    isServed?: boolean; 
+    isWeekendTrick?: boolean 
+  } | null {
     const date = this.selectedDate();
-    const leave = this.scheduler.getPersonLeave(personId, date);
-    if (leave) {
-      return { text: leave.type, isLeave: true };
-    }
-
-    // Check if currently picking for a weekend cover slot
     const active = this.activePickerSlot();
     const sched = this.currentSchedule();
+    const person = this.storage.personnel().find(p => p.id === personId);
+
+    // 1. Double assignment on the same date (Critical Red)
+    if (active && sched && sched.duties) {
+      const activeDuty = sched.duties[active.dutyIdx];
+      for (let dIdx = 0; dIdx < sched.duties.length; dIdx++) {
+        const d = sched.duties[dIdx];
+        for (let sIdx = 0; sIdx < d.slots.length; sIdx++) {
+          const slot = d.slots[sIdx];
+          const isCurrentSlot = 
+            (dIdx === active.dutyIdx || (activeDuty && d.dutyTypeId === activeDuty.dutyTypeId)) && 
+            sIdx === active.slotIdx;
+          if (isCurrentSlot) continue;
+          if (slot.personId === personId) {
+            const dutyName = d.dutyName || 'Υπηρεσία';
+            const shortName = dutyName.length > 10 ? dutyName.slice(0, 8) + '…' : dutyName;
+            return { 
+              text: shortName ? `Σε υπηρεσία (${shortName})` : 'Σε υπηρεσία', 
+              type: 'danger', 
+              isLeave: true 
+            };
+          }
+        }
+      }
+    }
+
+    // 2. Full exemption (Critical Red)
+    if (person?.exemptFromAllDuties) {
+      return { text: 'Απαλλαγή', type: 'danger', isLeave: true };
+    }
+
+    // 3. Leave / Medical (Red if blocksDuty or EO on armed duty, Orange if partial/informative)
+    const leave = this.scheduler.getPersonLeave(personId, date);
+    if (leave) {
+      const meta = getLeaveTypeMeta(leave.type);
+      if (meta.blocksDuty) {
+        return { text: leave.type, type: 'danger', isLeave: true };
+      }
+      if (leave.type === 'Ελεύθερος Ορθοστασίας (ΕΟ)') {
+        if (active && sched) {
+          const activeDuty = sched.duties[active.dutyIdx];
+          const dutyDef = this.storage.dutyTypes().find(dt => dt.id === activeDuty?.dutyTypeId);
+          if (
+            dutyDef?.armsRequired === 'Ένοπλος' || 
+            dutyDef?.name?.toLowerCase().includes('σκοπός') || 
+            dutyDef?.name?.toLowerCase().includes('πύλη') || 
+            dutyDef?.name?.toLowerCase().includes('περίπολος')
+          ) {
+            return { text: leave.type, type: 'danger', isLeave: true };
+          }
+        }
+        return { text: leave.type, type: 'warning', isLeave: true };
+      }
+      return { text: leave.type, type: 'warning', isLeave: true };
+    }
+
+    // Active duty and slot specific constraints
     if (active && sched) {
       const activeDuty = sched.duties[active.dutyIdx];
       const activeSlot = activeDuty?.slots[active.slotIdx];
+      const dutyDef = this.storage.dutyTypes().find(dt => dt.id === activeDuty?.dutyTypeId);
+
+      // 4. Armed requirement mismatch (Critical Red)
+      if (dutyDef?.armsRequired === 'Ένοπλος' && person && person.status !== 'Ένοπλος') {
+        return { text: 'Άοπλος', type: 'danger', isLeave: true };
+      }
+
+      // 5. Weekend cover slot constraints
       if (activeSlot) {
         const dates = this.scheduler.getWeekendDates(sched.date);
         const plan = this.storage.getWeekendPlan(dates.friday);
         const day = new Date(sched.date).getDay();
 
         if (plan) {
+          const isSatOff = plan.saturdayOffIds?.includes(personId) ?? false;
+          const isSunOff = plan.sundayOffIds?.includes(personId) ?? false;
+
           // Friday cover 12-14: Person must NOT be off on Saturday (must be Εξοδούχος Κυριακής)
           if (day === 5 && this.isSlot12to14(activeSlot)) {
-            if (plan.saturdayOffIds.includes(personId)) {
-              return { text: 'Εξοδούχος Σ (Μη επιλέξιμος)', isLeave: true };
+            if (isSatOff) {
+              return { text: 'Εξοδούχος Σ', type: 'danger', isLeave: true };
             }
-            if (plan.sundayOffIds.includes(personId)) {
-              return { text: 'Εξοδούχος Κ (Επιλέξιμος)', isWeekendTrick: true };
+            if (isSunOff) {
+              return { text: 'Εξοδούχος Κ (Επιλέξιμος)', type: 'trick', isWeekendTrick: true };
             }
           }
 
           // Saturday covers 10-12 & 12-14: Person must NOT be off on Sunday (must be Εξοδούχος Σαββάτου)
           if (day === 6 && (this.isSlot10to12(activeSlot) || this.isSlot12to14(activeSlot))) {
-            if (plan.sundayOffIds.includes(personId)) {
-              return { text: 'Εξοδούχος Κ (Μη επιλέξιμος)', isLeave: true };
+            if (isSunOff) {
+              return { text: 'Εξοδούχος Κ', type: 'danger', isLeave: true };
             }
-            if (plan.saturdayOffIds.includes(personId)) {
-              return { text: 'Εξοδούχος Σ (Επιλέξιμος)', isWeekendTrick: true };
+            if (isSatOff) {
+              return { text: 'Εξοδούχος Σ (Επιλέξιμος)', type: 'trick', isWeekendTrick: true };
             }
           }
+
+          // General departure constraint (Warning Orange)
+          if (isSlotConflictingWithDayOff(activeSlot, day, isSatOff, isSunOff)) {
+            if (isSatOff) return { text: 'Εξοδούχος Σ', type: 'warning' };
+            if (isSunOff) return { text: 'Εξοδούχος Κ', type: 'warning' };
+          }
+        }
+      }
+
+      // 6. Duty eligibility / Specialty requirement (Warning Orange)
+      if (person && dutyDef) {
+        const elig = this.scheduler.isEligibleForDuty(person, dutyDef, date);
+        if (!elig.eligible) {
+          return { text: 'Μη επιλέξιμος', type: 'warning' };
         }
       }
     }
 
+    // 7. Served yesterday or special weekend trick
     if (this.scheduler.servedYesterday(personId, date)) {
       if (this.isPersonServingWeekendTrick(personId, date)) {
-        return { text: 'Ειδική εναλλαγή Σ/Κ', isWeekendTrick: true };
+        return { text: 'Ειδική εναλλαγή Σ/Κ', type: 'trick', isWeekendTrick: true };
       }
-      return { text: 'Υπηρέτησε χθες', isServed: true };
+      return { text: 'Υπηρέτησε χθες', type: 'served', isServed: true };
     }
+
+    // 8. Weekend preference indication
+    if ((this.isFriday() || this.isWeekend()) && person?.weekendPreference && person.weekendPreference !== 'Χωρίς προτίμηση') {
+      return { text: `Προτ: ${person.weekendPreference}`, type: 'trick' };
+    }
+
     return null;
   }
 
@@ -927,41 +1011,196 @@ export class ShiftSchedulerComponent {
     this.safetyRemovalModal.set(null);
   }
 
+  // --- Edit Duty in Day Modal & Reset Operations ---
+  openEditDutyInDayModal(dIdx: number) {
+    if (this.isCurrentScheduleFinalized()) {
+      this.storage.notify('Το πρόγραμμα έχει οριστικοποιηθεί. Πατήστε «Επαναφορά» για να μπορέσετε να το τροποποιήσετε.', 'warning');
+      return;
+    }
+    const sched = this.currentSchedule();
+    if (!sched || !sched.duties[dIdx]) return;
+    const duty = sched.duties[dIdx];
+
+    this.editingDutyIndex.set(dIdx);
+    this.editDutyFormName.set(duty.dutyName || '');
+    this.editDutyFormShortName.set(duty.shortName || '');
+    this.editDutyFormCategory.set(duty.category || '');
+    this.editDutyFormWeight.set(duty.weight !== undefined && duty.weight !== null ? duty.weight : 1);
+    this.isCustomizedForDayCurrently.set(!!duty.isCustomizedForDay);
+    this.editDutyFormSlots.set(JSON.parse(JSON.stringify(duty.slots || [])));
+    this.isEditDutyInDayModalOpen.set(true);
+  }
+
+  closeEditDutyInDayModal() {
+    this.isEditDutyInDayModalOpen.set(false);
+    this.editingDutyIndex.set(-1);
+    this.editDutyFormSlots.set([]);
+  }
+
+  addSlotToEditedDuty() {
+    const slots = [...this.editDutyFormSlots()];
+    const newIdx = slots.length + 1;
+    slots.push({
+      slotIndex: newIdx,
+      personId: null,
+      personName: '',
+      hoursNote: `Βάρδια ${newIdx}`
+    });
+    this.editDutyFormSlots.set(slots);
+  }
+
+  removeSlotFromEditedDuty(sIdx: number) {
+    const slots = [...this.editDutyFormSlots()];
+    if (slots.length <= 1) {
+      this.storage.notify('Η υπηρεσία πρέπει να έχει τουλάχιστον μία θέση (βάρδια).', 'warning');
+      return;
+    }
+    slots.splice(sIdx, 1);
+    slots.forEach((s, idx) => {
+      s.slotIndex = idx + 1;
+    });
+    this.editDutyFormSlots.set(slots);
+  }
+
+  saveEditedDutyInDay() {
+    const sched = this.currentSchedule();
+    const dIdx = this.editingDutyIndex();
+    if (!sched || dIdx < 0 || !sched.duties[dIdx]) return;
+
+    const trimmedName = this.editDutyFormName().trim();
+    if (!trimmedName) {
+      this.storage.notify('Το όνομα της υπηρεσίας δεν μπορεί να είναι κενό.', 'warning');
+      return;
+    }
+
+    const duty = sched.duties[dIdx];
+    duty.dutyName = trimmedName;
+    duty.shortName = this.editDutyFormShortName().trim() || trimmedName.slice(0, 4);
+    duty.category = this.editDutyFormCategory().trim();
+    duty.weight = Number(this.editDutyFormWeight()) || 1;
+
+    const slots = this.editDutyFormSlots().map((s, idx) => ({
+      ...s,
+      slotIndex: idx + 1,
+      hoursNote: (s.hoursNote || '').trim() || `Βάρδια ${idx + 1}`
+    }));
+    duty.slots = slots;
+    duty.isCustomizedForDay = true;
+
+    this.revalidateSchedule(sched);
+    this.storage.saveSchedule(sched);
+    this.currentSchedule.set({ ...sched });
+    this.storage.notify(`Η υπηρεσία «${duty.dutyName}» προσαρμόστηκε επιτυχώς για τη σημερινή ημέρα.`, 'success');
+    this.closeEditDutyInDayModal();
+  }
+
+  resetDutyToDefault(dIdx: number) {
+    if (this.isCurrentScheduleFinalized()) {
+      this.storage.notify('Το πρόγραμμα έχει οριστικοποιηθεί. Πατήστε «Επαναφορά» για να μπορέσετε να το τροποποιήσετε.', 'warning');
+      return;
+    }
+    const sched = this.currentSchedule();
+    if (!sched || !sched.duties[dIdx]) return;
+
+    const duty = sched.duties[dIdx];
+    const ad = this.storage.dutyTypes().find(d => d.id === duty.dutyTypeId);
+    if (!ad) {
+      this.storage.notify('Δεν βρέθηκε η αρχική προεπιλογή για αυτή την υπηρεσία.', 'error');
+      return;
+    }
+
+    const slotDefs = getDutySlotsForDate(ad, sched.date);
+    const targetCount = slotDefs.length > 0 ? slotDefs.length : (ad.slots || 1);
+    const oldSlots = [...duty.slots];
+    const newSlots: ShiftSlotAssignment[] = [];
+
+    for (let i = 0; i < targetCount; i++) {
+      const def = slotDefs[i];
+      let hoursNote = ad.type === '24ωρη' ? '08:00 - 08:00' : `Βάρδια ${i + 1}`;
+      if (ad.timePresetType === 'STANDBY' || ad.name.toLowerCase().includes('επιφυλακ')) {
+        hoursNote = def?.label || 'Επιφυλακή';
+      } else if (def) {
+        const str = formatIntervalsToString(def.intervals);
+        hoursNote = def.label ? (def.label.includes(str) ? def.label : `${def.label}: ${str}`) : str;
+      }
+
+      const existingSlot = oldSlots[i];
+      newSlots.push({
+        slotIndex: i + 1,
+        groupIndex: def?.groupIndex,
+        groupTag: def?.groupTag,
+        personId: existingSlot ? existingSlot.personId : null,
+        personName: existingSlot ? existingSlot.personName : '',
+        rankShort: existingSlot ? existingSlot.rankShort : undefined,
+        company: existingSlot ? existingSlot.company : undefined,
+        rotationalGroup: existingSlot ? existingSlot.rotationalGroup : undefined,
+        manualOverride: existingSlot ? existingSlot.manualOverride : false,
+        hoursNote: this.stripGroupText(hoursNote),
+        intervals: def?.intervals ? [...def.intervals] : undefined
+      });
+    }
+
+    duty.dutyName = ad.name;
+    duty.shortName = ad.shortName;
+    duty.category = ad.category;
+    duty.weight = ad.weight !== undefined && ad.weight !== null ? ad.weight : 1;
+    duty.slots = newSlots;
+    delete duty.isCustomizedForDay;
+
+    this.revalidateSchedule(sched);
+    this.storage.saveSchedule(sched);
+    this.currentSchedule.set({ ...sched });
+    this.storage.notify(`Η υπηρεσία «${duty.dutyName}» επανήλθε στις προεπιλογές της.`, 'success');
+    if (this.isEditDutyInDayModalOpen()) {
+      this.closeEditDutyInDayModal();
+    }
+  }
+
   // --- Primary CTA: Auto Produce Daily / Weekend Shifts ---
   onAutoGenerateClicked() {
     if (this.isCurrentScheduleFinalized()) return;
     const date = this.selectedDate();
 
-    // Saturday/Sunday: button is disabled, do nothing
-    if (this.isSaturday() || this.isSunday()) {
-      return;
-    }
-
-    if (this.isFriday()) {
+    // Weekend (Fri / Sat / Sun) - Unified weekend generation without requiring pre-set plan
+    if (this.isFriday() || this.isSaturday() || this.isSunday()) {
       const dates = this.scheduler.getWeekendDates(date);
-      const plan = this.storage.getWeekendPlan(dates.friday);
-      const isPlanSet = !!plan && (plan.saturdayOffIds.length > 0 || plan.sundayOffIds.length > 0);
+      const existingPlan = this.storage.getWeekendPlan(dates.friday);
 
-      if (!isPlanSet || !plan) {
-        this.storage.notify('Δεν επιτρέπεται η αυτόματη παραγωγή: Πρέπει πρώτα να ορίσετε τους εξοδούχους Σαββατοκύριακου στη σελίδα «Εξοδούχοι Σ/Κ».', 'warning');
-        return;
+      const currentSched = this.currentSchedule();
+      const customFridayDuties = this.isFriday() && currentSched && currentSched.duties.length > 0 ? currentSched.duties : undefined;
+      const res = this.scheduler.generateWeekendSchedules(dates.friday, existingPlan, customFridayDuties);
+      if (currentSched?.appliedTemplateId && this.isFriday()) {
+        res.friday.appliedTemplateId = currentSched.appliedTemplateId;
+        res.friday.appliedTemplateName = currentSched.appliedTemplateName;
       }
-
-      const res = this.scheduler.generateWeekendSchedules(dates.friday, plan);
       this.revalidateSchedule(res.friday);
       this.revalidateSchedule(res.saturday);
       this.revalidateSchedule(res.sunday);
-      this.currentSchedule.set(res.friday);
+
+      if (this.isFriday()) {
+        this.currentSchedule.set(res.friday);
+      } else if (this.isSaturday()) {
+        this.currentSchedule.set(res.saturday);
+      } else {
+        this.currentSchedule.set(res.sunday);
+      }
+
       this.storage.saveSchedule(res.friday);
       this.storage.saveSchedule(res.saturday);
       this.storage.saveSchedule(res.sunday);
       this.revalidateNeighborSchedules(dates.friday);
-      this.storage.notify(`Η αυτόματη κατανομή υπηρεσιών για Παρασκευή, Σάββατο και Κυριακή ολοκληρώθηκε!`, 'success');
+      this.storage.notify(`Η αυτόματη κατανομή υπηρεσιών Σ/Κ ολοκληρώθηκε και οι εξοδούχοι καθορίστηκαν αυτόματα βάσει των υπηρεσιών!`, 'success');
       return;
     }
 
     // Weekdays (Mon - Thu)
-    const generated = this.scheduler.generateDailySchedule(date);
+    const currentSched = this.currentSchedule();
+    const customDuties = currentSched && currentSched.duties.length > 0 ? currentSched.duties : undefined;
+    const generated = this.scheduler.generateDailySchedule(date, customDuties);
+    if (currentSched?.appliedTemplateId) {
+      generated.appliedTemplateId = currentSched.appliedTemplateId;
+      generated.appliedTemplateName = currentSched.appliedTemplateName;
+    }
     this.revalidateSchedule(generated);
     this.currentSchedule.set(generated);
     this.storage.saveSchedule(generated);
@@ -1415,5 +1654,335 @@ export class ShiftSchedulerComponent {
       `Η οριστικοποίηση για ${this.formatDateDdMmYyyy(sched.date)} ακυρώθηκε. Τα μόρια επαναφέρθηκαν και οι θέσεις ξεκλειδώθηκαν για επεξεργασία.`,
       'info'
     );
+  }
+
+  // --- Schedule Templates Methods ---
+  toggleTemplatesDropdown(event: MouseEvent) {
+    event.stopPropagation();
+    this.isTemplatesDropdownOpen.update(v => !v);
+  }
+
+  closeTemplatesDropdown() {
+    this.isTemplatesDropdownOpen.set(false);
+  }
+
+  applyTemplate(template: ScheduleTemplate) {
+    if (this.isCurrentScheduleFinalized()) {
+      this.storage.notify('Το πρόγραμμα έχει οριστικοποιηθεί. Πατήστε «Επαναφορά» για να μπορέσετε να το τροποποιήσετε.', 'warning');
+      return;
+    }
+    this.closeTemplatesDropdown();
+
+    const sched = this.currentSchedule();
+    if (!sched) return;
+
+    // Check if any duty currently assigned with soldiers will be removed
+    const templateIdsSet = new Set(template.dutyTypeIds);
+    const dutiesWithAssignedToRemove = sched.duties.filter(d => 
+      !templateIdsSet.has(d.dutyTypeId) && d.slots.some(s => !!s.personId)
+    );
+
+    if (dutiesWithAssignedToRemove.length > 0) {
+      this.safetyRemovalModal.set({
+        dutyNames: dutiesWithAssignedToRemove.map(d => d.dutyName),
+        execute: () => {
+          this.executeApplyTemplate(template);
+          this.safetyRemovalModal.set(null);
+        }
+      });
+      return;
+    }
+
+    this.executeApplyTemplate(template);
+  }
+
+  executeApplyTemplate(template: ScheduleTemplate) {
+    const sched = this.currentSchedule();
+    if (!sched) return;
+
+    const activeDuties = this.activeDuties();
+    const existingDutiesMap = new Map<string, DutyAssignment>();
+    for (const d of sched.duties) {
+      existingDutiesMap.set(d.dutyTypeId, d);
+    }
+
+    const newDuties: DutyAssignment[] = [];
+    for (const dutyId of template.dutyTypeIds) {
+      const dutyDef = activeDuties.find(d => d.id === dutyId);
+      if (!dutyDef) continue;
+
+      const existingDuty = existingDutiesMap.get(dutyId);
+      if (existingDuty) {
+        newDuties.push({
+          ...existingDuty,
+          dutyName: dutyDef.name,
+          shortName: dutyDef.shortName,
+          category: dutyDef.category,
+          weight: dutyDef.weight !== undefined && dutyDef.weight !== null ? dutyDef.weight : 1
+        });
+      } else {
+        const slotDefs = getDutySlotsForDate(dutyDef, sched.date);
+        const slotsCount = slotDefs.length > 0 ? slotDefs.length : (dutyDef.slots || 1);
+        const slots: ShiftSlotAssignment[] = [];
+        for (let i = 0; i < slotsCount; i++) {
+          const def = slotDefs[i];
+          let hoursNote = dutyDef.type === '24ωρη' ? '08:00 - 08:00' : `Βάρδια ${i + 1}`;
+          if (dutyDef.timePresetType === 'STANDBY' || dutyDef.name.toLowerCase().includes('επιφυλακ')) {
+            hoursNote = def?.label || 'Επιφυλακή';
+          } else if (def) {
+            const str = formatIntervalsToString(def.intervals);
+            hoursNote = def.label ? (def.label.includes(str) ? def.label : `${def.label}: ${str}`) : str;
+          }
+          slots.push({
+            slotIndex: i + 1,
+            groupIndex: def?.groupIndex,
+            personId: null,
+            personName: '',
+            hoursNote: this.stripGroupText(hoursNote),
+            intervals: def?.intervals ? [...def.intervals] : undefined
+          });
+        }
+        newDuties.push({
+          dutyTypeId: dutyDef.id,
+          dutyName: dutyDef.name,
+          shortName: dutyDef.shortName,
+          category: dutyDef.category,
+          weight: dutyDef.weight !== undefined && dutyDef.weight !== null ? dutyDef.weight : 1,
+          slots
+        });
+      }
+    }
+
+    sched.duties = newDuties;
+    sched.appliedTemplateId = template.id;
+    sched.appliedTemplateName = template.name;
+
+    this.revalidateSchedule(sched);
+    this.currentSchedule.set({ ...sched });
+    this.storage.saveSchedule(sched);
+    this.storage.notify(`Εφαρμόστηκε το πρότυπο «${template.name}» (${newDuties.length} υπηρεσίες).`, 'success');
+  }
+
+  openManageTemplatesModal() {
+    this.closeTemplatesDropdown();
+    this.isManageTemplatesModalOpen.set(true);
+  }
+
+  closeManageTemplatesModal() {
+    this.isManageTemplatesModalOpen.set(false);
+  }
+
+  openCreateTemplateModal() {
+    this.editingTemplateId.set(null);
+    this.templateFormName.set('');
+    this.templateFormDescription.set('');
+    this.templateFormDutyIds.set(this.activeDuties().map(d => d.id));
+    this.templateFormIsDefaultWeekday.set(false);
+    this.templateFormIsDefaultWeekend.set(false);
+    this.templateDutySearchQuery.set('');
+    this.isTemplateEditorModalOpen.set(true);
+  }
+
+  openEditTemplateModal(tpl: ScheduleTemplate) {
+    this.editingTemplateId.set(tpl.id);
+    this.templateFormName.set(tpl.name);
+    this.templateFormDescription.set(tpl.description || '');
+    this.templateFormDutyIds.set([...tpl.dutyTypeIds]);
+    this.templateFormIsDefaultWeekday.set(Boolean(tpl.isDefaultWeekday));
+    this.templateFormIsDefaultWeekend.set(Boolean(tpl.isDefaultWeekend));
+    this.templateDutySearchQuery.set('');
+    this.isTemplateEditorModalOpen.set(true);
+  }
+
+  closeTemplateEditorModal() {
+    this.isTemplateEditorModalOpen.set(false);
+    this.editingTemplateId.set(null);
+  }
+
+  saveTemplateFromEditor() {
+    const name = this.templateFormName().trim();
+    if (!name) {
+      this.storage.notify('Παρακαλώ εισάγετε όνομα για το πρότυπο.', 'warning');
+      return;
+    }
+    const dutyIds = this.templateFormDutyIds();
+    if (dutyIds.length === 0) {
+      this.storage.notify('Παρακαλώ επιλέξτε τουλάχιστον μία υπηρεσία για το πρότυπο.', 'warning');
+      return;
+    }
+
+    const editId = this.editingTemplateId();
+    if (editId) {
+      this.storage.updateScheduleTemplate(editId, {
+        name,
+        description: this.templateFormDescription().trim(),
+        dutyTypeIds: [...dutyIds],
+        isDefaultWeekday: this.templateFormIsDefaultWeekday(),
+        isDefaultWeekend: this.templateFormIsDefaultWeekend()
+      });
+      // If current schedule had this template applied, update display name
+      const sched = this.currentSchedule();
+      if (sched && sched.appliedTemplateId === editId) {
+        sched.appliedTemplateName = name;
+        this.currentSchedule.set({ ...sched });
+        this.storage.saveSchedule(sched);
+      }
+    } else {
+      this.storage.addScheduleTemplate({
+        name,
+        description: this.templateFormDescription().trim(),
+        dutyTypeIds: [...dutyIds],
+        isDefaultWeekday: this.templateFormIsDefaultWeekday(),
+        isDefaultWeekend: this.templateFormIsDefaultWeekend()
+      });
+    }
+
+    this.closeTemplateEditorModal();
+  }
+
+  toggleDutyInTemplateEditor(dutyId: string) {
+    const current = [...this.templateFormDutyIds()];
+    const idx = current.indexOf(dutyId);
+    if (idx >= 0) {
+      current.splice(idx, 1);
+    } else {
+      current.push(dutyId);
+    }
+    this.templateFormDutyIds.set(current);
+  }
+
+  isDutySelectedInTemplateEditor(dutyId: string): boolean {
+    return this.templateFormDutyIds().includes(dutyId);
+  }
+
+  moveDutyInTemplateEditor(dutyId: string, direction: -1 | 1) {
+    const current = [...this.templateFormDutyIds()];
+    const idx = current.indexOf(dutyId);
+    if (idx < 0) return;
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= current.length) return;
+    const [item] = current.splice(idx, 1);
+    current.splice(targetIdx, 0, item);
+    this.templateFormDutyIds.set(current);
+  }
+
+  selectAllDutiesInTemplateEditor() {
+    this.templateFormDutyIds.set(this.activeDuties().map(d => d.id));
+  }
+
+  deselectAllDutiesInTemplateEditor() {
+    this.templateFormDutyIds.set([]);
+  }
+
+  duplicateTemplate(tpl: ScheduleTemplate) {
+    this.storage.duplicateScheduleTemplate(tpl.id);
+  }
+
+  deleteTemplate(tpl: ScheduleTemplate) {
+    if (!confirm(`Είστε βέβαιοι ότι θέλετε να διαγράψετε το πρότυπο «${tpl.name}»;`)) {
+      return;
+    }
+    this.storage.deleteScheduleTemplate(tpl.id);
+  }
+
+  toggleTemplateDefault(tpl: ScheduleTemplate, type: 'weekday' | 'weekend') {
+    if (type === 'weekday') {
+      const nextVal = !tpl.isDefaultWeekday;
+      this.storage.setDefaultTemplate(tpl.id, nextVal ? 'weekday' : 'none');
+    } else {
+      const nextVal = !tpl.isDefaultWeekend;
+      this.storage.setDefaultTemplate(tpl.id, nextVal ? 'weekend' : 'none');
+    }
+  }
+
+  openSaveAsTemplateModal() {
+    this.closeTemplatesDropdown();
+    const sched = this.currentSchedule();
+    const currentDutyIds = sched ? sched.duties.map(d => d.dutyTypeId) : [];
+
+    this.saveAsTemplateName.set(`Πρότυπο ${this.getDayNameGreek(this.selectedDate())}`);
+    this.saveAsTemplateDescription.set(`Βασισμένο στις επιλεγμένες υπηρεσίες της ${this.formatDateDdMmYyyy(this.selectedDate())}`);
+    this.saveAsTemplateDutyIds.set(currentDutyIds.length > 0 ? [...currentDutyIds] : this.activeDuties().map(d => d.id));
+    this.saveAsTemplateIsDefaultWeekday.set(false);
+    this.saveAsTemplateIsDefaultWeekend.set(false);
+    this.isSaveAsTemplateModalOpen.set(true);
+  }
+
+  closeSaveAsTemplateModal() {
+    this.isSaveAsTemplateModalOpen.set(false);
+  }
+
+  confirmSaveAsTemplate() {
+    const name = this.saveAsTemplateName().trim();
+    if (!name) {
+      this.storage.notify('Παρακαλώ εισάγετε όνομα για το πρότυπο.', 'warning');
+      return;
+    }
+    const dutyIds = this.saveAsTemplateDutyIds();
+    if (dutyIds.length === 0) {
+      this.storage.notify('Παρακαλώ επιλέξτε τουλάχιστον μία υπηρεσία για το πρότυπο.', 'warning');
+      return;
+    }
+
+    const newTpl = this.storage.addScheduleTemplate({
+      name,
+      description: this.saveAsTemplateDescription().trim(),
+      dutyTypeIds: [...dutyIds],
+      isDefaultWeekday: this.saveAsTemplateIsDefaultWeekday(),
+      isDefaultWeekend: this.saveAsTemplateIsDefaultWeekend()
+    });
+
+    const sched = this.currentSchedule();
+    if (sched) {
+      sched.appliedTemplateId = newTpl.id;
+      sched.appliedTemplateName = newTpl.name;
+      this.storage.saveSchedule(sched);
+      this.currentSchedule.set({ ...sched });
+    }
+
+    this.closeSaveAsTemplateModal();
+  }
+
+  toggleDutyInSaveAsTemplate(dutyId: string) {
+    const current = [...this.saveAsTemplateDutyIds()];
+    const idx = current.indexOf(dutyId);
+    if (idx >= 0) {
+      current.splice(idx, 1);
+    } else {
+      current.push(dutyId);
+    }
+    this.saveAsTemplateDutyIds.set(current);
+  }
+
+  isDutySelectedInSaveAsTemplate(dutyId: string): boolean {
+    return this.saveAsTemplateDutyIds().includes(dutyId);
+  }
+
+  selectAllDutiesInSaveAsTemplate() {
+    this.saveAsTemplateDutyIds.set(this.activeDuties().map(d => d.id));
+  }
+
+  deselectAllDutiesInSaveAsTemplate() {
+    this.saveAsTemplateDutyIds.set([]);
+  }
+
+  getDutyNameById(dutyId: string): string {
+    const d = this.storage.dutyTypes().find(item => item.id === dutyId);
+    return d ? d.name : dutyId;
+  }
+
+  getDutyShortNameById(dutyId: string): string {
+    const d = this.storage.dutyTypes().find(item => item.id === dutyId);
+    return d ? d.shortName : '';
+  }
+
+  getDutyCategoryById(dutyId: string): string {
+    const d = this.storage.dutyTypes().find(item => item.id === dutyId);
+    return d ? d.category : '';
+  }
+
+  getDutySlotsById(dutyId: string): number {
+    const d = this.storage.dutyTypes().find(item => item.id === dutyId);
+    return d ? d.slots : 1;
   }
 }

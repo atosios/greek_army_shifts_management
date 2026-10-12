@@ -574,6 +574,26 @@ function registerIpcHandlers() {
     }
   });
 
+  // Save CSV file to disk
+  ipcMain.handle('save-csv-file', async (event, content, defaultFilename) => {
+    try {
+      const defaultName = defaultFilename || `Εξοδούχοι_${new Date().toISOString().slice(0, 10)}.csv`;
+      const result = await dialog.showSaveDialog(mainWindow, {
+        title: 'Εξαγωγή Κατάστασης Εξοδούχων σε CSV',
+        defaultPath: path.join(app.getPath('documents'), defaultName),
+        filters: [{ name: 'CSV File (*.csv)', extensions: ['csv'] }, { name: 'All Files (*.*)', extensions: ['*'] }]
+      });
+
+      if (!result.canceled && result.filePath) {
+        fs.writeFileSync(result.filePath, content, 'utf-8');
+        return { success: true, filePath: result.filePath };
+      }
+      return { success: false, canceled: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
   // Open file with default application (e.g. Excel)
   ipcMain.handle('open-path', async (event, targetPath) => {
     try {

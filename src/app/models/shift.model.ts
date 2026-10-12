@@ -164,6 +164,8 @@ export const SPECIAL_ROLES = [
 
 export type SpecialRolePreset = typeof SPECIAL_ROLES[number];
 
+export type WeekendPreference = 'Σάββατο' | 'Κυριακή' | 'Χωρίς προτίμηση';
+
 export interface Personnel {
   id: string;
   rank: string;
@@ -187,6 +189,7 @@ export interface Personnel {
   dutyScore: number;        // Πόσες υπηρεσίες έχει κάνει συνολικά (για δίκαιη κατανομή)
   weekendDutyScore?: number; // Πόσες υπηρεσίες σε Σαββατοκύριακα/Αργίες
   lastDutyDate?: string;    // Τελευταία ημερομηνία υπηρεσίας (YYYY-MM-DD)
+  weekendPreference?: WeekendPreference; // Προτίμηση εξόδου Σ/Κ (Σάββατο, Κυριακή, Χωρίς προτίμηση)
   notes?: string;
   active: boolean;
 }
@@ -245,6 +248,7 @@ export interface DutyAssignment {
   category: string;
   weight?: number;
   slots: ShiftSlotAssignment[];
+  isCustomizedForDay?: boolean; // Flag indicating duty was modified specifically for this day
 }
 
 export interface WeekendPlan {
@@ -263,6 +267,8 @@ export interface DailySchedule {
   dayNote?: string;         // e.g. Σημείωση ημέρας
   notes?: string;
   duties: DutyAssignment[];
+  appliedTemplateId?: string;
+  appliedTemplateName?: string;
   savedAt?: string;
   weekendPlan?: WeekendPlan;
   isFinalized?: boolean;
@@ -300,6 +306,7 @@ export interface UnitInfo {
 }
 
 export type SoldierRecordType = 'ΑΙΤΗΜΑ' | 'ΠΟΙΝΗ';
+export type PenaltySubtype = 'ΣΤ ΕΞΟΔΟΥ' | 'Κ' | 'Φ' | 'ΑΛΛΟ';
 
 export interface SoldierRecord {
   id: string;
@@ -311,6 +318,50 @@ export interface SoldierRecord {
   notes?: string;        // Παρατηρήσεις
   status?: 'Εκκρεμεί' | 'Εγκρίθηκε' | 'Απορρίφθηκε' | 'Ολοκληρώθηκε';
   createdAt: string;     // ISO timestamp
+
+  // Punishments due days feature
+  penaltyType?: PenaltySubtype | string;
+  totalDays?: number;           // Συνολικές ημέρες ποινής (due)
+  servedDays?: number;          // Εκτιθείσες ημέρες (served)
+  isManualServedDays?: boolean; // Χειροκίνητη ρύθμιση
+}
+
+export interface ScheduleTemplate {
+  id: string;
+  name: string;             // e.g. "Καθημερινό Πλήρες", "Σαββατοκύριακο / Αργίες", "Μειωμένη Δύναμη"
+  description?: string;     // e.g. "Πλήρης σύνθεση σκοπιών & βαρδιών"
+  dutyTypeIds: string[];    // IDs of duty types included in this template (ordered)
+  isDefaultWeekday?: boolean; // Προεπιλογή για καθημερινές ημέρες
+  isDefaultWeekend?: boolean; // Προεπιλογή για Σαββατοκύριακα
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface DailyExodouchoiSoldier {
+  personId: string;
+  fullName: string;
+  rankShort: string;
+  asm: string;
+  specialty: string;
+  corps?: string;
+  company?: string;
+  barracksRoom?: string;
+  bedNumber?: string;
+  phone?: string;
+  isGoingOut: boolean;          // True: Εξοδούχος (βγαίνει), False: Μέσα (υπηρεσία/κώλυμα)
+  dutyStatusText: string;       // π.χ. "Χωρίς Υπηρεσία", "Θαλαμοφύλακας (14-16, ...)", "Καθαριότητες (Καθημερινή)", "Αρτοκλίβανος (Πρωί επομ.)", "Άδεια"
+  hasDutyTonight: boolean;      // Έχει ενεργή υπηρεσία τις απογευματινές/βραδινές ώρες
+  isOnLeaveTonight: boolean;    // Είναι σε άδεια/ΣΤΕΠ/νοσοκομείο
+  hasPenaltyTonight: boolean;   // Έχει ποινή (π.χ. ΣΤ ΕΞΟΔΟΥ)
+  manualOverride?: boolean;     // Χειροκίνητη παρέμβαση χρήστη
+  notes?: string;               // Προαιρετικές παρατηρήσεις / ωράριο (π.χ. "Έως 23:00")
+}
+
+export interface DailyExodouchoiPlan {
+  date: string;                 // YYYY-MM-DD
+  soldiers: DailyExodouchoiSoldier[];
+  updatedAt?: string;           // ISO timestamp
+  notes?: string;               // Γενικές παρατηρήσεις κατάστασης
 }
 
 export interface AppData {
@@ -322,6 +373,8 @@ export interface AppData {
   soldierRecords?: SoldierRecord[];
   schedules: DailySchedule[];
   weekendPlans?: Record<string, WeekendPlan>;
+  scheduleTemplates?: ScheduleTemplate[];
+  dailyExodouchoiPlans?: Record<string, DailyExodouchoiPlan>;
 }
 
 // Conflict validation interface

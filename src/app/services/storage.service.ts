@@ -1,6 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
-import { AppData, Personnel, HigherPersonnel, SignatureSlot, DutyType, Leave, SoldierRecord, SoldierRecordType, DailySchedule, WeekendPlan, UnitInfo, toGreekCaps, formatGreekDate, getCorpsShort, formatLocalDate } from '../models/shift.model';
-import { DEFAULT_APP_DATA, createEmptyAppData, normalizeRank } from '../data/default-data';
+import { AppData, Personnel, HigherPersonnel, SignatureSlot, DutyType, Leave, SoldierRecord, SoldierRecordType, PenaltySubtype, DailySchedule, WeekendPlan, WeekendPreference, UnitInfo, ScheduleTemplate, DailyExodouchoiPlan, DailyExodouchoiSoldier, toGreekCaps, formatGreekDate, getCorpsShort, formatLocalDate, normalizeGreek, getLeaveTypeMeta } from '../models/shift.model';
+import { DEFAULT_APP_DATA, DEFAULT_SCHEDULE_TEMPLATES, DEFAULT_HIGHER_PERSONNEL, DEFAULT_DUTY_TYPES, createEmptyAppData, normalizeRank } from '../data/default-data';
 import { getDutySlotsForDate, formatIntervalsToString, stripGroupText } from '../data/time-presets';
 
 declare global {
@@ -13,6 +13,7 @@ declare global {
       backupData: () => Promise<{ success: boolean; backupPath?: string; error?: string }>;
       getDataFilePath: () => Promise<{ filePath: string; isPortable: boolean }>;
       saveExcelFile: (buffer: ArrayBuffer, defaultFilename: string) => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
+      saveCsvFile: (content: string, defaultFilename: string) => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
       openPath: (path: string) => Promise<{ success: boolean; error?: string }>;
       showItemInFolder: (path: string) => Promise<{ success: boolean; error?: string }>;
       printWindow: () => Promise<{ success: boolean }>;
@@ -50,6 +51,8 @@ export class StorageService {
   readonly schedules = computed(() => this.appData().schedules);
   readonly unitInfo = computed(() => this.appData().unitInfo);
   readonly weekendPlans = computed(() => this.appData().weekendPlans || {});
+  readonly scheduleTemplates = computed<ScheduleTemplate[]>(() => this.appData().scheduleTemplates || []);
+  readonly dailyExodouchoiPlans = computed<Record<string, DailyExodouchoiPlan>>(() => this.appData().dailyExodouchoiPlans || {});
 
   readonly activePersonnel = computed(() => 
     this.appData().personnel.filter(p => p.active)
@@ -75,80 +78,8 @@ export class StorageService {
 
         const result = await window.electronAPI.loadData();
         if (result.success && result.data) {
-          const loadedData = result.data;
-          loadedData.personnel = loadedData.personnel || [];
-          loadedData.dutyTypes = (loadedData.dutyTypes || []).map((d: any) => ({
-            ...d,
-            weekendSwapNote: undefined,
-            allowedRanks: (d.allowedRanks || []).map((r: string) => normalizeRank(r).rankShort)
-          }));
-          {
-            const allDIds = loadedData.dutyTypes.map((d: any) => d.id);
-            loadedData.personnel = (loadedData.personnel || []).map(p => {
-              const isExempt = p.exemptFromAllDuties || false;
-              return {
-                ...p,
-                rank: 'ΣΤΡΑΤΙΩΤΗΣ',
-                rankShort: 'ΣΤΡ',
-                category: 'Κληρωτός' as const,
-                specialty: getCorpsShort(p.specialty),
-                rotationalGroup: undefined,
-                barracksRoom: p.barracksRoom || '',
-                bedNumber: p.bedNumber || '',
-                weaponNumber: p.status === 'Άοπλος' ? '-' : (p.weaponNumber || ''),
-                fullName: toGreekCaps(p.fullName),
-                fitnessProfile: p.fitnessProfile || (p.status === 'Άοπλος' ? 'Ι3' : 'Ι1'),
-                status: p.status === 'Άοπλος' ? 'Άοπλος' : 'Ένοπλος',
-                exemptFromAllDuties: isExempt,
-                eligibleDutyIds: isExempt ? [] : (p.eligibleDutyIds && p.eligibleDutyIds.length > 0 ? p.eligibleDutyIds : allDIds)
-              };
-            });
-          }
-          if (loadedData.schedules) {
-            for (const s of loadedData.schedules) {
-              if (s.duties) {
-                for (const d of s.duties) {
-                  if (d.slots) {
-                    for (const sl of d.slots) {
-                      if (sl.groupTag?.includes('ΓΚΡΟΥΠ')) sl.groupTag = undefined;
-                      if (sl.rotationalGroup?.includes('ΓΚΡΟΥΠ')) sl.rotationalGroup = undefined;
-                    }
-                  }
-                }
-              }
-            }
-          }
-          if (loadedData.dutyTypes) {
-            for (const d of loadedData.dutyTypes) {
-              if (d.slotDefinitions) {
-                for (const sd of d.slotDefinitions) {
-                  if (sd.groupTag?.includes('ΓΚΡΟΥΠ')) sd.groupTag = undefined;
-                  if (sd.groupName?.includes('ΓΚΡΟΥΠ')) sd.groupName = '';
-                }
-              }
-            }
-          }
-          if (loadedData.leaves) {
-            loadedData.leaves = loadedData.leaves.map(l => ({
-              ...l,
-              personName: toGreekCaps(l.personName)
-            }));
-          }
-          if (loadedData.soldierRecords) {
-            loadedData.soldierRecords = loadedData.soldierRecords.map(r => ({
-              ...r,
-              personName: toGreekCaps(r.personName)
-            }));
-          } else {
-            loadedData.soldierRecords = [];
-          }
-          loadedData.unitInfo = { ...createEmptyAppData().unitInfo, ...(loadedData.unitInfo || {}) };
-          loadedData.higherPersonnel = loadedData.higherPersonnel || [];
-          loadedData.leaves = loadedData.leaves || [];
-          loadedData.schedules = loadedData.schedules || [];
-          loadedData.soldierRecords = loadedData.soldierRecords || [];
-          loadedData.weekendPlans = loadedData.weekendPlans || {};
-          this.appData.set(loadedData);
+          const migrated = this.sanitizeAndMigrateAppData(result.data);
+          this.appData.set(migrated);
           this.notify('Φορτώθηκαν δεδομένα επιτυχώς από το αρχείο USB/Δίσκου', 'success');
           return;
         }
@@ -162,80 +93,8 @@ export class StorageService {
       const localDataStr = localStorage.getItem(this.LOCAL_STORAGE_KEY);
       if (localDataStr) {
         const parsed = JSON.parse(localDataStr);
-        parsed.personnel = parsed.personnel || [];
-        parsed.dutyTypes = (parsed.dutyTypes || []).map((d: any) => ({
-          ...d,
-          category: d.category === 'Οπλίτης' ? 'Στρατιώτης' : d.category,
-          weekendSwapNote: undefined,
-          allowedRanks: (d.allowedRanks || []).map((r: string) => normalizeRank(r).rankShort)
-        }));
-        {
-          const allDIds = parsed.dutyTypes.map((d: any) => d.id);
-          parsed.personnel = (parsed.personnel || []).map((p: any) => {
-            const isExempt = p.exemptFromAllDuties || false;
-            return {
-              ...p,
-              rank: 'ΣΤΡΑΤΙΩΤΗΣ',
-              rankShort: 'ΣΤΡ',
-              category: 'Κληρωτός' as const,
-              specialty: getCorpsShort(p.specialty),
-              rotationalGroup: undefined,
-              barracksRoom: p.barracksRoom || '',
-              bedNumber: p.bedNumber || '',
-              weaponNumber: p.status === 'Άοπλος' ? '-' : (p.weaponNumber || ''),
-              fullName: toGreekCaps(p.fullName),
-              fitnessProfile: p.fitnessProfile || (p.status === 'Άοπλος' ? 'Ι3' : 'Ι1'),
-              status: p.status === 'Άοπλος' ? 'Άοπλος' : 'Ένοπλος',
-              exemptFromAllDuties: isExempt,
-              eligibleDutyIds: isExempt ? [] : (p.eligibleDutyIds && p.eligibleDutyIds.length > 0 ? p.eligibleDutyIds : allDIds)
-            };
-          });
-        }
-        if (parsed.schedules) {
-          for (const s of parsed.schedules) {
-            if (s.duties) {
-              for (const d of s.duties) {
-                if (d.slots) {
-                  for (const sl of d.slots) {
-                    if (sl.groupTag?.includes('ΓΚΡΟΥΠ')) sl.groupTag = undefined;
-                    if (sl.rotationalGroup?.includes('ΓΚΡΟΥΠ')) sl.rotationalGroup = undefined;
-                  }
-                }
-              }
-            }
-          }
-        }
-        if (parsed.dutyTypes) {
-          for (const d of parsed.dutyTypes) {
-            if (d.slotDefinitions) {
-              for (const sd of d.slotDefinitions) {
-                if (sd.groupTag?.includes('ΓΚΡΟΥΠ')) sd.groupTag = undefined;
-                if (sd.groupName?.includes('ΓΚΡΟΥΠ')) sd.groupName = '';
-              }
-            }
-          }
-        }
-        if (parsed.leaves) {
-          parsed.leaves = parsed.leaves.map((l: any) => ({
-            ...l,
-            personName: toGreekCaps(l.personName)
-          }));
-        }
-        if (parsed.soldierRecords) {
-          parsed.soldierRecords = parsed.soldierRecords.map((r: any) => ({
-            ...r,
-            personName: toGreekCaps(r.personName)
-          }));
-        } else {
-          parsed.soldierRecords = [];
-        }
-        parsed.unitInfo = { ...createEmptyAppData().unitInfo, ...(parsed.unitInfo || {}) };
-        parsed.higherPersonnel = parsed.higherPersonnel || [];
-        parsed.leaves = parsed.leaves || [];
-        parsed.schedules = parsed.schedules || [];
-        parsed.soldierRecords = parsed.soldierRecords || [];
-        parsed.weekendPlans = parsed.weekendPlans || {};
-        this.appData.set(parsed);
+        const migrated = this.sanitizeAndMigrateAppData(parsed);
+        this.appData.set(migrated);
         this.saveData();
         this.notify('Φορτώθηκαν αποθηκευμένα δεδομένα προγράμματος', 'info');
         return;
@@ -244,8 +103,160 @@ export class StorageService {
       console.warn('Could not read from localStorage:', e);
     }
 
-    this.appData.set(createEmptyAppData());
+    const initialData = this.sanitizeAndMigrateAppData(DEFAULT_APP_DATA);
+    this.appData.set(initialData);
     this.saveData();
+  }
+
+  private sanitizeAndMigrateAppData(loadedData: any): AppData {
+    if (!loadedData) return JSON.parse(JSON.stringify(DEFAULT_APP_DATA));
+
+    // 1. Unit Info migration
+    const emptyUnit = createEmptyAppData().unitInfo;
+    loadedData.unitInfo = { ...emptyUnit, ...(loadedData.unitInfo || {}) };
+    if (!loadedData.unitInfo.name || 
+        loadedData.unitInfo.name === 'ΜΟΝΑΔΑ' || 
+        loadedData.unitInfo.name === '543 ΤΠ' || 
+        loadedData.unitInfo.name === '24 ΕΜΑ') {
+      loadedData.unitInfo = {
+        ...loadedData.unitInfo,
+        name: DEFAULT_APP_DATA.unitInfo.name,
+        location: DEFAULT_APP_DATA.unitInfo.location,
+        division: DEFAULT_APP_DATA.unitInfo.division,
+        commanderTitle: DEFAULT_APP_DATA.unitInfo.commanderTitle,
+        commanderName: DEFAULT_APP_DATA.unitInfo.commanderName,
+        dutyOfficerSignatureTitle: DEFAULT_APP_DATA.unitInfo.dutyOfficerSignatureTitle,
+        dutyOfficerName: DEFAULT_APP_DATA.unitInfo.dutyOfficerName,
+        supervisorSignatureTitle: DEFAULT_APP_DATA.unitInfo.supervisorSignatureTitle,
+        supervisorName: DEFAULT_APP_DATA.unitInfo.supervisorName,
+        emblemUrl: loadedData.unitInfo.emblemUrl || DEFAULT_APP_DATA.unitInfo.emblemUrl
+      };
+    }
+
+    // 2. Higher Personnel
+    loadedData.higherPersonnel = loadedData.higherPersonnel || [];
+    if (loadedData.higherPersonnel.length === 0) {
+      loadedData.higherPersonnel = JSON.parse(JSON.stringify(DEFAULT_HIGHER_PERSONNEL));
+    } else {
+      for (const hp of DEFAULT_HIGHER_PERSONNEL) {
+        if (!loadedData.higherPersonnel.some((existing: any) => existing.fullName === hp.fullName || existing.roleTitle === hp.roleTitle)) {
+          loadedData.higherPersonnel.push(JSON.parse(JSON.stringify(hp)));
+        }
+      }
+    }
+
+    // 3. Duty Types
+    loadedData.dutyTypes = (loadedData.dutyTypes || []).map((d: any) => ({
+      ...d,
+      category: d.category === 'Οπλίτης' ? 'Στρατιώτης' : d.category,
+      weekendSwapNote: undefined,
+      allowedRanks: (d.allowedRanks || []).map((r: string) => normalizeRank(r).rankShort)
+    }));
+
+    for (const defDuty of DEFAULT_DUTY_TYPES) {
+      const existing = loadedData.dutyTypes.find((d: any) => d.id === defDuty.id);
+      if (!existing) {
+        loadedData.dutyTypes.push(JSON.parse(JSON.stringify(defDuty)));
+      } else {
+        if ((!existing.slotDefinitions || existing.slotDefinitions.length === 0) && defDuty.slotDefinitions) {
+          existing.slotDefinitions = JSON.parse(JSON.stringify(defDuty.slotDefinitions));
+          existing.slots = defDuty.slots;
+        }
+        if (!existing.timePresetType && defDuty.timePresetType) {
+          existing.timePresetType = defDuty.timePresetType;
+        }
+      }
+    }
+
+    for (const d of loadedData.dutyTypes) {
+      if (d.slotDefinitions) {
+        for (const sd of d.slotDefinitions) {
+          if (sd.groupTag?.includes('ΓΚΡΟΥΠ')) sd.groupTag = undefined;
+          if (sd.groupName?.includes('ΓΚΡΟΥΠ')) sd.groupName = '';
+        }
+      }
+    }
+
+    // 4. Schedule Templates
+    if (!loadedData.scheduleTemplates || loadedData.scheduleTemplates.length === 0) {
+      loadedData.scheduleTemplates = JSON.parse(JSON.stringify(DEFAULT_SCHEDULE_TEMPLATES));
+    } else {
+      const hasKenThivas = loadedData.scheduleTemplates.some((t: any) => t.id === 'tpl-kenthivas-standard');
+      if (!hasKenThivas) {
+        const kenTpl = DEFAULT_SCHEDULE_TEMPLATES.find(t => t.id === 'tpl-kenthivas-standard');
+        if (kenTpl) {
+          loadedData.scheduleTemplates = loadedData.scheduleTemplates.map((t: any) => ({
+            ...t,
+            isDefaultWeekday: false,
+            isDefaultWeekend: false
+          }));
+          loadedData.scheduleTemplates.unshift(JSON.parse(JSON.stringify(kenTpl)));
+        }
+      }
+    }
+
+    // 5. Personnel List
+    loadedData.personnel = loadedData.personnel || [];
+    const existingPIds = new Set(loadedData.personnel.map((p: any) => p.id));
+    if (loadedData.personnel.length < 30) {
+      for (const defP of DEFAULT_APP_DATA.personnel) {
+        if (!existingPIds.has(defP.id)) {
+          loadedData.personnel.push(JSON.parse(JSON.stringify(defP)));
+          existingPIds.add(defP.id);
+        }
+      }
+    }
+
+    const allDIds = loadedData.dutyTypes.map((d: any) => d.id);
+    loadedData.personnel = loadedData.personnel.map((p: any) => {
+      const isExempt = p.exemptFromAllDuties || false;
+      return {
+        ...p,
+        rank: 'ΣΤΡΑΤΙΩΤΗΣ',
+        rankShort: 'ΣΤΡ',
+        category: 'Κληρωτός' as const,
+        specialty: getCorpsShort(p.specialty),
+        rotationalGroup: undefined,
+        barracksRoom: p.barracksRoom || '',
+        bedNumber: p.bedNumber || '',
+        weaponNumber: p.status === 'Άοπλος' ? '-' : (p.weaponNumber || ''),
+        fullName: toGreekCaps(p.fullName),
+        fitnessProfile: p.fitnessProfile || (p.status === 'Άοπλος' ? 'Ι3' : 'Ι1'),
+        status: p.status === 'Άοπλος' ? 'Άοπλος' : 'Ένοπλος',
+        exemptFromAllDuties: isExempt,
+        eligibleDutyIds: isExempt ? [] : (p.eligibleDutyIds && p.eligibleDutyIds.length > 0 ? p.eligibleDutyIds : allDIds)
+      };
+    });
+
+    // 6. Clean schedules
+    if (loadedData.schedules) {
+      for (const s of loadedData.schedules) {
+        if (s.duties) {
+          for (const d of s.duties) {
+            if (d.slots) {
+              for (const sl of d.slots) {
+                if (sl.groupTag?.includes('ΓΚΡΟΥΠ')) sl.groupTag = undefined;
+                if (sl.rotationalGroup?.includes('ΓΚΡΟΥΠ')) sl.rotationalGroup = undefined;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 7. Leaves and soldier records
+    loadedData.leaves = (loadedData.leaves || []).map((l: any) => ({
+      ...l,
+      personName: toGreekCaps(l.personName)
+    }));
+    loadedData.soldierRecords = (loadedData.soldierRecords || []).map((r: any) => ({
+      ...r,
+      personName: toGreekCaps(r.personName)
+    }));
+    loadedData.weekendPlans = loadedData.weekendPlans || {};
+    loadedData.dailyExodouchoiPlans = loadedData.dailyExodouchoiPlans || {};
+
+    return loadedData as AppData;
   }
 
   notify(message: string, type: 'success' | 'warning' | 'error' | 'info' = 'info') {
@@ -577,6 +588,72 @@ export class StorageService {
     this.notify('Στοιχεία προσωπικού ενημερώθηκαν', 'success');
   }
 
+  updatePersonnelBulk(ids: string[], updates: Partial<Personnel> | ((p: Personnel) => Partial<Personnel>)): number {
+    if (!ids || ids.length === 0) return 0;
+    const idSet = new Set(ids);
+    let updatedCount = 0;
+
+    this.appData.update(prev => {
+      const updatedPersonnel = prev.personnel.map(p => {
+        if (!idSet.has(p.id)) return p;
+        updatedCount++;
+        const patch = typeof updates === 'function' ? updates(p) : updates;
+        const sanitized: Partial<Personnel> = {
+          ...patch,
+          rank: 'ΣΤΡΑΤΙΩΤΗΣ',
+          rankShort: 'ΣΤΡ',
+          category: 'Κληρωτός'
+        };
+        if (sanitized.specialty) {
+          sanitized.specialty = getCorpsShort(sanitized.specialty);
+        }
+        if (sanitized.barracksRoom !== undefined) {
+          sanitized.barracksRoom = toGreekCaps(sanitized.barracksRoom.trim());
+        }
+        if (sanitized.bedNumber !== undefined) {
+          sanitized.bedNumber = toGreekCaps(sanitized.bedNumber.trim());
+        }
+        if (sanitized.weaponNumber !== undefined) {
+          sanitized.weaponNumber = sanitized.status === 'Άοπλος' ? '-' : toGreekCaps(sanitized.weaponNumber.trim());
+        }
+        if (sanitized.fullName !== undefined) {
+          sanitized.fullName = toGreekCaps(sanitized.fullName.trim());
+        }
+        if (sanitized.company !== undefined) {
+          sanitized.company = sanitized.company ? toGreekCaps(sanitized.company.trim()) : undefined;
+        }
+        if (sanitized.rotationalGroup !== undefined) {
+          sanitized.rotationalGroup = sanitized.rotationalGroup ? toGreekCaps(sanitized.rotationalGroup.trim()) : undefined;
+        }
+        if (sanitized.specialRole !== undefined) {
+          sanitized.specialRole = sanitized.specialRole ? toGreekCaps(sanitized.specialRole.trim()) : undefined;
+        }
+        if (sanitized.fitnessProfile === 'Ι1' || sanitized.fitnessProfile === 'Ι2') {
+          if (!patch.status) {
+            sanitized.status = 'Ένοπλος';
+          }
+        }
+        if (sanitized.status === 'Άοπλος') {
+          sanitized.weaponNumber = '-';
+        }
+        if (sanitized.exemptFromAllDuties) {
+          sanitized.eligibleDutyIds = [];
+        }
+        return { ...p, ...sanitized };
+      });
+      return { ...prev, personnel: updatedPersonnel };
+    });
+
+    this.saveData();
+    this.notify(`Ενημερώθηκαν επιτυχώς ${updatedCount} στρατιώτες`, 'success');
+    return updatedCount;
+  }
+
+  updatePersonnelPreference(id: string, preference: WeekendPreference) {
+    this.updatePersonnel(id, { weekendPreference: preference });
+    this.notify(`Η προτίμηση εξόδου ενημερώθηκε σε «${preference}»`, 'info');
+  }
+
   deletePersonnel(id: string) {
     this.deletePersonnelBulk([id]);
   }
@@ -811,6 +888,9 @@ export class StorageService {
         }
 
         const duty = sched.duties[dutyIdx];
+        if (duty.isCustomizedForDay) {
+          return sched; // Preserve day-specific customized duty
+        }
 
         // If this upcoming schedule was already finalized and weight changed, adjust personnel scores accordingly
         if (sched.isFinalized && weightDelta !== 0) {
@@ -1051,6 +1131,358 @@ export class StorageService {
     this.notify(`Διαγράφηκαν ${ids.length} εγγραφές`, 'warning');
   }
 
+  /**
+   * Checks whether a soldier has an active duty that prevents taking a day off on a date.
+   * - Weekday cleaning does not block evening pass (person is available for pass).
+   * - Weekend cleaning counts as duty.
+   * - Next day morning cover / bakery slots (carried out tomorrow) do not occupy the soldier tonight.
+   */
+  hasSoldierActiveDutyOnDate(personId: string, dateStr: string): boolean {
+    const schedule = this.getScheduleForDate(dateStr);
+    if (!schedule || !schedule.duties) return false;
+
+    const parts = dateStr.split('-').map(Number);
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+    const day = d.getDay();
+
+    for (const duty of schedule.duties) {
+      for (const s of duty.slots) {
+        if (s.personId === personId) {
+          const normName = normalizeGreek(duty.dutyName || '');
+          const normShort = normalizeGreek(duty.shortName || '');
+          const normTag = normalizeGreek(s.groupTag || '');
+          const normNote = normalizeGreek(s.hoursNote || '');
+
+          const isCleaning = duty.dutyTypeId === 'duty-kathariotites' || 
+                             normName.includes('καθαριοτητ') || 
+                             normShort === 'καθ';
+
+          const isBakery = duty.dutyTypeId === 'duty-artoklivanos' || 
+                           normName.includes('αρτοκλιβαν') || 
+                           normShort === 'αρτ';
+
+          // Weekday cleaning does not block evening pass
+          if (isCleaning && !isWeekend) {
+            continue;
+          }
+
+          // Bakery is next-day morning (06:50-14:00)
+          if (isBakery || normNote.includes('επομ')) {
+            continue;
+          }
+
+          // Friday cover slot for Saturday morning (12:00-14:00)
+          if (day === 5 && (s.groupTag === 'COVER' || normTag.includes('καλυψη') || normNote.includes('καλυψη') || (s.intervals?.length === 1 && s.intervals[0].from === '12:00' && s.intervals[0].to === '14:00'))) {
+            continue;
+          }
+
+          // Saturday cover slot for Sunday morning
+          if (day === 6 && (s.groupTag === 'COVER' || normTag.includes('καλυψη') || normNote.includes('καλυψη'))) {
+            continue;
+          }
+
+          // Monday morning restaurant
+          if (day === 1 && s.intervals?.length === 1 && s.intervals[0].from === '05:20' && s.intervals[0].to === '16:00') {
+            continue;
+          }
+
+          return true; // Found an active duty that occupies the soldier
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Checks whether a soldier is on Leave or hospital absence outside the unit on a date.
+   */
+  isSoldierOnLeaveOnDate(personId: string, dateStr: string): boolean {
+    const list = this.leaves();
+    for (const l of list) {
+      if (l.personId === personId && l.status !== 'Ακυρωμένη') {
+        if (l.startDate <= dateStr && dateStr <= l.endDate) {
+          const meta = getLeaveTypeMeta(l.type);
+          if (!meta.isInformative && l.type !== 'Ελεύθερος Ορθοστασίας (ΕΟ)' && l.type !== 'Ελεύθερος Ασκήσεων (ΕΑ)') {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Checks whether a soldier actually went out (had an active pass/outing) on a date.
+   */
+  didSoldierGoOutOnDate(personId: string, dateStr: string): boolean {
+    // 1. Check daily exodouchoi plan if one exists
+    const dailyPlan = this.getDailyExodouchoiPlan(dateStr);
+    if (dailyPlan && dailyPlan.soldiers) {
+      const s = dailyPlan.soldiers.find(x => x.personId === personId);
+      if (s) {
+        return Boolean(s.isGoingOut);
+      }
+    }
+
+    // 2. Check weekend plan if Saturday or Sunday
+    const parts = dateStr.split('-').map(Number);
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    const day = d.getDay();
+    if (day === 6 || day === 0) {
+      const wkndPlan = this.getWeekendPlan(dateStr);
+      if (wkndPlan) {
+        if (day === 6 && wkndPlan.saturdayOffIds?.includes(personId)) {
+          return true;
+        }
+        if (day === 0 && wkndPlan.sundayOffIds?.includes(personId)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Checks whether a specific day qualifies as 1 day of punishment served.
+   * For ΣΤ ΕΞΟΔΟΥ:
+   * "if someone has στ εξοδου that means that he must no go out if he has a day off. Only then it counts a punishment day passed"
+   * -> Must have NO active duty on that day.
+   * -> Must NOT be on leave / hospital outside camp.
+   * -> Must NOT have gone out (stays in camp without pass).
+   * -> ONLY THEN does it count as 1 punishment day passed!
+   */
+  didServePenaltyDay(record: SoldierRecord, dateStr: string): boolean {
+    const penaltyType = (record.penaltyType as PenaltySubtype) || this.inferPenaltyType(record.reason);
+    if (penaltyType === 'ΣΤ ΕΞΟΔΟΥ') {
+      // Must NOT have duty
+      if (this.hasSoldierActiveDutyOnDate(record.personId, dateStr)) {
+        return false;
+      }
+      // Must NOT be on leave
+      if (this.isSoldierOnLeaveOnDate(record.personId, dateStr)) {
+        return false;
+      }
+      // Must NOT have gone out
+      if (this.didSoldierGoOutOnDate(record.personId, dateStr)) {
+        return false;
+      }
+      // Had day off AND stayed in camp -> ONLY THEN it counts!
+      return true;
+    }
+
+    // For Κράτηση / Φυλάκιση: counts every elapsed calendar day
+    return true;
+  }
+
+  /**
+   * Counts how many days of punishment have been served between two dates.
+   * If includeToDate is false, counts dates strictly prior to toDateStr (d < toDateStr).
+   */
+  countServedDaysBetween(
+    record: SoldierRecord,
+    fromDateStr: string,
+    toDateStr: string,
+    includeToDate = true
+  ): number {
+    const totalDays = Math.max(0, Number(record.totalDays) || 0);
+    if (totalDays === 0 || !fromDateStr || !toDateStr || fromDateStr > toDateStr) {
+      return 0;
+    }
+
+    const startParts = fromDateStr.split('-').map(Number);
+    const endParts = toDateStr.split('-').map(Number);
+    const start = new Date(startParts[0], startParts[1] - 1, startParts[2]);
+    const end = new Date(endParts[0], endParts[1] - 1, endParts[2]);
+
+    let servedCount = 0;
+    const cur = new Date(start);
+
+    while (cur <= end && servedCount < totalDays) {
+      const curStr = formatLocalDate(cur);
+      if (curStr === toDateStr && !includeToDate) {
+        break;
+      }
+
+      if (this.didServePenaltyDay(record, curStr)) {
+        servedCount++;
+      }
+
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    return Math.min(totalDays, servedCount);
+  }
+
+  /**
+   * Determines whether a penalty record is still ACTIVE on a given date.
+   * If the penalty has already been fully served in previous days (or manually completed), it is not active.
+   * If it is still active, the soldier MUST NOT go out on this date!
+   */
+  isPenaltyActiveOnDate(record: SoldierRecord, dateStr: string): boolean {
+    if (record.type !== 'ΠΟΙΝΗ') return false;
+    if (record.status === 'Ολοκληρώθηκε' || record.status === 'Απορρίφθηκε') return false;
+    if (!record.date || record.date > dateStr) return false;
+
+    const totalDays = Math.max(0, Number(record.totalDays) || 0);
+    if (totalDays === 0) return false;
+
+    if (record.isManualServedDays && record.servedDays !== undefined && record.servedDays !== null) {
+      return Number(record.servedDays) < totalDays;
+    }
+
+    // Days served strictly prior to dateStr
+    const servedPrior = this.countServedDaysBetween(record, record.date, dateStr, false);
+    return servedPrior < totalDays;
+  }
+
+  /**
+   * Returns all active penalties for a person on a specific date.
+   */
+  getActivePenaltiesForPerson(personId: string, dateStr: string): SoldierRecord[] {
+    return (this.soldierRecords() || []).filter(r =>
+      r.personId === personId && this.isPenaltyActiveOnDate(r, dateStr)
+    );
+  }
+
+  /**
+   * Returns whether a person has any active penalty on a specific date.
+   */
+  hasActivePenaltyOnDate(personId: string, dateStr: string): boolean {
+    return this.getActivePenaltiesForPerson(personId, dateStr).length > 0;
+  }
+
+  /**
+   * Calculates the current progress of a punishment record.
+   * - If isManualServedDays is true and servedDays is provided, uses the manual count.
+   * - If ΣΤ ΕΞΟΔΟΥ: counts days where the soldier had a day off AND stayed in camp without going out.
+   * - If Κ or Φ: counts all past/present calendar days since the punishment date.
+   * - Capped between 0 and totalDays.
+   */
+  calculatePenaltyProgress(
+    record: SoldierRecord,
+    asOfDateStr: string = formatLocalDate(new Date())
+  ): { servedDays: number; totalDays: number; isCompleted: boolean; isManual: boolean; penaltyType: PenaltySubtype } {
+    const totalDays = Math.max(0, Number(record.totalDays) || 0);
+    const penaltyType = (record.penaltyType as PenaltySubtype) || this.inferPenaltyType(record.reason);
+
+    if (totalDays === 0) {
+      return {
+        servedDays: 0,
+        totalDays: 0,
+        isCompleted: record.status === 'Ολοκληρώθηκε',
+        isManual: Boolean(record.isManualServedDays),
+        penaltyType
+      };
+    }
+
+    if (record.isManualServedDays && record.servedDays !== undefined && record.servedDays !== null) {
+      const served = Math.max(0, Math.min(totalDays, Number(record.servedDays)));
+      return {
+        servedDays: served,
+        totalDays,
+        isCompleted: served >= totalDays || record.status === 'Ολοκληρώθηκε',
+        isManual: true,
+        penaltyType
+      };
+    }
+
+    if (!record.date) {
+      return {
+        servedDays: 0,
+        totalDays,
+        isCompleted: false,
+        isManual: false,
+        penaltyType
+      };
+    }
+
+    const todayStr = formatLocalDate(new Date());
+
+    if (asOfDateStr < record.date) {
+      return {
+        servedDays: 0,
+        totalDays,
+        isCompleted: false,
+        isManual: false,
+        penaltyType
+      };
+    }
+
+    // Days served strictly prior to asOfDateStr
+    const servedPrior = this.countServedDaysBetween(record, record.date, asOfDateStr, false);
+
+    // For past dates (< todayStr): include asOfDateStr itself since it has already passed
+    if (asOfDateStr < todayStr) {
+      const servedTotal = this.countServedDaysBetween(record, record.date, asOfDateStr, true);
+      return {
+        servedDays: servedTotal,
+        totalDays,
+        isCompleted: servedTotal >= totalDays || record.status === 'Ολοκληρώθηκε',
+        isManual: false,
+        penaltyType
+      };
+    }
+
+    // For today or future:
+    // If already fully served in past days:
+    if (servedPrior >= totalDays) {
+      return {
+        servedDays: totalDays,
+        totalDays,
+        isCompleted: true,
+        isManual: false,
+        penaltyType
+      };
+    }
+
+    // Check if today qualifies as a served day (day off and staying in camp)
+    const isServingToday = this.didServePenaltyDay(record, asOfDateStr);
+    const effectiveServed = isServingToday ? Math.min(totalDays, servedPrior + 1) : servedPrior;
+
+    return {
+      servedDays: effectiveServed,
+      totalDays,
+      isCompleted: record.status === 'Ολοκληρώθηκε',
+      isManual: false,
+      penaltyType
+    };
+  }
+
+  inferPenaltyType(text: string): PenaltySubtype {
+    if (!text) return 'ΣΤ ΕΞΟΔΟΥ';
+    const norm = normalizeGreek(text);
+    if (norm.includes('φυλακ') || /\bφ\b/i.test(text)) return 'Φ';
+    if (norm.includes('κρατησ') || /\bκ\b/i.test(text)) return 'Κ';
+    if (norm.includes('στερησ') || norm.includes('εξοδ') || norm.includes('σε') || norm.includes('στ εξοδ')) return 'ΣΤ ΕΞΟΔΟΥ';
+    return 'ΣΤ ΕΞΟΔΟΥ';
+  }
+
+  adjustPenaltyServedDays(recordId: string, delta: number) {
+    const record = (this.soldierRecords() || []).find(r => r.id === recordId);
+    if (!record || record.type !== 'ΠΟΙΝΗ') return;
+
+    const currentProgress = this.calculatePenaltyProgress(record);
+    const total = currentProgress.totalDays || 1;
+    const newServed = Math.max(0, Math.min(total, currentProgress.servedDays + delta));
+    const isCompleted = newServed >= total;
+
+    this.updateSoldierRecord(recordId, {
+      servedDays: newServed,
+      isManualServedDays: true,
+      status: isCompleted ? 'Ολοκληρώθηκε' : (record.status === 'Ολοκληρώθηκε' ? 'Εκκρεμεί' : record.status)
+    });
+  }
+
+  resetPenaltyAutoCount(recordId: string) {
+    this.updateSoldierRecord(recordId, {
+      isManualServedDays: false,
+      servedDays: undefined
+    });
+    this.notify('Επανήλθε ο αυτόματος υπολογισμός ημερών έκτισης', 'info');
+  }
+
   // --- Schedule Actions ---
   saveSchedule(schedule: DailySchedule) {
     this.appData.update(prev => {
@@ -1145,6 +1577,76 @@ export class StorageService {
     return this.getWeekendPlan(prevFri);
   }
 
+  // --- Daily Exodouchoi Plans (Καθημερινοί Εξοδούχοι) ---
+  saveDailyExodouchoiPlan(plan: DailyExodouchoiPlan, showNotification = true) {
+    this.appData.update(prev => {
+      const plans = { ...(prev.dailyExodouchoiPlans || {}) };
+      plans[plan.date] = plan;
+      return {
+        ...prev,
+        dailyExodouchoiPlans: plans
+      };
+    });
+    this.saveData();
+    if (showNotification) {
+      this.notify(`Η κατάσταση εξοδούχων για τις ${formatGreekDate(plan.date)} αποθηκεύτηκε επιτυχώς.`, 'success');
+    }
+  }
+
+  getDailyExodouchoiPlan(dateStr: string): DailyExodouchoiPlan | undefined {
+    const plans = this.appData().dailyExodouchoiPlans || {};
+    return plans[dateStr];
+  }
+
+  deleteDailyExodouchoiPlan(dateStr: string) {
+    this.appData.update(prev => {
+      const plans = { ...(prev.dailyExodouchoiPlans || {}) };
+      delete plans[dateStr];
+      return {
+        ...prev,
+        dailyExodouchoiPlans: plans
+      };
+    });
+    this.saveData();
+    this.notify(`Η προσαρμοσμένη κατάσταση εξοδούχων διαγράφηκε.`, 'info');
+  }
+
+  async downloadCsvFile(content: string, filename: string): Promise<boolean> {
+    if (this.isElectron() && window.electronAPI?.saveCsvFile) {
+      try {
+        const res = await window.electronAPI.saveCsvFile(content, filename);
+        if (res.success) {
+          this.notify(`Το αρχείο CSV αποθηκεύτηκε: ${res.filePath}`, 'success');
+          return true;
+        }
+        if (!res.canceled) {
+          this.notify(`Σφάλμα αποθήκευσης CSV: ${res.error}`, 'error');
+        }
+        return false;
+      } catch (err: any) {
+        this.notify(`Σφάλμα: ${err.message}`, 'error');
+        return false;
+      }
+    } else {
+      try {
+        const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        this.notify('Το αρχείο CSV λήφθηκε επιτυχώς!', 'success');
+        return true;
+      } catch (err: any) {
+        this.notify(`Σφάλμα λήψης CSV: ${err.message}`, 'error');
+        return false;
+      }
+    }
+  }
+
   // --- Unit Info ---
   updateUnitInfo(info: UnitInfo) {
     this.appData.update(prev => ({
@@ -1219,6 +1721,120 @@ export class StorageService {
       };
     });
     this.saveData();
+  }
+
+  // --- Schedule Templates (Πρότυπα Υπηρεσιών) ---
+  addScheduleTemplate(template: Omit<ScheduleTemplate, 'id' | 'createdAt' | 'updatedAt'>): ScheduleTemplate {
+    const newTpl: ScheduleTemplate = {
+      ...template,
+      name: template.name.trim(),
+      description: template.description?.trim() || '',
+      id: `tpl-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    this.appData.update(prev => {
+      let tpls = prev.scheduleTemplates ? [...prev.scheduleTemplates] : [];
+      if (newTpl.isDefaultWeekday) {
+        tpls = tpls.map(t => ({ ...t, isDefaultWeekday: false }));
+      }
+      if (newTpl.isDefaultWeekend) {
+        tpls = tpls.map(t => ({ ...t, isDefaultWeekend: false }));
+      }
+      return {
+        ...prev,
+        scheduleTemplates: [...tpls, newTpl]
+      };
+    });
+
+    this.saveData();
+    this.notify(`Δημιουργήθηκε το πρότυπο "${newTpl.name}"`, 'success');
+    return newTpl;
+  }
+
+  updateScheduleTemplate(id: string, updates: Partial<ScheduleTemplate>): void {
+    this.appData.update(prev => {
+      let tpls = prev.scheduleTemplates ? [...prev.scheduleTemplates] : [];
+      if (updates.isDefaultWeekday) {
+        tpls = tpls.map(t => t.id === id ? t : { ...t, isDefaultWeekday: false });
+      }
+      if (updates.isDefaultWeekend) {
+        tpls = tpls.map(t => t.id === id ? t : { ...t, isDefaultWeekend: false });
+      }
+      return {
+        ...prev,
+        scheduleTemplates: tpls.map(t => t.id === id ? { 
+          ...t, 
+          ...updates, 
+          name: updates.name !== undefined ? updates.name.trim() : t.name,
+          description: updates.description !== undefined ? updates.description.trim() : t.description,
+          updatedAt: new Date().toISOString() 
+        } : t)
+      };
+    });
+
+    this.saveData();
+    this.notify('Το πρότυπο ενημερώθηκε επιτυχώς', 'success');
+  }
+
+  deleteScheduleTemplate(id: string): void {
+    const tpl = this.scheduleTemplates().find(t => t.id === id);
+    this.appData.update(prev => ({
+      ...prev,
+      scheduleTemplates: (prev.scheduleTemplates || []).filter(t => t.id !== id)
+    }));
+
+    this.saveData();
+    this.notify(`Το πρότυπο "${tpl?.name || ''}" διαγράφηκε`, 'warning');
+  }
+
+  duplicateScheduleTemplate(id: string): ScheduleTemplate | undefined {
+    const original = this.scheduleTemplates().find(t => t.id === id);
+    if (!original) return undefined;
+    return this.addScheduleTemplate({
+      name: `${original.name} (Αντίγραφο)`,
+      description: original.description,
+      dutyTypeIds: [...original.dutyTypeIds],
+      isDefaultWeekday: false,
+      isDefaultWeekend: false
+    });
+  }
+
+  setDefaultTemplate(id: string, type: 'weekday' | 'weekend' | 'none'): void {
+    this.appData.update(prev => {
+      const tpls = (prev.scheduleTemplates || []).map(t => {
+        if (type === 'weekday') {
+          return { ...t, isDefaultWeekday: t.id === id };
+        } else if (type === 'weekend') {
+          return { ...t, isDefaultWeekend: t.id === id };
+        } else {
+          return t.id === id ? { ...t, isDefaultWeekday: false, isDefaultWeekend: false } : t;
+        }
+      });
+      return { ...prev, scheduleTemplates: tpls };
+    });
+
+    this.saveData();
+    this.notify('Ενημερώθηκε η προεπιλογή του προτύπου', 'info');
+  }
+
+  getTemplateById(id: string): ScheduleTemplate | undefined {
+    return this.scheduleTemplates().find(t => t.id === id);
+  }
+
+  getDefaultTemplateForDate(dateStr: string): ScheduleTemplate | undefined {
+    const tpls = this.scheduleTemplates();
+    if (tpls.length === 0) return undefined;
+    const parts = dateStr.split('-').map(Number);
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    const day = d.getDay();
+    const isWknd = day === 0 || day === 6;
+    if (isWknd) {
+      return tpls.find(t => t.isDefaultWeekend) || tpls.find(t => t.id === 'tpl-weekend-standard');
+    } else {
+      return tpls.find(t => t.isDefaultWeekday) || tpls.find(t => t.id === 'tpl-weekday-standard');
+    }
   }
 
   // --- Reset to Empty Data ---

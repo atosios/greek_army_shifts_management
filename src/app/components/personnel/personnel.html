@@ -139,23 +139,54 @@
           <span class="bulk-count-text">Επιλεγμένοι στρατιώτες</span>
         </div>
         <div class="bulk-buttons">
-          <button type="button" class="btn btn-secondary btn-sm bulk-action-btn" (click)="openBulkRoomModal()">
+          <!-- Primary Master Bulk Edit Button -->
+          <button type="button" class="btn btn-primary btn-sm bulk-action-btn bulk-master-btn" (click)="openBulkEditModal()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            <strong>Μαζική Επεξεργασία (Όλα τα πεδία)</strong>
+          </button>
+
+          <!-- Quick Shortcuts -->
+          <button type="button" class="btn btn-secondary btn-sm bulk-action-btn" (click)="openBulkEditModal('room')" title="Μαζικός ορισμός θαλάμου">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
               <polyline points="9 22 9 12 15 12 15 22"/>
             </svg>
-            Αλλαγή Θαλάμου
+            Θάλαμος
           </button>
 
-          <button type="button" class="btn btn-secondary btn-sm bulk-action-btn" (click)="openBulkCorpsModal()">
+          <button type="button" class="btn btn-secondary btn-sm bulk-action-btn" (click)="openBulkEditModal('corps')" title="Μαζική αλλαγή όπλου / σώματος">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"/>
               <line x1="2" y1="12" x2="22" y2="12"/>
               <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
             </svg>
-            Αλλαγή Όπλου
+            Όπλο
           </button>
 
+          <button type="button" class="btn btn-secondary btn-sm bulk-action-btn" (click)="openBulkEditModal('status')" title="Μαζική αλλαγή κατάστασης οπλισμού ή ικανότητας">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            Κατάσταση / Ικανότητα
+          </button>
+
+          <button type="button" class="btn btn-secondary btn-sm bulk-action-btn" (click)="openBulkEditModal('specialRole')" title="Μαζική ανάθεση ειδικού ρόλου">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            Ειδικός Ρόλος
+          </button>
+
+          <button type="button" class="btn btn-secondary btn-sm bulk-action-btn" (click)="openBulkEditModal('active')" title="Μαζική αλλαγή ενεργού/ανενεργού στη δύναμη">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            Ενεργός / Ανενεργός
+          </button>
 
           <button type="button" class="btn btn-danger btn-sm bulk-action-btn" (click)="openBulkDeleteModal()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -337,6 +368,11 @@
                       <span class="tooltip-label">Ειδικός Ρόλος</span>
                       <span class="tooltip-role-name">{{ p.specialRole }}</span>
                     </span>
+                  </span>
+                }
+                @if (p.weekendPreference && p.weekendPreference !== 'Χωρίς προτίμηση') {
+                  <span class="pref-badge-pill" [class.pref-sat]="p.weekendPreference === 'Σάββατο'" [class.pref-sun]="p.weekendPreference === 'Κυριακή'" title="Δηλωμένη Προτίμηση Εξόδου Σ/Κ">
+                    {{ p.weekendPreference === 'Σάββατο' ? 'Έξοδος Σαβ' : 'Έξοδος Κυρ' }}
                   </span>
                 }
               </div>
@@ -809,6 +845,15 @@
                   <div class="form-group mt-custom">
                     <label class="form-label">Παρατηρήσεις / Σημειώσεις</label>
                     <input type="text" class="form-control" [(ngModel)]="formModel.notes" placeholder="π.χ. Δίπλωμα Γ' κατηγορίας, ειδικές παρατηρήσεις..." />
+                  </div>
+
+                  <div class="form-group mt-custom">
+                    <label class="form-label">Προτίμηση Εξόδου Σαββατοκύριακου (Σ/Κ)</label>
+                    <select class="form-select" [(ngModel)]="formModel.weekendPreference">
+                      <option value="Χωρίς προτίμηση">Χωρίς προτίμηση (Οποιαδήποτε ημέρα)</option>
+                      <option value="Σάββατο">Σάββατο (Προτιμά Έξοδο Σαββάτου)</option>
+                      <option value="Κυριακή">Κυριακή (Προτιμά Έξοδο Κυριακής)</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -1584,6 +1629,639 @@
             Αποθήκευση
           </button>
         </div>
+      </div>
+    </div>
+  }
+
+  <!-- Master Bulk Edit Modal -->
+  @if (isBulkEditModalOpen()) {
+    <div class="modal-overlay" (click)="closeBulkEditModal()">
+      <div class="modal-content modal-lg bulk-master-modal-content" (click)="$event.stopPropagation()">
+        
+        <!-- Modal Header -->
+        <div class="modal-header bulk-master-header">
+          <div class="bulk-title-group">
+            <div class="bulk-header-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Μαζική Επεξεργασία Προσωπικού</h2>
+              <p class="bulk-header-subtitle">
+                Επιλέξτε και ενημερώστε πολλαπλά πεδία ταυτόχρονα για τους επιλεγμένους στρατιώτες
+              </p>
+            </div>
+          </div>
+          <div class="bulk-header-meta">
+            <span class="bulk-soldiers-count-pill">{{ selectedCount() }} Στρατιώτες</span>
+            <button class="close-btn" (click)="closeBulkEditModal()" title="Κλείσιμο">&times;</button>
+          </div>
+        </div>
+
+        <!-- Selected Soldiers Preview Strip -->
+        <div class="bulk-selected-strip">
+          <div class="bulk-selected-summary">
+            <span class="strip-label">Επιλεγμένοι ({{ selectedCount() }}):</span>
+            <div class="bulk-soldiers-chips">
+              @for (soldier of (bulkSelectedSoldiersExpanded() ? selectedSoldiersList() : selectedSoldiersList().slice(0, 6)); track soldier.id) {
+                <span class="bulk-soldier-chip">
+                  <span class="chip-rank">{{ soldier.rankShort || 'ΣΤΡ' }}</span>
+                  <span class="chip-name">{{ soldier.fullName }}</span>
+                  @if (soldier.barracksRoom) {
+                    <span class="chip-room">Θ.{{ soldier.barracksRoom }}</span>
+                  }
+                </span>
+              }
+              @if (!bulkSelectedSoldiersExpanded() && selectedSoldiersList().length > 6) {
+                <button type="button" class="btn-more-chips" (click)="bulkSelectedSoldiersExpanded.set(true)">
+                  +{{ selectedSoldiersList().length - 6 }} ακόμη...
+                </button>
+              }
+              @if (bulkSelectedSoldiersExpanded() && selectedSoldiersList().length > 6) {
+                <button type="button" class="btn-more-chips" (click)="bulkSelectedSoldiersExpanded.set(false)">
+                  Σύμπτυξη
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Category Navigation Tabs -->
+        <div class="bulk-category-tabs">
+          <button type="button" class="bulk-tab-btn" [class.active]="bulkActiveTab() === 'ALL'" (click)="bulkActiveTab.set('ALL')">
+            Όλα τα Πεδία
+          </button>
+          <button type="button" class="bulk-tab-btn" [class.active]="bulkActiveTab() === 'LOCATION'" (click)="bulkActiveTab.set('LOCATION')">
+            Τοποθέτηση &amp; Θάλαμος
+            @if (bulkModel.enableRoom || bulkModel.enableBed || bulkModel.enableCompany || bulkModel.enableRotationalGroup) {
+              <span class="tab-indicator-dot"></span>
+            }
+          </button>
+          <button type="button" class="bulk-tab-btn" [class.active]="bulkActiveTab() === 'MILITARY'" (click)="bulkActiveTab.set('MILITARY')">
+            Στρατιωτικά &amp; Ρόλοι
+            @if (bulkModel.enableCorps || bulkModel.enableFitness || bulkModel.enableStatus || bulkModel.enableSpecialRole) {
+              <span class="tab-indicator-dot"></span>
+            }
+          </button>
+          <button type="button" class="bulk-tab-btn" [class.active]="bulkActiveTab() === 'DUTIES'" (click)="bulkActiveTab.set('DUTIES')">
+            Υπηρεσίες &amp; Κατάσταση
+            @if (bulkModel.enableExempt || bulkModel.enableActive || bulkModel.enableDutyScore || bulkModel.enableEligibleDuties) {
+              <span class="tab-indicator-dot"></span>
+            }
+          </button>
+          <button type="button" class="bulk-tab-btn" [class.active]="bulkActiveTab() === 'NOTES'" (click)="bulkActiveTab.set('NOTES')">
+            Σημειώσεις
+            @if (bulkModel.enableNotes) {
+              <span class="tab-indicator-dot"></span>
+            }
+          </button>
+        </div>
+
+        <!-- Modal Body: Cards Grid -->
+        <div class="modal-body bulk-master-body">
+          
+          <div class="bulk-hint-banner">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <span>Ενεργοποιήστε μόνο τα πεδία που επιθυμείτε να αλλάξετε. Τα υπόλοιπα θα παραμείνουν άθικτα για κάθε στρατιώτη.</span>
+          </div>
+
+          <div class="bulk-cards-grid">
+
+            <!-- 1. ΘΑΛΑΜΟΣ -->
+            @if (bulkActiveTab() === 'ALL' || bulkActiveTab() === 'LOCATION') {
+              <div class="bulk-field-card" [class.is-active]="bulkModel.enableRoom">
+                <div class="bulk-card-header">
+                  <label class="bulk-field-toggle">
+                    <input type="checkbox" [(ngModel)]="bulkModel.enableRoom" />
+                    <span class="toggle-custom-checkbox"></span>
+                    <span class="field-title">Θάλαμος (Barracks Room)</span>
+                  </label>
+                  <span class="field-status-badge" [class.active]="bulkModel.enableRoom">
+                    {{ bulkModel.enableRoom ? 'Ενεργό' : 'Αμετάβλητο' }}
+                  </span>
+                </div>
+                <div class="bulk-card-body" [class.disabled-zone]="!bulkModel.enableRoom">
+                  <div class="form-group mb-2">
+                    <input type="text" class="form-control" placeholder="π.χ. 1.1, 1.2..."
+                           [(ngModel)]="bulkModel.barracksRoom"
+                           [disabled]="!bulkModel.enableRoom || bulkModel.roomClear" />
+                  </div>
+                  <label class="form-check-label clear-option-label">
+                    <input type="checkbox" [(ngModel)]="bulkModel.roomClear" [disabled]="!bulkModel.enableRoom" />
+                    <span>Εκκαθάριση θαλάμου (να μείνει κενός)</span>
+                  </label>
+                  @if (uniqueRooms().length > 0 && !bulkModel.roomClear) {
+                    <div class="quick-chips-wrap mt-2">
+                      <span class="chips-label">Υπάρχοντες θάλαμοι:</span>
+                      <div class="chips-list">
+                        @for (r of uniqueRooms(); track r.room) {
+                          <button type="button" class="btn-chip"
+                                  [disabled]="!bulkModel.enableRoom"
+                                  [class.selected]="bulkModel.barracksRoom === r.room"
+                                  (click)="bulkModel.barracksRoom = r.room">
+                            {{ r.room }} <span class="chip-count">({{ r.count }})</span>
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- 2. ΚΡΕΒΑΤΙ -->
+            @if (bulkActiveTab() === 'ALL' || bulkActiveTab() === 'LOCATION') {
+              <div class="bulk-field-card" [class.is-active]="bulkModel.enableBed">
+                <div class="bulk-card-header">
+                  <label class="bulk-field-toggle">
+                    <input type="checkbox" [(ngModel)]="bulkModel.enableBed" />
+                    <span class="toggle-custom-checkbox"></span>
+                    <span class="field-title">Κρεβάτι (Bed Number)</span>
+                  </label>
+                  <span class="field-status-badge" [class.active]="bulkModel.enableBed">
+                    {{ bulkModel.enableBed ? 'Ενεργό' : 'Αμετάβλητο' }}
+                  </span>
+                </div>
+                <div class="bulk-card-body" [class.disabled-zone]="!bulkModel.enableBed">
+                  <div class="form-group mb-2">
+                    <input type="text" class="form-control" placeholder="π.χ. 1, 2, 12..."
+                           [(ngModel)]="bulkModel.bedNumber"
+                           [disabled]="!bulkModel.enableBed || bulkModel.bedClear" />
+                  </div>
+                  <label class="form-check-label clear-option-label">
+                    <input type="checkbox" [(ngModel)]="bulkModel.bedClear" [disabled]="!bulkModel.enableBed" />
+                    <span>Εκκαθάριση κρεβατιού (κενό)</span>
+                  </label>
+                </div>
+              </div>
+            }
+
+            <!-- 3. ΛΟΧΟΣ -->
+            @if (bulkActiveTab() === 'ALL' || bulkActiveTab() === 'LOCATION') {
+              <div class="bulk-field-card" [class.is-active]="bulkModel.enableCompany">
+                <div class="bulk-card-header">
+                  <label class="bulk-field-toggle">
+                    <input type="checkbox" [(ngModel)]="bulkModel.enableCompany" />
+                    <span class="toggle-custom-checkbox"></span>
+                    <span class="field-title">Λόχος / Υπομονάδα</span>
+                  </label>
+                  <span class="field-status-badge" [class.active]="bulkModel.enableCompany">
+                    {{ bulkModel.enableCompany ? 'Ενεργό' : 'Αμετάβλητο' }}
+                  </span>
+                </div>
+                <div class="bulk-card-body" [class.disabled-zone]="!bulkModel.enableCompany">
+                  <div class="form-group mb-2">
+                    <input type="text" class="form-control" placeholder="π.χ. 1ος ΛΟΧΟΣ, 2ος ΛΟΧΟΣ, ΛΔ..."
+                           [(ngModel)]="bulkModel.company"
+                           [disabled]="!bulkModel.enableCompany || bulkModel.companyClear" />
+                  </div>
+                  <label class="form-check-label clear-option-label">
+                    <input type="checkbox" [(ngModel)]="bulkModel.companyClear" [disabled]="!bulkModel.enableCompany" />
+                    <span>Εκκαθάριση λόχου</span>
+                  </label>
+                  @if (uniqueCompanies().length > 0 && !bulkModel.companyClear) {
+                    <div class="quick-chips-wrap mt-2">
+                      <span class="chips-label">Υπάρχοντες λόχοι:</span>
+                      <div class="chips-list">
+                        @for (c of uniqueCompanies(); track c) {
+                          <button type="button" class="btn-chip"
+                                  [disabled]="!bulkModel.enableCompany"
+                                  [class.selected]="bulkModel.company === c"
+                                  (click)="bulkModel.company = c">
+                            {{ c }}
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- 4. ΟΜΑΔΑ ROTATION -->
+            @if (bulkActiveTab() === 'ALL' || bulkActiveTab() === 'LOCATION') {
+              <div class="bulk-field-card" [class.is-active]="bulkModel.enableRotationalGroup">
+                <div class="bulk-card-header">
+                  <label class="bulk-field-toggle">
+                    <input type="checkbox" [(ngModel)]="bulkModel.enableRotationalGroup" />
+                    <span class="toggle-custom-checkbox"></span>
+                    <span class="field-title">Ομάδα Rotation / Τμήμα</span>
+                  </label>
+                  <span class="field-status-badge" [class.active]="bulkModel.enableRotationalGroup">
+                    {{ bulkModel.enableRotationalGroup ? 'Ενεργό' : 'Αμετάβλητο' }}
+                  </span>
+                </div>
+                <div class="bulk-card-body" [class.disabled-zone]="!bulkModel.enableRotationalGroup">
+                  <div class="form-group mb-2">
+                    <input type="text" class="form-control" placeholder="π.χ. ΟΜΑΔΑ 1, ΟΜΑΔΑ 2, ΤΜΗΜΑ Α..."
+                           [(ngModel)]="bulkModel.rotationalGroup"
+                           [disabled]="!bulkModel.enableRotationalGroup || bulkModel.rotationalGroupClear" />
+                  </div>
+                  <label class="form-check-label clear-option-label">
+                    <input type="checkbox" [(ngModel)]="bulkModel.rotationalGroupClear" [disabled]="!bulkModel.enableRotationalGroup" />
+                    <span>Εκκαθάριση ομάδας</span>
+                  </label>
+                  @if (uniqueRotationalGroups().length > 0 && !bulkModel.rotationalGroupClear) {
+                    <div class="quick-chips-wrap mt-2">
+                      <span class="chips-label">Υπάρχουσες ομάδες:</span>
+                      <div class="chips-list">
+                        @for (g of uniqueRotationalGroups(); track g) {
+                          <button type="button" class="btn-chip"
+                                  [disabled]="!bulkModel.enableRotationalGroup"
+                                  [class.selected]="bulkModel.rotationalGroup === g"
+                                  (click)="bulkModel.rotationalGroup = g">
+                            {{ g }}
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- 5. ΟΠΛΟ / ΣΩΜΑ -->
+            @if (bulkActiveTab() === 'ALL' || bulkActiveTab() === 'MILITARY') {
+              <div class="bulk-field-card" [class.is-active]="bulkModel.enableCorps">
+                <div class="bulk-card-header">
+                  <label class="bulk-field-toggle">
+                    <input type="checkbox" [(ngModel)]="bulkModel.enableCorps" />
+                    <span class="toggle-custom-checkbox"></span>
+                    <span class="field-title">Όπλο / Σώμα (Specialty)</span>
+                  </label>
+                  <span class="field-status-badge" [class.active]="bulkModel.enableCorps">
+                    {{ bulkModel.enableCorps ? 'Ενεργό' : 'Αμετάβλητο' }}
+                  </span>
+                </div>
+                <div class="bulk-card-body" [class.disabled-zone]="!bulkModel.enableCorps">
+                  <div class="form-group mb-2">
+                    <select class="form-select" [(ngModel)]="bulkModel.specialty" [disabled]="!bulkModel.enableCorps">
+                      @for (c of corps; track c) {
+                        <option [value]="c">{{ c }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="quick-chips-wrap">
+                    <span class="chips-label">Συχνές επιλογές:</span>
+                    <div class="chips-list">
+                      @for (c of ['ΠΖ', 'ΤΘ', 'ΠΒ', 'ΜΧ', 'ΔΒ', 'ΕΜ', 'ΤΧ', 'ΥΠ', 'ΥΓ']; track c) {
+                        <button type="button" class="btn-chip"
+                                [disabled]="!bulkModel.enableCorps"
+                                [class.selected]="bulkModel.specialty === c"
+                                (click)="bulkModel.specialty = c">
+                          {{ c }}
+                        </button>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- 6. ΣΩΜΑΤΙΚΗ ΙΚΑΝΟΤΗΤΑ (Ι1-Ι4) -->
+            @if (bulkActiveTab() === 'ALL' || bulkActiveTab() === 'MILITARY') {
+              <div class="bulk-field-card" [class.is-active]="bulkModel.enableFitness">
+                <div class="bulk-card-header">
+                  <label class="bulk-field-toggle">
+                    <input type="checkbox" [(ngModel)]="bulkModel.enableFitness" />
+                    <span class="toggle-custom-checkbox"></span>
+                    <span class="field-title">Σωματική Ικανότητα</span>
+                  </label>
+                  <span class="field-status-badge" [class.active]="bulkModel.enableFitness">
+                    {{ bulkModel.enableFitness ? 'Ενεργό' : 'Αμετάβλητο' }}
+                  </span>
+                </div>
+                <div class="bulk-card-body" [class.disabled-zone]="!bulkModel.enableFitness">
+                  <div class="segmented-pills-row">
+                    @for (lvl of ['Ι1', 'Ι2', 'Ι3', 'Ι4']; track lvl) {
+                      <button type="button" class="btn-segmented"
+                              [disabled]="!bulkModel.enableFitness"
+                              [class.active]="bulkModel.fitnessProfile === lvl"
+                              (click)="bulkModel.fitnessProfile = $any(lvl)">
+                        <strong>{{ lvl }}</strong>
+                        <span class="sub-label">{{ lvl === 'Ι1' || lvl === 'Ι2' ? 'Ένοπλος' : 'Άοπλος' }}</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- 7. ΚΑΤΑΣΤΑΣΗ ΟΠΛΙΣΜΟΥ -->
+            @if (bulkActiveTab() === 'ALL' || bulkActiveTab() === 'MILITARY') {
+              <div class="bulk-field-card" [class.is-active]="bulkModel.enableStatus">
+                <div class="bulk-card-header">
+                  <label class="bulk-field-toggle">
+                    <input type="checkbox" [(ngModel)]="bulkModel.enableStatus" />
+                    <span class="toggle-custom-checkbox"></span>
+                    <span class="field-title">Κατάσταση Οπλισμού / Υπηρεσίας</span>
+                  </label>
+                  <span class="field-status-badge" [class.active]="bulkModel.enableStatus">
+                    {{ bulkModel.enableStatus ? 'Ενεργό' : 'Αμετάβλητο' }}
+                  </span>
+                </div>
+                <div class="bulk-card-body" [class.disabled-zone]="!bulkModel.enableStatus">
+                  <div class="segmented-pills-row">
+                    @for (st of ['Ένοπλος', 'Άοπλος', 'Υπηρεσία Γραφείου', 'Ελεύθερος Υπηρεσίας']; track st) {
+                      <button type="button" class="btn-segmented"
+                              [disabled]="!bulkModel.enableStatus"
+                              [class.active]="bulkModel.status === st"
+                              (click)="bulkModel.status = $any(st)">
+                        <span>{{ st }}</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- 8. ΕΙΔΙΚΟΣ ΡΟΛΟΣ -->
+            @if (bulkActiveTab() === 'ALL' || bulkActiveTab() === 'MILITARY') {
+              <div class="bulk-field-card" [class.is-active]="bulkModel.enableSpecialRole">
+                <div class="bulk-card-header">
+                  <label class="bulk-field-toggle">
+                    <input type="checkbox" [(ngModel)]="bulkModel.enableSpecialRole" />
+                    <span class="toggle-custom-checkbox"></span>
+                    <span class="field-title">Ειδικός Ρόλος</span>
+                  </label>
+                  <span class="field-status-badge" [class.active]="bulkModel.enableSpecialRole">
+                    {{ bulkModel.enableSpecialRole ? 'Ενεργό' : 'Αμετάβλητο' }}
+                  </span>
+                </div>
+                <div class="bulk-card-body" [class.disabled-zone]="!bulkModel.enableSpecialRole">
+                  <div class="radio-options-row mb-2">
+                    <label class="radio-label">
+                      <input type="radio" name="specialRoleMode" value="PRESET" [(ngModel)]="bulkModel.specialRoleMode" [disabled]="!bulkModel.enableSpecialRole" />
+                      <span>Προκαθορισμένος</span>
+                    </label>
+                    <label class="radio-label">
+                      <input type="radio" name="specialRoleMode" value="CUSTOM" [(ngModel)]="bulkModel.specialRoleMode" [disabled]="!bulkModel.enableSpecialRole" />
+                      <span>Προσαρμοσμένος</span>
+                    </label>
+                    <label class="radio-label">
+                      <input type="radio" name="specialRoleMode" value="CLEAR" [(ngModel)]="bulkModel.specialRoleMode" [disabled]="!bulkModel.enableSpecialRole" />
+                      <span>Κανένας (Καθαρισμός)</span>
+                    </label>
+                  </div>
+
+                  @if (bulkModel.specialRoleMode === 'PRESET') {
+                    <div class="chips-list">
+                      @for (role of specialRoles; track role) {
+                        <button type="button" class="btn-chip"
+                                [disabled]="!bulkModel.enableSpecialRole"
+                                [class.selected]="bulkModel.specialRolePreset === role"
+                                (click)="bulkModel.specialRolePreset = role">
+                          {{ role }}
+                        </button>
+                      }
+                    </div>
+                  } @else if (bulkModel.specialRoleMode === 'CUSTOM') {
+                    <input type="text" class="form-control" placeholder="π.χ. ΒΟΗΘΟΣ ΑΠΟΘΗΚΑΡΙΟΥ..."
+                           [(ngModel)]="bulkModel.specialRoleCustom"
+                           [disabled]="!bulkModel.enableSpecialRole" />
+                  } @else {
+                    <p class="text-muted small-hint">Ο ειδικός ρόλος θα αφαιρεθεί και οι στρατιώτες θα εκτελούν κανονικά υπηρεσίες καθαριότητας / βάρδιες.</p>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- 9. ΠΛΗΡΗΣ ΑΠΑΛΛΑΓΗ ΥΠΗΡΕΣΙΩΝ -->
+            @if (bulkActiveTab() === 'ALL' || bulkActiveTab() === 'DUTIES') {
+              <div class="bulk-field-card" [class.is-active]="bulkModel.enableExempt">
+                <div class="bulk-card-header">
+                  <label class="bulk-field-toggle">
+                    <input type="checkbox" [(ngModel)]="bulkModel.enableExempt" />
+                    <span class="toggle-custom-checkbox"></span>
+                    <span class="field-title">Πλήρης Απαλλαγή από Υπηρεσίες</span>
+                  </label>
+                  <span class="field-status-badge" [class.active]="bulkModel.enableExempt">
+                    {{ bulkModel.enableExempt ? 'Ενεργό' : 'Αμετάβλητο' }}
+                  </span>
+                </div>
+                <div class="bulk-card-body" [class.disabled-zone]="!bulkModel.enableExempt">
+                  <div class="segmented-pills-row">
+                    <button type="button" class="btn-segmented btn-danger-pill"
+                            [disabled]="!bulkModel.enableExempt"
+                            [class.active]="bulkModel.exemptFromAllDuties"
+                            (click)="bulkModel.exemptFromAllDuties = true">
+                      <span>Απαλλαγή από ΟΛΕΣ τις υπηρεσίες (ΝΑΙ)</span>
+                    </button>
+                    <button type="button" class="btn-segmented btn-success-pill"
+                            [disabled]="!bulkModel.enableExempt"
+                            [class.active]="!bulkModel.exemptFromAllDuties"
+                            (click)="bulkModel.exemptFromAllDuties = false">
+                      <span>Εκτελεί κανονικά υπηρεσίες (ΟΧΙ)</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- 10. ΕΝΕΡΓΟΣ ΣΤΗ ΔΥΝΑΜΗ -->
+            @if (bulkActiveTab() === 'ALL' || bulkActiveTab() === 'DUTIES') {
+              <div class="bulk-field-card" [class.is-active]="bulkModel.enableActive">
+                <div class="bulk-card-header">
+                  <label class="bulk-field-toggle">
+                    <input type="checkbox" [(ngModel)]="bulkModel.enableActive" />
+                    <span class="toggle-custom-checkbox"></span>
+                    <span class="field-title">Κατάσταση στη Δύναμη</span>
+                  </label>
+                  <span class="field-status-badge" [class.active]="bulkModel.enableActive">
+                    {{ bulkModel.enableActive ? 'Ενεργό' : 'Αμετάβλητο' }}
+                  </span>
+                </div>
+                <div class="bulk-card-body" [class.disabled-zone]="!bulkModel.enableActive">
+                  <div class="segmented-pills-row">
+                    <button type="button" class="btn-segmented btn-success-pill"
+                            [disabled]="!bulkModel.enableActive"
+                            [class.active]="bulkModel.active"
+                            (click)="bulkModel.active = true">
+                      <span>Ενεργός στη Δύναμη</span>
+                    </button>
+                    <button type="button" class="btn-segmented btn-warning-pill"
+                            [disabled]="!bulkModel.enableActive"
+                            [class.active]="!bulkModel.active"
+                            (click)="bulkModel.active = false">
+                      <span>Ανενεργός</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- 11. ΣΚΟΡ / ΜΟΡΙΑ ΥΠΗΡΕΣΙΩΝ -->
+            @if (bulkActiveTab() === 'ALL' || bulkActiveTab() === 'DUTIES') {
+              <div class="bulk-field-card" [class.is-active]="bulkModel.enableDutyScore">
+                <div class="bulk-card-header">
+                  <label class="bulk-field-toggle">
+                    <input type="checkbox" [(ngModel)]="bulkModel.enableDutyScore" />
+                    <span class="toggle-custom-checkbox"></span>
+                    <span class="field-title">Μόρια / Σκορ Υπηρεσιών</span>
+                  </label>
+                  <span class="field-status-badge" [class.active]="bulkModel.enableDutyScore">
+                    {{ bulkModel.enableDutyScore ? 'Ενεργό' : 'Αμετάβλητο' }}
+                  </span>
+                </div>
+                <div class="bulk-card-body" [class.disabled-zone]="!bulkModel.enableDutyScore">
+                  <div class="radio-options-row mb-2">
+                    <label class="radio-label">
+                      <input type="radio" name="dutyScoreMode" value="RESET" [(ngModel)]="bulkModel.dutyScoreMode" [disabled]="!bulkModel.enableDutyScore" />
+                      <span>Μηδενισμός όλων (0)</span>
+                    </label>
+                    <label class="radio-label">
+                      <input type="radio" name="dutyScoreMode" value="SET" [(ngModel)]="bulkModel.dutyScoreMode" [disabled]="!bulkModel.enableDutyScore" />
+                      <span>Ορισμός συγκεκριμένης τιμής</span>
+                    </label>
+                    <label class="radio-label">
+                      <input type="radio" name="dutyScoreMode" value="ADJUST" [(ngModel)]="bulkModel.dutyScoreMode" [disabled]="!bulkModel.enableDutyScore" />
+                      <span>Προσθήκη / Αφαίρεση (+/-)</span>
+                    </label>
+                  </div>
+
+                  @if (bulkModel.dutyScoreMode === 'SET') {
+                    <div class="number-input-row">
+                      <label class="small-label">Νέο συνολικό σκορ:</label>
+                      <input type="number" min="0" class="form-control score-number-input"
+                             [(ngModel)]="bulkModel.dutyScoreValue"
+                             [disabled]="!bulkModel.enableDutyScore" />
+                    </div>
+                  } @else if (bulkModel.dutyScoreMode === 'ADJUST') {
+                    <div class="number-input-row">
+                      <label class="small-label">Μεταβολή σκορ (π.χ. +1, -1):</label>
+                      <input type="number" class="form-control score-number-input"
+                             [(ngModel)]="bulkModel.dutyScoreAdjust"
+                             [disabled]="!bulkModel.enableDutyScore" />
+                    </div>
+                  } @else {
+                    <p class="text-muted small-hint">Όλα τα μόρια υπηρεσιών και Σ/Κ θα επανέλθουν στο μηδέν (0).</p>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- 12. ΕΠΙΛΕΞΙΜΕΣ ΥΠΗΡΕΣΙΕΣ -->
+            @if (bulkActiveTab() === 'ALL' || bulkActiveTab() === 'DUTIES') {
+              <div class="bulk-field-card" [class.is-active]="bulkModel.enableEligibleDuties">
+                <div class="bulk-card-header">
+                  <label class="bulk-field-toggle">
+                    <input type="checkbox" [(ngModel)]="bulkModel.enableEligibleDuties" />
+                    <span class="toggle-custom-checkbox"></span>
+                    <span class="field-title">Επιλέξιμες Υπηρεσίες</span>
+                  </label>
+                  <span class="field-status-badge" [class.active]="bulkModel.enableEligibleDuties">
+                    {{ bulkModel.enableEligibleDuties ? 'Ενεργό' : 'Αμετάβλητο' }}
+                  </span>
+                </div>
+                <div class="bulk-card-body" [class.disabled-zone]="!bulkModel.enableEligibleDuties">
+                  <div class="radio-options-row mb-2">
+                    <label class="radio-label">
+                      <input type="radio" name="eligibleDutiesMode" value="ALL" [(ngModel)]="bulkModel.eligibleDutiesMode" [disabled]="!bulkModel.enableEligibleDuties" />
+                      <span>Όλες οι υπηρεσίες (Πλήρης επιλεξιμότητα)</span>
+                    </label>
+                    <label class="radio-label">
+                      <input type="radio" name="eligibleDutiesMode" value="CUSTOM" [(ngModel)]="bulkModel.eligibleDutiesMode" [disabled]="!bulkModel.enableEligibleDuties" />
+                      <span>Συγκεκριμένες υπηρεσίες</span>
+                    </label>
+                  </div>
+
+                  @if (bulkModel.eligibleDutiesMode === 'CUSTOM') {
+                    <div class="duties-selector-actions mb-2">
+                      <button type="button" class="btn btn-xs btn-secondary" [disabled]="!bulkModel.enableEligibleDuties" (click)="selectAllBulkDutyTypes()">
+                        Επιλογή Όλων
+                      </button>
+                      <button type="button" class="btn btn-xs btn-secondary" [disabled]="!bulkModel.enableEligibleDuties" (click)="deselectAllBulkDutyTypes()">
+                        Αποεπιλογή Όλων
+                      </button>
+                    </div>
+                    <div class="duties-chips-grid">
+                      @for (dt of allDutyTypes(); track dt.id) {
+                        <button type="button" class="duty-pill-select"
+                                [disabled]="!bulkModel.enableEligibleDuties"
+                                [class.selected]="isBulkDutySelected(dt.id)"
+                                (click)="toggleBulkDutyType(dt.id)">
+                          <span class="pill-check">{{ isBulkDutySelected(dt.id) ? '✓' : '+' }}</span>
+                          <span>{{ dt.shortName || dt.name }}</span>
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- 13. ΣΗΜΕΙΩΣΕΙΣ -->
+            @if (bulkActiveTab() === 'ALL' || bulkActiveTab() === 'NOTES') {
+              <div class="bulk-field-card" [class.is-active]="bulkModel.enableNotes">
+                <div class="bulk-card-header">
+                  <label class="bulk-field-toggle">
+                    <input type="checkbox" [(ngModel)]="bulkModel.enableNotes" />
+                    <span class="toggle-custom-checkbox"></span>
+                    <span class="field-title">Σημειώσεις / Παρατηρήσεις</span>
+                  </label>
+                  <span class="field-status-badge" [class.active]="bulkModel.enableNotes">
+                    {{ bulkModel.enableNotes ? 'Ενεργό' : 'Αμετάβλητο' }}
+                  </span>
+                </div>
+                <div class="bulk-card-body" [class.disabled-zone]="!bulkModel.enableNotes">
+                  <div class="radio-options-row mb-2">
+                    <label class="radio-label">
+                      <input type="radio" name="notesMode" value="REPLACE" [(ngModel)]="bulkModel.notesMode" [disabled]="!bulkModel.enableNotes" />
+                      <span>Αντικατάσταση</span>
+                    </label>
+                    <label class="radio-label">
+                      <input type="radio" name="notesMode" value="APPEND" [(ngModel)]="bulkModel.notesMode" [disabled]="!bulkModel.enableNotes" />
+                      <span>Προσθήκη στο τέλος</span>
+                    </label>
+                    <label class="radio-label">
+                      <input type="radio" name="notesMode" value="CLEAR" [(ngModel)]="bulkModel.notesMode" [disabled]="!bulkModel.enableNotes" />
+                      <span>Εκκαθάριση</span>
+                    </label>
+                  </div>
+                  @if (bulkModel.notesMode !== 'CLEAR') {
+                    <textarea class="form-control" rows="2" placeholder="Γράψτε τη σημείωση..."
+                              [(ngModel)]="bulkModel.notesValue"
+                              [disabled]="!bulkModel.enableNotes"></textarea>
+                  }
+                </div>
+              </div>
+            }
+
+          </div>
+
+        </div>
+
+        <!-- Sticky Footer -->
+        <div class="modal-footer bulk-master-footer">
+          <div class="footer-summary-info">
+            <span class="active-fields-counter" [class.has-active]="bulkActiveFieldsCount > 0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              {{ bulkActiveFieldsCount }} {{ bulkActiveFieldsCount === 1 ? 'πεδίο ενεργό' : 'πεδία ενεργά' }} προς αλλαγή για <strong>{{ selectedCount() }}</strong> στρατιώτες
+            </span>
+          </div>
+          <div class="footer-buttons-group">
+            <button type="button" class="btn btn-secondary" (click)="closeBulkEditModal()">
+              Ακύρωση
+            </button>
+            <button type="button" class="btn btn-primary bulk-submit-btn"
+                    [disabled]="bulkActiveFieldsCount === 0"
+                    (click)="executeBulkEdit()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Εφαρμογή Αλλαγών ({{ selectedCount() }})
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
   }

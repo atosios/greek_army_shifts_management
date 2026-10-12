@@ -52,12 +52,36 @@
 
     <!-- Right: Quick Presets & Search -->
     <div class="weekend-presets-group">
+      <button class="btn btn-primary btn-sm btn-derive-duties" (click)="deriveFromDuties()" title="Αυτόματη κατανομή εξόδου (Σάββατο / Κυριακή) με βάση τις υπηρεσίες που έχουν οριστεί στο Σ/Κ">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        Ανάθεση βάσει Υπηρεσιών
+      </button>
+
+      <button class="btn btn-secondary btn-sm" (click)="applyPreferencesPreset()" title="Κατανομή εξόδων με βάση τις δηλωμένες προτιμήσεις του προσωπικού">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+        Εφαρμογή Προτιμήσεων
+      </button>
+
+      <button class="btn btn-secondary btn-sm" (click)="openPreferencesModal()" title="Διαχείριση και επεξεργασία προτιμήσεων στρατιωτών για Σάββατο / Κυριακή">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Προτιμήσεις Προσωπικού
+      </button>
+
       <button class="btn btn-secondary btn-sm" (click)="loadWeekendPlan()" title="Εφαρμογή αντιστροφής από το προηγούμενο Σ/Κ">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="1 4 1 10 7 10"/>
           <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
         </svg>
-        Εναλλαγή από Προηγούμενο Σ/Κ
+        Αντιστροφή από Προηγ. Σ/Κ
       </button>
 
       <button class="btn btn-secondary btn-sm" (click)="applyBalancedPreset()" title="Ισοκατανομή 50% Σάββατο - 50% Κυριακή">
@@ -162,9 +186,32 @@
             
             <div class="soldier-info-main">
               <span class="soldier-fullname">{{ p.fullName }}</span>
+              @if (p.weekendPreference && p.weekendPreference !== 'Χωρίς προτίμηση') {
+                <span 
+                  class="pref-badge-pill" 
+                  [class.pref-sat]="p.weekendPreference === 'Σάββατο'"
+                  [class.pref-sun]="p.weekendPreference === 'Κυριακή'"
+                  (click)="cycleSoldierPreference(p, $event)"
+                  title="Προτίμηση: {{ p.weekendPreference }} (Κλικ για αλλαγή)">
+                  ⭐ {{ p.weekendPreference }}
+                </span>
+              } @else {
+                <button 
+                  type="button" 
+                  class="btn-pref-ghost" 
+                  (click)="cycleSoldierPreference(p, $event)" 
+                  title="Ορισμός προτίμησης Σ/Κ">
+                  + Προτ.
+                </button>
+              }
               @if (soldiersOnLeave().has(p.id)) {
                 <span class="badge badge-warning leave-tag" title="Έχει άδεια στο Σ/Κ">
                   {{ soldiersOnLeave().get(p.id) }}
+                </span>
+              }
+              @if (soldiersWithPenalties().has(p.id)) {
+                <span class="badge badge-danger penalty-tag" [title]="'Ενεργή Ποινή: ' + soldiersWithPenalties().get(p.id)?.label">
+                  ⛔ {{ soldiersWithPenalties().get(p.id)?.label }}
                 </span>
               }
             </div>
@@ -243,9 +290,32 @@
             
             <div class="soldier-info-main">
               <span class="soldier-fullname">{{ p.fullName }}</span>
+              @if (p.weekendPreference && p.weekendPreference !== 'Χωρίς προτίμηση') {
+                <span 
+                  class="pref-badge-pill" 
+                  [class.pref-sat]="p.weekendPreference === 'Σάββατο'"
+                  [class.pref-sun]="p.weekendPreference === 'Κυριακή'"
+                  (click)="cycleSoldierPreference(p, $event)"
+                  title="Προτίμηση: {{ p.weekendPreference }} (Κλικ για αλλαγή)">
+                  ⭐ {{ p.weekendPreference }}
+                </span>
+              } @else {
+                <button 
+                  type="button" 
+                  class="btn-pref-ghost" 
+                  (click)="cycleSoldierPreference(p, $event)" 
+                  title="Ορισμός προτίμησης Σ/Κ">
+                  + Προτ.
+                </button>
+              }
               @if (soldiersOnLeave().has(p.id)) {
                 <span class="badge badge-warning leave-tag" title="Έχει άδεια στο Σ/Κ">
                   {{ soldiersOnLeave().get(p.id) }}
+                </span>
+              }
+              @if (soldiersWithPenalties().has(p.id)) {
+                <span class="badge badge-danger penalty-tag" [title]="'Ενεργή Ποινή: ' + soldiersWithPenalties().get(p.id)?.label">
+                  ⛔ {{ soldiersWithPenalties().get(p.id)?.label }}
                 </span>
               }
             </div>
@@ -301,8 +371,31 @@
           <div class="unassigned-item-card">
             <div class="unassigned-info-main">
               <span class="unassigned-fullname">{{ p.fullName }}</span>
+              @if (p.weekendPreference && p.weekendPreference !== 'Χωρίς προτίμηση') {
+                <span 
+                  class="pref-badge-pill" 
+                  [class.pref-sat]="p.weekendPreference === 'Σάββατο'"
+                  [class.pref-sun]="p.weekendPreference === 'Κυριακή'"
+                  (click)="cycleSoldierPreference(p, $event)"
+                  title="Προτίμηση: {{ p.weekendPreference }} (Κλικ για αλλαγή)">
+                  ⭐ {{ p.weekendPreference }}
+                </span>
+              } @else {
+                <button 
+                  type="button" 
+                  class="btn-pref-ghost" 
+                  (click)="cycleSoldierPreference(p, $event)" 
+                  title="Ορισμός προτίμησης Σ/Κ">
+                  + Προτ.
+                </button>
+              }
               @if (soldiersOnLeave().has(p.id)) {
                 <span class="badge badge-warning leave-tag" title="Έχει άδεια στο Σ/Κ">{{ soldiersOnLeave().get(p.id) }}</span>
+              }
+              @if (soldiersWithPenalties().has(p.id)) {
+                <span class="badge badge-danger penalty-tag" [title]="'Ενεργή Ποινή: ' + soldiersWithPenalties().get(p.id)?.label">
+                  ⛔ {{ soldiersWithPenalties().get(p.id)?.label }}
+                </span>
               }
               @if (p.exemptFromAllDuties) {
                 <span class="badge badge-secondary leave-tag">Απαλλαγή</span>
@@ -327,6 +420,124 @@
             </div>
           </div>
         }
+      </div>
+    </div>
+  }
+
+  <!-- Personnel Preferences Management Modal -->
+  @if (isPreferencesModalOpen()) {
+    <div class="modal-backdrop" (click)="closePreferencesModal()">
+      <div class="modal-dialog modal-pref-dialog" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <h2 class="modal-title">⭐ Προτιμήσεις Εξόδου Σαββατοκύριακου</h2>
+            <span class="modal-subtitle">Ορίστε τις επιθυμίες του προσωπικού (Σάββατο / Κυριακή) για αυτόματη ανάθεση εξόδου.</span>
+          </div>
+          <button type="button" class="btn-close-modal" (click)="closePreferencesModal()" aria-label="Κλείσιμο">✕</button>
+        </div>
+
+        <div class="modal-body pref-modal-body">
+          <!-- Filters & Search Toolbar -->
+          <div class="pref-modal-toolbar">
+            <div class="pref-filter-tabs">
+              <button 
+                type="button" 
+                class="btn-tab" 
+                [class.active]="prefFilter() === 'ALL'" 
+                (click)="prefFilter.set('ALL')">
+                Όλοι ({{ activePersonnel().length }})
+              </button>
+              <button 
+                type="button" 
+                class="btn-tab" 
+                [class.active]="prefFilter() === 'SAT'" 
+                (click)="prefFilter.set('SAT')">
+                Σάββατο
+              </button>
+              <button 
+                type="button" 
+                class="btn-tab" 
+                [class.active]="prefFilter() === 'SUN'" 
+                (click)="prefFilter.set('SUN')">
+                Κυριακή
+              </button>
+              <button 
+                type="button" 
+                class="btn-tab" 
+                [class.active]="prefFilter() === 'NONE'" 
+                (click)="prefFilter.set('NONE')">
+                Χωρίς Προτίμηση
+              </button>
+            </div>
+            <div class="pref-search-wrap">
+              <input 
+                type="text" 
+                class="form-control form-control-sm" 
+                [(ngModel)]="prefSearchQuery" 
+                placeholder="Αναζήτηση στρατιώτη..." 
+              />
+            </div>
+          </div>
+
+          <!-- Personnel List with Preference Selectors -->
+          <div class="pref-soldiers-list">
+            @for (p of filteredPersonnelForPreferences(); track p.id) {
+              <div class="pref-soldier-row">
+                <div class="pref-soldier-info">
+                  <span class="pref-soldier-rank">{{ p.rankShort }}</span>
+                  <strong class="pref-soldier-name">{{ p.fullName }}</strong>
+                  @if (p.company) {
+                    <span class="pref-soldier-company">{{ p.company }}</span>
+                  }
+                  @if (p.specialty) {
+                    <span class="pref-soldier-spec">{{ p.specialty }}</span>
+                  }
+                </div>
+
+                <div class="pref-selector-buttons">
+                  <button 
+                    type="button" 
+                    class="btn-pref-choice" 
+                    [class.active-sat]="p.weekendPreference === 'Σάββατο'"
+                    (click)="setSoldierPreference(p.id, 'Σάββατο')"
+                    title="Προτίμηση: Έξοδος Σαββάτου">
+                    Σάββατο
+                  </button>
+                  <button 
+                    type="button" 
+                    class="btn-pref-choice" 
+                    [class.active-sun]="p.weekendPreference === 'Κυριακή'"
+                    (click)="setSoldierPreference(p.id, 'Κυριακή')"
+                    title="Προτίμηση: Έξοδος Κυριακής">
+                    Κυριακή
+                  </button>
+                  <button 
+                    type="button" 
+                    class="btn-pref-choice" 
+                    [class.active-none]="!p.weekendPreference || p.weekendPreference === 'Χωρίς προτίμηση'"
+                    (click)="setSoldierPreference(p.id, 'Χωρίς προτίμηση')"
+                    title="Χωρίς συγκεκριμένη προτίμηση">
+                    Χωρίς
+                  </button>
+                </div>
+              </div>
+            }
+            @if (filteredPersonnelForPreferences().length === 0) {
+              <div class="empty-column-state">
+                Δεν βρέθηκαν στρατιώτες με τα επιλεγμένα κριτήρια.
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closePreferencesModal()">
+            Κλείσιμο
+          </button>
+          <button type="button" class="btn btn-primary" (click)="applyPreferencesPreset(); closePreferencesModal()">
+            Εφαρμογή στην Κατανομή
+          </button>
+        </div>
       </div>
     </div>
   }

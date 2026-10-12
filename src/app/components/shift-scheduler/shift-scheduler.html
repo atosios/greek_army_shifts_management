@@ -113,7 +113,6 @@
     <div class="control-bar-right">
       @if (isFriday() || isWeekend()) {
       <a routerLink="/weekend-off" class="btn btn-secondary btn-sm btn-weekend-link"
-        [class.btn-weekend-required]="isFriday() && !isWeekendPlanSetForSelectedDate()"
         title="Διαχείριση και κατανομή εξόδων Σαββατοκύριακου">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
@@ -122,22 +121,91 @@
           <line x1="3" y1="10" x2="21" y2="10" />
         </svg>
         <span>Εξοδούχοι Σ/Κ</span>
-        @if (isFriday() && !isWeekendPlanSetForSelectedDate()) {
-        <span class="weekend-required-dot" title="Απαιτείται ορισμός εξοδούχων">!</span>
-        }
       </a>
       }
 
-      @if (isFriday() && !isWeekendPlanSetForSelectedDate()) {
-      <div class="weekend-off-missing-note" title="Πρέπει να ορίσετε τους εξοδούχους Σ/Κ πριν την αυτόματη παραγωγή">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="8" x2="12" y2="12" />
-          <line x1="12" y1="16" x2="12.01" y2="16" />
-        </svg>
-        <span>Ορίστε πρώτα τους Εξοδούχους Σ/Κ</span>
+      <!-- Templates Menu Button & Dropdown -->
+      <div class="templates-menu-anchor">
+        <button type="button" class="btn btn-secondary btn-sm btn-templates-trigger"
+          (click)="toggleTemplatesDropdown($event)"
+          title="Επιλογή, εφαρμογή ή διαχείριση προτύπων υπηρεσιών">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <line x1="3" y1="9" x2="21" y2="9" />
+            <line x1="9" y1="21" x2="9" y2="9" />
+          </svg>
+          <span>Πρότυπα</span>
+          @if (currentSchedule()?.appliedTemplateName) {
+            <span class="applied-template-pill" title="Εφαρμοσμένο πρότυπο: {{ currentSchedule()?.appliedTemplateName }}">
+              {{ currentSchedule()?.appliedTemplateName }}
+            </span>
+          }
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="caret-icon">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+
+        @if (isTemplatesDropdownOpen()) {
+        <div class="templates-dropdown-menu card shadow-lg" (click)="$event.stopPropagation()">
+          <div class="templates-dropdown-header">
+            <span class="dropdown-header-title">Πρότυπα Υπηρεσιών</span>
+            <span class="dropdown-header-sub">Επιλέξτε πρότυπο για άμεση εφαρμογή</span>
+          </div>
+
+          <div class="templates-dropdown-list">
+            @if (scheduleTemplates().length === 0) {
+              <div class="templates-dropdown-empty">Δεν υπάρχουν αποθηκευμένα πρότυπα</div>
+            }
+            @for (tpl of scheduleTemplates(); track tpl.id) {
+              <button type="button" class="template-item-btn" 
+                [class.is-active-template]="currentSchedule()?.appliedTemplateId === tpl.id"
+                [disabled]="isCurrentScheduleFinalized()"
+                (click)="applyTemplate(tpl)">
+                <div class="template-item-main">
+                  <div class="template-item-top">
+                    <span class="template-item-name">{{ tpl.name }}</span>
+                    @if (tpl.isDefaultWeekday) {
+                      <span class="template-badge-default weekday" title="Προεπιλογή για καθημερινές">Καθημερινές</span>
+                    }
+                    @if (tpl.isDefaultWeekend) {
+                      <span class="template-badge-default weekend" title="Προεπιλογή για Σ/Κ">Σ/Κ</span>
+                    }
+                  </div>
+                  <span class="template-duty-count">{{ tpl.dutyTypeIds.length }} υπηρεσίες</span>
+                </div>
+                @if (currentSchedule()?.appliedTemplateId === tpl.id) {
+                  <span class="template-check-icon" title="Ενεργό πρότυπο">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </span>
+                }
+              </button>
+            }
+          </div>
+
+          <div class="templates-dropdown-divider"></div>
+
+          <div class="templates-dropdown-actions">
+            <button type="button" class="dropdown-action-btn" (click)="openSaveAsTemplateModal()" [disabled]="isCurrentScheduleFinalized()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                <polyline points="17 21 17 13 7 13 7 21" />
+                <polyline points="7 3 7 8 15 8" />
+              </svg>
+              <span>Αποθήκευση σημερινών ως Πρότυπο...</span>
+            </button>
+            <button type="button" class="dropdown-action-btn" (click)="openManageTemplatesModal()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+              <span>Διαχείριση Προτύπων...</span>
+            </button>
+          </div>
+        </div>
+        }
       </div>
-      }
 
       <!-- Single plus icon + text -->
       <button class="btn btn-secondary btn-sm btn-add-duty-trigger" [disabled]="isCurrentScheduleFinalized()" (click)="openAddDutyModal()"
@@ -149,27 +217,16 @@
         <span>Προσθήκη Υπηρεσίας</span>
       </button>
 
-      @if (isSaturday() || isSunday()) {
-      <div class="weekend-auto-gen-note" title="Το Σαββατοκύριακο προγραμματίζεται ενιαία από την Παρασκευή">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="16" x2="12" y2="12" />
-          <line x1="12" y1="8" x2="12.01" y2="8" />
-        </svg>
-        <span>Οι υπηρεσίες Σ/Κ παράγονται με την Παρασκευή</span>
-      </div>
-      } @else {
       <button class="btn btn-primary btn-sm btn-auto-generate" 
-        [disabled]="isCurrentScheduleFinalized() || (isFriday() && !isWeekendPlanSetForSelectedDate())" 
+        [disabled]="isCurrentScheduleFinalized()" 
         (click)="onAutoGenerateClicked()"
-        [title]="isCurrentScheduleFinalized() ? 'Το πρόγραμμα έχει οριστικοποιηθεί. Πατήστε «Επαναφορά» για επεξεργασία.' : (isFriday() && !isWeekendPlanSetForSelectedDate()) ? 'Δεν επιτρέπεται η αυτόματη παραγωγή: Πρέπει πρώτα να ορίσετε τους εξοδούχους Σαββατοκύριακου στη σελίδα «Εξοδούχοι Σ/Κ».' : 'Αυτόματη παραγωγή υπηρεσιών με τον αλγόριθμο δίκαιης κατανομής'">
+        [title]="isCurrentScheduleFinalized() ? 'Το πρόγραμμα έχει οριστικοποιηθεί. Πατήστε «Επαναφορά» για επεξεργασία.' : 'Αυτόματη παραγωγή υπηρεσιών με τον αλγόριθμο δίκαιης κατανομής'">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="23 4 23 10 17 10" />
           <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
         </svg>
-        <span>Αυτόματη Παραγωγή Υπηρεσιών</span>
+        <span>{{ (isFriday() || isWeekend()) ? 'Αυτόματη Παραγωγή Σ/Κ & Εξοδούχων' : 'Αυτόματη Παραγωγή Υπηρεσιών' }}</span>
       </button>
-      }
     </div>
   </div>
 
@@ -207,10 +264,24 @@
           <line x1="3" y1="10" x2="21" y2="10" />
         </svg>
         <h3>Δεν έχουν οριστεί υπηρεσίες για αυτή την ημέρα</h3>
-        <p>Μπορείτε να προσθέσετε υπηρεσίες από το κουμπί "Προσθήκη Υπηρεσίας" ή να εκτελέσετε αυτόματη παραγωγή.</p>
-        <button type="button" class="btn btn-secondary btn-sm" (click)="openAddDutyModal()">
-          Προσθήκη Υπηρεσίας
-        </button>
+        <p>Μπορείτε να εφαρμόσετε ένα πρότυπο υπηρεσιών, να προσθέσετε χειροκίνητα υπηρεσίες ή να εκτελέσετε αυτόματη παραγωγή.</p>
+        <div class="empty-state-buttons">
+          <button type="button" class="btn btn-primary btn-sm" (click)="openManageTemplatesModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <line x1="3" y1="9" x2="21" y2="9" />
+              <line x1="9" y1="21" x2="9" y2="9" />
+            </svg>
+            <span>Εφαρμογή Προτύπου</span>
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" (click)="openAddDutyModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span>Προσθήκη Υπηρεσίας</span>
+          </button>
+        </div>
       </div>
     </div>
     }
@@ -224,22 +295,47 @@
         <div class="duty-group-title-wrap">
           <span class="duty-badge-lg">{{ duty.shortName }}</span>
           <span class="duty-fullname">{{ duty.dutyName }}</span>
+          @if (duty.isCustomizedForDay) {
+            <span class="duty-custom-tag" title="Τροποποιημένη μόνο για τη σημερινή ημέρα">Προσαρμοσμένη</span>
+          }
           @if (duty.category && duty.category !== 'Οπλίτης' && duty.category !== 'Στρατιώτης') {
             <span class="duty-cat-tag">{{ duty.category }}</span>
           }
           <span class="duty-coverage-pill">{{ duty.slots.length }} θέσεις</span>
         </div>
 
-        <!-- Remove Duty from Day with safety dialog -->
+        <!-- Duty Header Actions -->
         @if (!isCurrentScheduleFinalized()) {
-        <button type="button" class="btn-duty-remove" (click)="requestRemoveDutyFromDay(dIdx)"
-          title="Αφαίρεση {{ duty.dutyName }} από τη σημερινή διαταγή">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-          </svg>
-          <span>Αφαίρεση</span>
-        </button>
+        <div class="duty-group-actions">
+          <button type="button" class="btn-duty-edit-day" (click)="openEditDutyInDayModal(dIdx)"
+            title="Επεξεργασία υπηρεσίας μόνο για τη σημερινή ημέρα">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+            </svg>
+            <span>Επεξεργασία</span>
+          </button>
+
+          @if (duty.isCustomizedForDay) {
+          <button type="button" class="btn-duty-reset-day" (click)="resetDutyToDefault(dIdx)"
+            title="Επαναφορά στις προεπιλογές της υπηρεσίας">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="1 4 1 10 7 10" />
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+            </svg>
+            <span>Επαναφορά</span>
+          </button>
+          }
+
+          <button type="button" class="btn-duty-remove" (click)="requestRemoveDutyFromDay(dIdx)"
+            title="Αφαίρεση {{ duty.dutyName }} από τη σημερινή διαταγή">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+            <span>Αφαίρεση</span>
+          </button>
+        </div>
         }
       </div>
 
@@ -397,8 +493,11 @@
                         <span class="option-name">{{ p.fullName }}</span>
 
                         @if (getPersonBadgeNote(p.id); as note) {
-                        <span class="option-note-badge" [class.badge-leave]="note.isLeave"
-                          [class.badge-served]="note.isServed" [class.badge-trick]="note.isWeekendTrick">
+                        <span class="option-note-badge" 
+                          [class.badge-danger]="note.type === 'danger'"
+                          [class.badge-warning]="note.type === 'warning'"
+                          [class.badge-served]="note.type === 'served' || note.isServed" 
+                          [class.badge-trick]="note.type === 'trick' || note.isWeekendTrick">
                           {{ note.text }}
                         </span>
                         }
@@ -716,6 +815,422 @@
         </svg>
         Ναι, Επαναφορά σε Πρόχειρο
       </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ============================================================ -->
+<!-- 6. SAVE AS TEMPLATE MODAL -->
+<!-- ============================================================ -->
+@if (isSaveAsTemplateModalOpen()) {
+<div class="modal-backdrop save-template-backdrop" (click)="closeSaveAsTemplateModal()">
+  <div class="modal-card modal-template-dialog" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <h2 class="modal-title">Αποθήκευση ως Πρότυπο Υπηρεσιών</h2>
+        <p class="modal-subtitle">Δημιουργήστε νέο πρότυπο διαταγής βασισμένο στις επιλεγμένες υπηρεσίες</p>
+      </div>
+      <button type="button" class="modal-close-btn" (click)="closeSaveAsTemplateModal()">&times;</button>
+    </div>
+
+    <div class="modal-body template-modal-body">
+      <div class="form-group mb-3">
+        <label class="form-label required">Όνομα Προτύπου</label>
+        <input type="text" class="form-control" [ngModel]="saveAsTemplateName()" (ngModelChange)="saveAsTemplateName.set($event)" placeholder="π.χ. Καθημερινό Πλήρες, Φυλάκιο, κ.λπ." autofocus />
+      </div>
+
+      <div class="form-group mb-3">
+        <label class="form-label">Περιγραφή (προαιρετικό)</label>
+        <textarea class="form-control" rows="2" [ngModel]="saveAsTemplateDescription()" (ngModelChange)="saveAsTemplateDescription.set($event)" placeholder="Σύντομη περιγραφή του προτύπου..."></textarea>
+      </div>
+
+      <div class="form-checkboxes-card mb-3">
+        <label class="custom-checkbox-row">
+          <input type="checkbox" [checked]="saveAsTemplateIsDefaultWeekday()" (change)="saveAsTemplateIsDefaultWeekday.set($any($event.target).checked)" />
+          <span class="checkbox-label-text">
+            <strong>Προεπιλογή για Καθημερινές</strong> (Δευτέρα - Παρασκευή)
+          </span>
+        </label>
+        <label class="custom-checkbox-row">
+          <input type="checkbox" [checked]="saveAsTemplateIsDefaultWeekend()" (change)="saveAsTemplateIsDefaultWeekend.set($any($event.target).checked)" />
+          <span class="checkbox-label-text">
+            <strong>Προεπιλογή για Σαββατοκύριακα</strong> (Σάββατο - Κυριακή)
+          </span>
+        </label>
+      </div>
+
+      <div class="template-duties-selection-section">
+        <div class="selection-section-header">
+          <label class="section-title">Υπηρεσίες που θα περιλαμβάνονται ({{ saveAsTemplateDutyIds().length }} επιλεγμένες)</label>
+          <div class="selection-quick-actions">
+            <button type="button" class="btn-text-action" (click)="selectAllDutiesInSaveAsTemplate()">Όλες</button>
+            <span class="action-sep">•</span>
+            <button type="button" class="btn-text-action" (click)="deselectAllDutiesInSaveAsTemplate()">Καμία</button>
+          </div>
+        </div>
+
+        <div class="template-duties-checkbox-list">
+          @for (d of activeDuties(); track d.id) {
+          <label class="duty-checkbox-item" [class.is-selected]="isDutySelectedInSaveAsTemplate(d.id)">
+            <input type="checkbox" [checked]="isDutySelectedInSaveAsTemplate(d.id)" (change)="toggleDutyInSaveAsTemplate(d.id)" />
+            <div class="duty-checkbox-info">
+              <span class="duty-code-badge">{{ d.shortName }}</span>
+              <span class="duty-name-text">{{ d.name }}</span>
+              <span class="duty-slots-tag">{{ d.slots }} θέσεις</span>
+            </div>
+          </label>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" (click)="closeSaveAsTemplateModal()">Ακύρωση</button>
+      <button type="button" class="btn btn-primary" (click)="confirmSaveAsTemplate()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+          <polyline points="17 21 17 13 7 13 7 21" />
+          <polyline points="7 3 7 8 15 8" />
+        </svg>
+        Αποθήκευση Προτύπου
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ============================================================ -->
+<!-- 7. MANAGE TEMPLATES MODAL -->
+<!-- ============================================================ -->
+@if (isManageTemplatesModalOpen()) {
+<div class="modal-backdrop manage-templates-backdrop" (click)="closeManageTemplatesModal()">
+  <div class="modal-card modal-manage-templates-card" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div class="header-with-badge">
+        <div>
+          <h2 class="modal-title">Διαχείριση Προτύπων Υπηρεσιών</h2>
+          <p class="modal-subtitle">Ορίστε και προσαρμόστε τα πρότυπα διαταγών και τις υπηρεσίες που περιλαμβάνονται</p>
+        </div>
+      </div>
+      <div class="header-right-actions">
+        <button type="button" class="btn btn-primary btn-sm btn-new-template" (click)="openCreateTemplateModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Νέο Πρότυπο
+        </button>
+        <button type="button" class="modal-close-btn" (click)="closeManageTemplatesModal()">&times;</button>
+      </div>
+    </div>
+
+    <div class="modal-body manage-templates-body">
+      @if (scheduleTemplates().length === 0) {
+      <div class="templates-empty-state">
+        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+          <line x1="3" y1="9" x2="21" y2="9" />
+          <line x1="9" y1="21" x2="9" y2="9" />
+        </svg>
+        <h3>Δεν υπάρχουν πρότυπα</h3>
+        <p>Δημιουργήστε πρότυπα για να ορίζετε εύκολα ποιες υπηρεσίες εκτελούνται καθημερινές ή Σ/Κ.</p>
+        <button type="button" class="btn btn-primary btn-sm" (click)="openCreateTemplateModal()">
+          Δημιουργία Πρώτου Προτύπου
+        </button>
+      </div>
+      }
+
+      <div class="templates-grid">
+        @for (tpl of scheduleTemplates(); track tpl.id) {
+        <div class="template-card-item" [class.is-applied-today]="currentSchedule()?.appliedTemplateId === tpl.id">
+          <div class="template-card-top">
+            <div class="template-card-title-wrap">
+              <h4 class="template-card-name">{{ tpl.name }}</h4>
+              <div class="template-default-pills">
+                @if (tpl.isDefaultWeekday) {
+                  <span class="default-pill weekday" title="Προεπιλογή για καθημερινές ημέρες">Προεπιλογή Καθημερινών</span>
+                }
+                @if (tpl.isDefaultWeekend) {
+                  <span class="default-pill weekend" title="Προεπιλογή για Σαββατοκύριακα / Αργίες">Προεπιλογή Σ/Κ</span>
+                }
+              </div>
+            </div>
+            <span class="template-duty-count-pill">{{ tpl.dutyTypeIds.length }} υπηρεσίες</span>
+          </div>
+
+          @if (tpl.description) {
+          <p class="template-card-description">{{ tpl.description }}</p>
+          }
+
+          <!-- Included Duties Chips (in their configured order) -->
+          <div class="template-duties-chips-container">
+            @for (dId of tpl.dutyTypeIds; track dId) {
+            <span class="template-duty-chip">
+              <span class="chip-short">{{ getDutyShortNameById(dId) }}</span>
+              <span class="chip-name">{{ getDutyNameById(dId) }}</span>
+            </span>
+            }
+          </div>
+
+          <!-- Card Actions Toolbar -->
+          <div class="template-card-actions">
+            <button type="button" class="btn btn-sm btn-apply-to-today" 
+              [disabled]="isCurrentScheduleFinalized()"
+              (click)="applyTemplate(tpl)"
+              title="Εφαρμογή των υπηρεσιών του προτύπου στη σημερινή διαταγή">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              <span>Εφαρμογή Σήμερα</span>
+            </button>
+
+            <div class="template-card-secondary-actions">
+              <button type="button" class="btn-icon-secondary" (click)="openEditTemplateModal(tpl)" title="Επεξεργασία προτύπου">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+              </button>
+              <button type="button" class="btn-icon-secondary" (click)="duplicateTemplate(tpl)" title="Αντιγραφή προτύπου">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+              </button>
+              <button type="button" class="btn-icon-secondary btn-icon-danger" (click)="deleteTemplate(tpl)" title="Διαγραφή προτύπου">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" (click)="closeManageTemplatesModal()">Κλείσιμο</button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ============================================================ -->
+<!-- 8. TEMPLATE EDITOR MODAL -->
+<!-- ============================================================ -->
+@if (isTemplateEditorModalOpen()) {
+<div class="modal-backdrop template-editor-backdrop" (click)="closeTemplateEditorModal()">
+  <div class="modal-card modal-template-editor-card" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <h2 class="modal-title">{{ editingTemplateId() ? 'Επεξεργασία Προτύπου' : 'Δημιουργία Νέου Προτύπου' }}</h2>
+        <p class="modal-subtitle">Επιλέξτε ποιες υπηρεσίες θα περιλαμβάνονται και ρυθμίστε τη σειρά εμφάνισής τους</p>
+      </div>
+      <button type="button" class="modal-close-btn" (click)="closeTemplateEditorModal()">&times;</button>
+    </div>
+
+    <div class="modal-body template-editor-body">
+      <div class="editor-form-row">
+        <div class="form-group flex-grow-1">
+          <label class="form-label required">Όνομα Προτύπου</label>
+          <input type="text" class="form-control" [ngModel]="templateFormName()" (ngModelChange)="templateFormName.set($event)" placeholder="π.χ. Καθημερινό Πλήρες, Φυλάκιο 1" />
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <label class="form-label">Περιγραφή (προαιρετικό)</label>
+        <textarea class="form-control" rows="2" [ngModel]="templateFormDescription()" (ngModelChange)="templateFormDescription.set($event)" placeholder="Περιγραφή χρήσης του προτύπου..."></textarea>
+      </div>
+
+      <div class="form-checkboxes-card mb-3">
+        <label class="custom-checkbox-row">
+          <input type="checkbox" [checked]="templateFormIsDefaultWeekday()" (change)="templateFormIsDefaultWeekday.set($any($event.target).checked)" />
+          <span class="checkbox-label-text">
+            <strong>Προεπιλογή για Καθημερινές</strong> (εφαρμόζεται αυτόματα στις νέες καθημερινές)
+          </span>
+        </label>
+        <label class="custom-checkbox-row">
+          <input type="checkbox" [checked]="templateFormIsDefaultWeekend()" (change)="templateFormIsDefaultWeekend.set($any($event.target).checked)" />
+          <span class="checkbox-label-text">
+            <strong>Προεπιλογή για Σαββατοκύριακα</strong> (εφαρμόζεται αυτόματα σε Σάββατο/Κυριακή)
+          </span>
+        </label>
+      </div>
+
+      <div class="editor-duties-section">
+        <div class="editor-duties-header">
+          <div class="header-left-col">
+            <h4 class="section-heading">Υπηρεσίες & Σειρά Εμφάνισης</h4>
+            <span class="selection-counter-badge">{{ templateFormDutyIds().length }} από {{ activeDuties().length }} επιλεγμένες</span>
+          </div>
+
+          <div class="header-right-col">
+            <input type="text" class="form-control search-duty-input" [ngModel]="templateDutySearchQuery()" (ngModelChange)="templateDutySearchQuery.set($event)" placeholder="Αναζήτηση υπηρεσίας..." />
+            <button type="button" class="btn btn-outline btn-xs" (click)="selectAllDutiesInTemplateEditor()">Όλες</button>
+            <button type="button" class="btn btn-outline btn-xs" (click)="deselectAllDutiesInTemplateEditor()">Καμία</button>
+          </div>
+        </div>
+
+        <div class="editor-duties-list">
+          @for (d of filteredDutiesForTemplateEditor(); track d.id) {
+          <div class="editor-duty-row" [class.is-included]="isDutySelectedInTemplateEditor(d.id)">
+            <label class="duty-row-toggle">
+              <input type="checkbox" [checked]="isDutySelectedInTemplateEditor(d.id)" (change)="toggleDutyInTemplateEditor(d.id)" />
+              <span class="duty-code-badge">{{ d.shortName }}</span>
+              <div class="duty-text-col">
+                <span class="duty-title">{{ d.name }}</span>
+                <span class="duty-subtitle">{{ d.shiftHours }}</span>
+              </div>
+            </label>
+
+            <div class="duty-row-meta">
+              <span class="duty-slots-badge">{{ d.slots }} θέσεις</span>
+              @if (isDutySelectedInTemplateEditor(d.id)) {
+              <div class="duty-reorder-btns">
+                <button type="button" class="btn-reorder" (click)="moveDutyInTemplateEditor(d.id, -1)" title="Μετακίνηση πάνω">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="18 15 12 9 6 15" />
+                  </svg>
+                </button>
+                <button type="button" class="btn-reorder" (click)="moveDutyInTemplateEditor(d.id, 1)" title="Μετακίνηση κάτω">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+              </div>
+              }
+            </div>
+          </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" (click)="closeTemplateEditorModal()">Ακύρωση</button>
+      <button type="button" class="btn btn-primary" (click)="saveTemplateFromEditor()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+        Αποθήκευση Προτύπου
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Edit Duty in Day Modal -->
+@if (isEditDutyInDayModalOpen()) {
+<div class="modal-backdrop" (click)="closeEditDutyInDayModal()">
+  <div class="modal-card modal-lg edit-duty-in-day-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <div class="modal-icon-badge warning-badge">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+          </svg>
+        </div>
+        <div>
+          <h3>Προσαρμογή Υπηρεσίας για {{ formatDateDdMmYyyy(selectedDate()) }}</h3>
+          <p class="modal-subtitle">
+            Οι τροποποιήσεις ισχύουν <strong>μόνο για τη συγκεκριμένη ημέρα</strong>. Η επόμενη ημέρα και οι γενικές ρυθμίσεις παραμένουν ανεπηρέαστες.
+          </p>
+        </div>
+      </div>
+      <button type="button" class="btn-close" (click)="closeEditDutyInDayModal()" title="Κλείσιμο">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Duty Basic Info Grid -->
+      <div class="form-grid-row">
+        <div class="form-group flex-2">
+          <label>Ονομασία Υπηρεσίας στη Διαταγή</label>
+          <input type="text" class="form-control" [ngModel]="editDutyFormName()" (ngModelChange)="editDutyFormName.set($event)" placeholder="π.χ. Θαλαμοφύλακας 1ου Λόχου" />
+        </div>
+        <div class="form-group flex-1">
+          <label>Συντομογραφία</label>
+          <input type="text" class="form-control" [ngModel]="editDutyFormShortName()" (ngModelChange)="editDutyFormShortName.set($event)" placeholder="π.χ. ΘΦ" />
+        </div>
+      </div>
+
+      <div class="form-grid-row">
+        <div class="form-group flex-1">
+          <label>Κατηγορία</label>
+          <input type="text" class="form-control" [ngModel]="editDutyFormCategory()" (ngModelChange)="editDutyFormCategory.set($event)" placeholder="π.χ. Φύλαξη, Επιμελητεία..." />
+        </div>
+        <div class="form-group flex-1">
+          <label>Συντελεστής Βαρύτητας (Μόρια)</label>
+          <input type="number" step="0.5" min="0" max="10" class="form-control" [ngModel]="editDutyFormWeight()" (ngModelChange)="editDutyFormWeight.set($event)" />
+        </div>
+      </div>
+
+      <!-- Slots / Shifts Management -->
+      <div class="slots-edit-section">
+        <div class="slots-edit-header">
+          <div>
+            <h4 class="section-heading">Θέσεις & Βάρδιες Ημέρας</h4>
+            <span class="selection-counter-badge">{{ editDutyFormSlots().length }} θέσεις</span>
+          </div>
+          <button type="button" class="btn btn-outline btn-xs" (click)="addSlotToEditedDuty()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Προσθήκη Θέσης
+          </button>
+        </div>
+
+        <div class="slots-edit-list">
+          @for (slot of editDutyFormSlots(); track $index; let sIdx = $index) {
+          <div class="slot-edit-row">
+            <span class="slot-number-pill">#{{ sIdx + 1 }}</span>
+            <div class="slot-input-wrap">
+              <label class="slot-label">Ωράριο / Περιγραφή Βάρδιας</label>
+              <input type="text" class="form-control" [(ngModel)]="slot.hoursNote" placeholder="π.χ. 14:00 - 16:00 & 22:00 - 00:00 ή Επιφυλακή" />
+            </div>
+            <div class="slot-assigned-info">
+              <label class="slot-label">Ανάθεση</label>
+              <span class="assigned-text" [class.is-empty]="!slot.personName">
+                {{ slot.personName ? slot.personName : '(Κενή θέση)' }}
+              </span>
+            </div>
+            <button type="button" class="btn-remove-slot" (click)="removeSlotFromEditedDuty(sIdx)" title="Διαγραφή αυτής της θέσης">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+            </button>
+          </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer space-between">
+      <div class="footer-left">
+        @if (isCustomizedForDayCurrently()) {
+        <button type="button" class="btn btn-danger-outline btn-sm" (click)="resetDutyToDefault(editingDutyIndex())">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10" />
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+          </svg>
+          Επαναφορά στις Προεπιλογές
+        </button>
+        }
+      </div>
+      <div class="footer-right">
+        <button type="button" class="btn btn-secondary" (click)="closeEditDutyInDayModal()">Ακύρωση</button>
+        <button type="button" class="btn btn-primary" (click)="saveEditedDutyInDay()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          Αποθήκευση για Σήμερα
+        </button>
+      </div>
     </div>
   </div>
 </div>

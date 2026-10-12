@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { StorageService } from '../../services/storage.service';
 import { ExcelExportService } from '../../services/excel-export.service';
 import * as XLSX from 'xlsx';
-import { Personnel, SoldierRecord, MilitaryCategory, PersonnelStatus, FitnessLevel, LeaveType, toGreekCaps, formatGreekDate, getCorpsShort, normalizeGreek, SPECIAL_ROLES } from '../../models/shift.model';
+import { Personnel, SoldierRecord, MilitaryCategory, PersonnelStatus, FitnessLevel, LeaveType, WeekendPreference, toGreekCaps, formatGreekDate, getCorpsShort, normalizeGreek, SPECIAL_ROLES } from '../../models/shift.model';
 import { GREEK_RANKS, GREEK_CORPS } from '../../data/default-data';
 
 export type CsvConflictStrategy = 'UPDATE' | 'SKIP' | 'INSERT';
@@ -138,13 +138,129 @@ export class PersonnelComponent {
     this.selectedSoldierIds.set(new Set<string>());
   }
 
-  // Bulk Operations Modals
+  // Bulk Operations State & Modals
   isBulkDeleteModalOpen = signal<boolean>(false);
   isBulkRoomModalOpen = signal<boolean>(false);
   isBulkCorpsModalOpen = signal<boolean>(false);
+  isBulkEditModalOpen = signal<boolean>(false);
+
+  bulkSelectedSoldiersExpanded = signal<boolean>(false);
+  bulkActiveTab = signal<'ALL' | 'LOCATION' | 'MILITARY' | 'DUTIES' | 'NOTES'>('ALL');
 
   bulkRoomTarget = signal<string>('');
   bulkCorpsTarget = signal<string>('ΠΖ');
+
+  readonly selectedSoldiersList = computed<Personnel[]>(() => {
+    const ids = this.selectedSoldierIds();
+    const all = this.storage.personnel();
+    return all.filter(p => ids.has(p.id));
+  });
+
+  readonly uniqueCompanies = computed<string[]>(() => {
+    const list = this.storage.personnel();
+    const set = new Set<string>();
+    list.forEach(p => {
+      const c = p.company?.trim();
+      if (c) set.add(c);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'el'));
+  });
+
+  readonly uniqueRotationalGroups = computed<string[]>(() => {
+    const list = this.storage.personnel();
+    const set = new Set<string>();
+    list.forEach(p => {
+      const g = p.rotationalGroup?.trim();
+      if (g) set.add(g);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'el'));
+  });
+
+  readonly allDutyTypes = this.storage.dutyTypes;
+
+  // Master Bulk Edit Form Model
+  bulkModel = {
+    // 1. Barracks Room (Θάλαμος)
+    enableRoom: false,
+    barracksRoom: '',
+    roomClear: false,
+
+    // 2. Bed Number (Κρεβάτι)
+    enableBed: false,
+    bedNumber: '',
+    bedClear: false,
+
+    // 3. Corps / Specialty (Όπλο/Σώμα)
+    enableCorps: false,
+    specialty: 'ΠΖ',
+
+    // 4. Fitness Profile (Σωματική Ικανότητα)
+    enableFitness: false,
+    fitnessProfile: 'Ι1' as FitnessLevel,
+
+    // 5. Status (Οπλισμός / Κατάσταση)
+    enableStatus: false,
+    status: 'Ένοπλος' as PersonnelStatus,
+
+    // 6. Special Role (Ειδικός Ρόλος)
+    enableSpecialRole: false,
+    specialRoleMode: 'PRESET' as 'PRESET' | 'CUSTOM' | 'CLEAR',
+    specialRolePreset: 'ΜΟΝΙΜΟΣ ΚΨΜ',
+    specialRoleCustom: '',
+
+    // 7. Company (Λόχος)
+    enableCompany: false,
+    company: '',
+    companyClear: false,
+
+    // 8. Rotational Group (Ομάδα)
+    enableRotationalGroup: false,
+    rotationalGroup: '',
+    rotationalGroupClear: false,
+
+    // 9. Exempt From All Duties (Πλήρης Απαλλαγή)
+    enableExempt: false,
+    exemptFromAllDuties: false,
+
+    // 10. Active Status (Ενεργός στη Δύναμη)
+    enableActive: false,
+    active: true,
+
+    // 11. Duty Score (Μόρια / Σκορ Υπηρεσιών)
+    enableDutyScore: false,
+    dutyScoreMode: 'RESET' as 'RESET' | 'SET' | 'ADJUST',
+    dutyScoreValue: 0,
+    dutyScoreAdjust: 1,
+
+    // 12. Eligible Duties (Επιλέξιμες Υπηρεσίες)
+    enableEligibleDuties: false,
+    eligibleDutiesMode: 'ALL' as 'ALL' | 'CUSTOM' | 'CLEAR',
+    selectedDutyTypeIds: [] as string[],
+
+    // 13. Notes (Σημειώσεις)
+    enableNotes: false,
+    notesMode: 'REPLACE' as 'REPLACE' | 'APPEND' | 'CLEAR',
+    notesValue: ''
+  };
+
+  get bulkActiveFieldsCount(): number {
+    let count = 0;
+    const f = this.bulkModel;
+    if (f.enableRoom) count++;
+    if (f.enableBed) count++;
+    if (f.enableCorps) count++;
+    if (f.enableFitness) count++;
+    if (f.enableStatus) count++;
+    if (f.enableSpecialRole) count++;
+    if (f.enableCompany) count++;
+    if (f.enableRotationalGroup) count++;
+    if (f.enableExempt) count++;
+    if (f.enableActive) count++;
+    if (f.enableDutyScore) count++;
+    if (f.enableEligibleDuties) count++;
+    if (f.enableNotes) count++;
+    return count;
+  }
 
   openBulkDeleteModal() {
     if (this.selectedCount() === 0) return;
@@ -175,9 +291,7 @@ export class PersonnelComponent {
   executeBulkRoomChange() {
     const target = toGreekCaps(this.bulkRoomTarget().trim());
     const ids = Array.from(this.selectedSoldierIds());
-    ids.forEach(id => {
-      this.storage.updatePersonnel(id, { barracksRoom: target });
-    });
+    this.storage.updatePersonnelBulk(ids, { barracksRoom: target });
     this.clearSelection();
     this.closeBulkRoomModal();
   }
@@ -195,11 +309,247 @@ export class PersonnelComponent {
   executeBulkCorpsChange() {
     const target = this.bulkCorpsTarget();
     const ids = Array.from(this.selectedSoldierIds());
-    ids.forEach(id => {
-      this.storage.updatePersonnel(id, { specialty: target });
-    });
+    this.storage.updatePersonnelBulk(ids, { specialty: target });
     this.clearSelection();
     this.closeBulkCorpsModal();
+  }
+
+  // --- Master Bulk Edit Modal Methods ---
+  openBulkEditModal(initialField?: string) {
+    if (this.selectedCount() === 0) return;
+
+    // Reset bulk form to clean default state
+    this.bulkModel = {
+      enableRoom: false,
+      barracksRoom: '',
+      roomClear: false,
+
+      enableBed: false,
+      bedNumber: '',
+      bedClear: false,
+
+      enableCorps: false,
+      specialty: 'ΠΖ',
+
+      enableFitness: false,
+      fitnessProfile: 'Ι1',
+
+      enableStatus: false,
+      status: 'Ένοπλος',
+
+      enableSpecialRole: false,
+      specialRoleMode: 'PRESET',
+      specialRolePreset: 'ΜΟΝΙΜΟΣ ΚΨΜ',
+      specialRoleCustom: '',
+
+      enableCompany: false,
+      company: '',
+      companyClear: false,
+
+      enableRotationalGroup: false,
+      rotationalGroup: '',
+      rotationalGroupClear: false,
+
+      enableExempt: false,
+      exemptFromAllDuties: false,
+
+      enableActive: false,
+      active: true,
+
+      enableDutyScore: false,
+      dutyScoreMode: 'RESET',
+      dutyScoreValue: 0,
+      dutyScoreAdjust: 1,
+
+      enableEligibleDuties: false,
+      eligibleDutiesMode: 'ALL',
+      selectedDutyTypeIds: [],
+
+      enableNotes: false,
+      notesMode: 'REPLACE',
+      notesValue: ''
+    };
+
+    if (initialField === 'room') {
+      this.bulkModel.enableRoom = true;
+      this.bulkActiveTab.set('LOCATION');
+    } else if (initialField === 'corps') {
+      this.bulkModel.enableCorps = true;
+      this.bulkActiveTab.set('MILITARY');
+    } else if (initialField === 'fitness') {
+      this.bulkModel.enableFitness = true;
+      this.bulkActiveTab.set('MILITARY');
+    } else if (initialField === 'status') {
+      this.bulkModel.enableStatus = true;
+      this.bulkActiveTab.set('MILITARY');
+    } else if (initialField === 'specialRole') {
+      this.bulkModel.enableSpecialRole = true;
+      this.bulkActiveTab.set('MILITARY');
+    } else if (initialField === 'active') {
+      this.bulkModel.enableActive = true;
+      this.bulkActiveTab.set('DUTIES');
+    } else if (initialField === 'exempt') {
+      this.bulkModel.enableExempt = true;
+      this.bulkActiveTab.set('DUTIES');
+    } else {
+      this.bulkActiveTab.set('ALL');
+    }
+
+    this.bulkSelectedSoldiersExpanded.set(false);
+    this.isBulkEditModalOpen.set(true);
+  }
+
+  closeBulkEditModal() {
+    this.isBulkEditModalOpen.set(false);
+  }
+
+  toggleBulkDutyType(id: string) {
+    const list = this.bulkModel.selectedDutyTypeIds;
+    if (list.includes(id)) {
+      this.bulkModel.selectedDutyTypeIds = list.filter(item => item !== id);
+    } else {
+      this.bulkModel.selectedDutyTypeIds = [...list, id];
+    }
+  }
+
+  isBulkDutySelected(id: string): boolean {
+    return this.bulkModel.selectedDutyTypeIds.includes(id);
+  }
+
+  selectAllBulkDutyTypes() {
+    this.bulkModel.selectedDutyTypeIds = this.storage.dutyTypes().map(d => d.id);
+  }
+
+  deselectAllBulkDutyTypes() {
+    this.bulkModel.selectedDutyTypeIds = [];
+  }
+
+  executeBulkEdit() {
+    const f = this.bulkModel;
+    if (this.bulkActiveFieldsCount === 0) {
+      this.storage.notify('Παρακαλώ ενεργοποιήστε τουλάχιστον ένα πεδίο προς ενημέρωση.', 'warning');
+      return;
+    }
+    const ids = Array.from(this.selectedSoldierIds());
+    if (ids.length === 0) return;
+
+    this.storage.updatePersonnelBulk(ids, (p: Personnel) => {
+      const updates: Partial<Personnel> = {};
+
+      // 1. Θάλαμος
+      if (f.enableRoom) {
+        updates.barracksRoom = f.roomClear ? '' : f.barracksRoom.trim();
+      }
+
+      // 2. Κρεβάτι
+      if (f.enableBed) {
+        updates.bedNumber = f.bedClear ? '' : f.bedNumber.trim();
+      }
+
+      // 3. Όπλο / Σώμα
+      if (f.enableCorps) {
+        updates.specialty = f.specialty;
+      }
+
+      // 4. Σωματική Ικανότητα
+      if (f.enableFitness) {
+        updates.fitnessProfile = f.fitnessProfile;
+        if ((f.fitnessProfile === 'Ι1' || f.fitnessProfile === 'Ι2') && !f.enableStatus) {
+          updates.status = 'Ένοπλος';
+        }
+      }
+
+      // 5. Κατάσταση Οπλισμού
+      if (f.enableStatus) {
+        updates.status = f.status;
+        if (f.status === 'Άοπλος') {
+          updates.weaponNumber = '-';
+        }
+      }
+
+      // 6. Ειδικός Ρόλος
+      if (f.enableSpecialRole) {
+        if (f.specialRoleMode === 'CLEAR') {
+          updates.specialRole = undefined;
+        } else if (f.specialRoleMode === 'PRESET') {
+          updates.specialRole = f.specialRolePreset;
+        } else {
+          updates.specialRole = f.specialRoleCustom.trim() || undefined;
+        }
+      }
+
+      // 7. Λόχος
+      if (f.enableCompany) {
+        updates.company = f.companyClear ? undefined : f.company.trim();
+      }
+
+      // 8. Ομάδα
+      if (f.enableRotationalGroup) {
+        updates.rotationalGroup = f.rotationalGroupClear ? undefined : f.rotationalGroup.trim();
+      }
+
+      // 9. Πλήρης Απαλλαγή
+      if (f.enableExempt) {
+        updates.exemptFromAllDuties = f.exemptFromAllDuties;
+        if (f.exemptFromAllDuties) {
+          updates.eligibleDutyIds = [];
+        }
+      }
+
+      // 10. Ενεργός στη Δύναμη
+      if (f.enableActive) {
+        updates.active = f.active;
+      }
+
+      // 11. Σκορ Υπηρεσιών
+      if (f.enableDutyScore) {
+        if (f.dutyScoreMode === 'RESET') {
+          updates.dutyScore = 0;
+          updates.weekendDutyScore = 0;
+        } else if (f.dutyScoreMode === 'SET') {
+          updates.dutyScore = Math.max(0, Number(f.dutyScoreValue) || 0);
+        } else if (f.dutyScoreMode === 'ADJUST') {
+          updates.dutyScore = Math.max(0, (p.dutyScore || 0) + (Number(f.dutyScoreAdjust) || 0));
+        }
+      }
+
+      // 12. Επιλέξιμες Υπηρεσίες
+      if (f.enableEligibleDuties) {
+        if (f.eligibleDutiesMode === 'ALL') {
+          updates.eligibleDutyIds = [];
+          updates.exemptFromAllDuties = false;
+        } else if (f.eligibleDutiesMode === 'CLEAR') {
+          updates.eligibleDutyIds = [];
+        } else {
+          updates.eligibleDutyIds = [...f.selectedDutyTypeIds];
+        }
+      }
+
+      // 13. Σημειώσεις
+      if (f.enableNotes) {
+        if (f.notesMode === 'CLEAR') {
+          updates.notes = '';
+        } else if (f.notesMode === 'REPLACE') {
+          updates.notes = f.notesValue.trim();
+        } else if (f.notesMode === 'APPEND') {
+          const prev = p.notes ? p.notes.trim() : '';
+          const add = f.notesValue.trim();
+          updates.notes = prev ? `${prev}\n${add}` : add;
+        }
+      }
+
+      return updates;
+    });
+
+    this.clearSelection();
+    this.closeBulkEditModal();
+  }
+
+  quickBulkToggleActive(active: boolean) {
+    if (this.selectedCount() === 0) return;
+    const ids = Array.from(this.selectedSoldierIds());
+    this.storage.updatePersonnelBulk(ids, { active });
+    this.clearSelection();
   }
 
 
@@ -242,6 +592,7 @@ export class PersonnelComponent {
     eligibleDutyIds: [] as string[],
     dutyScore: 0,
     weekendDutyScore: 0,
+    weekendPreference: 'Χωρίς προτίμηση' as WeekendPreference,
     notes: '',
     active: true
   };
@@ -874,6 +1225,7 @@ export class PersonnelComponent {
       eligibleDutyIds: [...allDutyIds],
       dutyScore: 0,
       weekendDutyScore: 0,
+      weekendPreference: 'Χωρίς προτίμηση',
       notes: '',
       active: true
     };
@@ -911,6 +1263,7 @@ export class PersonnelComponent {
       eligibleDutyIds: eligible,
       dutyScore: p.dutyScore || 0,
       weekendDutyScore: p.weekendDutyScore || 0,
+      weekendPreference: (p.weekendPreference || 'Χωρίς προτίμηση') as WeekendPreference,
       notes: p.notes || '',
       active: true
     };

@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Export & Filesystem
   saveExcelFile: (buffer, defaultFilename) => ipcRenderer.invoke('save-excel-file', buffer, defaultFilename),
+  saveCsvFile: (content, defaultFilename) => ipcRenderer.invoke('save-csv-file', content, defaultFilename),
   openPath: (filePath) => ipcRenderer.invoke('open-path', filePath),
   showItemInFolder: (filePath) => ipcRenderer.invoke('show-item-in-folder', filePath),
 

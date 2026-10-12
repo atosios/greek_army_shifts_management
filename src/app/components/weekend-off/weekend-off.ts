@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { StorageService } from '../../services/storage.service';
 import { SchedulerService } from '../../services/scheduler.service';
-import { Personnel, WeekendPlan, formatGreekDate } from '../../models/shift.model';
+import { Personnel, WeekendPlan, WeekendPreference, formatGreekDate } from '../../models/shift.model';
 
 @Component({
   selector: 'app-weekend-off',
@@ -51,9 +51,27 @@ export class WeekendOffComponent {
   // Search filter
   searchQuery = signal<string>('');
 
+  // Preferences modal state
+  isPreferencesModalOpen = signal<boolean>(false);
+  prefFilter = signal<'ALL' | 'SAT' | 'SUN' | 'NONE'>('ALL');
+  prefSearchQuery = signal<string>('');
+
   // Active personnel & leaves
   readonly activePersonnel = this.storage.activePersonnel;
   readonly leaves = this.storage.leaves;
+
+  // Filtered personnel for preferences modal
+  readonly filteredPersonnelForPreferences = computed(() => {
+    const filter = this.prefFilter();
+    const q = this.prefSearchQuery().trim().toLowerCase();
+    return this.activePersonnel().filter(p => {
+      if (filter === 'SAT' && p.weekendPreference !== 'Σάββατο') return false;
+      if (filter === 'SUN' && p.weekendPreference !== 'Κυριακή') return false;
+      if (filter === 'NONE' && p.weekendPreference && p.weekendPreference !== 'Χωρίς προτίμηση') return false;
+      if (!q) return true;
+      return p.fullName.toLowerCase().includes(q) || (p.specialty && p.specialty.toLowerCase().includes(q));
+    });
+  });
 
   // Computed weekend dates
   readonly weekendDates = computed(() => {
@@ -77,6 +95,27 @@ export class WeekendOffComponent {
           (l.startDate <= dates.saturday && dates.saturday <= l.endDate) ||
           (l.startDate <= dates.sunday && dates.sunday <= l.endDate)) {
         result.set(l.personId, `${l.type}`);
+      }
+    }
+    return result;
+  });
+
+  // Personnel with active penalties during this weekend
+  readonly soldiersWithPenalties = computed(() => {
+    const dates = this.weekendDates();
+    const result = new Map<string, { sat: boolean; sun: boolean; label: string }>();
+
+    for (const p of this.activePersonnel()) {
+      const activeSat = this.storage.getActivePenaltiesForPerson(p.id, dates.saturday);
+      const activeSun = this.storage.getActivePenaltiesForPerson(p.id, dates.sunday);
+      if (activeSat.length > 0 || activeSun.length > 0) {
+        const pen = (activeSat[0] || activeSun[0]);
+        const prog = this.storage.calculatePenaltyProgress(pen, dates.friday);
+        result.set(p.id, {
+          sat: activeSat.length > 0,
+          sun: activeSun.length > 0,
+          label: `${pen.penaltyType || 'ΣΤ ΕΞΟΔΟΥ'} (${prog.servedDays}/${prog.totalDays})`
+        });
       }
     }
     return result;
@@ -166,13 +205,34 @@ export class WeekendOffComponent {
 
   // --- Presets ---
   applyBalancedPreset(save = true) {
+    const dates = this.weekendDates();
     const personnel = this.activePersonnel().filter(p => !p.exemptFromAllDuties);
     const sat: string[] = [];
     const sun: string[] = [];
+    const balanced: string[] = [];
 
-    personnel.forEach((p, idx) => {
-      if (idx % 2 === 0) sat.push(p.id);
-      else sun.push(p.id);
+    personnel.forEach(p => {
+      const penSat = this.storage.hasActivePenaltyOnDate(p.id, dates.saturday);
+      const penSun = this.storage.hasActivePenaltyOnDate(p.id, dates.sunday);
+      if (penSat && penSun) {
+        // Active penalty on both days: cannot be given pass on either day
+        return;
+      }
+      if (penSat) {
+        sun.push(p.id); // Blocked Sat, can go Sun
+      } else if (penSun) {
+        sat.push(p.id); // Blocked Sun, can go Sat
+      } else {
+        balanced.push(p.id);
+      }
+    });
+
+    balanced.forEach(id => {
+      if (sat.length <= sun.length) {
+        sat.push(id);
+      } else {
+        sun.push(id);
+      }
     });
 
     this.satOffIds.set(sat);
@@ -205,6 +265,13 @@ export class WeekendOffComponent {
 
   // --- Manual Movement ---
   moveToGroup(personId: string, targetGroup: 'SAT' | 'SUN' | 'UNASSIGNED') {
+    const dates = this.weekendDates();
+    if (targetGroup === 'SAT' && this.storage.hasActivePenaltyOnDate(personId, dates.saturday)) {
+      this.storage.notify('Προσοχή: Ο στρατιώτης έχει ενεργή ποινή (ΣΤ ΕΞΟΔΟΥ) το Σάββατο.', 'warning');
+    } else if (targetGroup === 'SUN' && this.storage.hasActivePenaltyOnDate(personId, dates.sunday)) {
+      this.storage.notify('Προσοχή: Ο στρατιώτης έχει ενεργή ποινή (ΣΤ ΕΞΟΔΟΥ) την Κυριακή.', 'warning');
+    }
+
     const sat = new Set(this.satOffIds());
     const sun = new Set(this.sunOffIds());
 
@@ -217,6 +284,89 @@ export class WeekendOffComponent {
     this.satOffIds.set(Array.from(sat));
     this.sunOffIds.set(Array.from(sun));
     this.persistPlan(false);
+  }
+
+  // --- Duties & Preference Presets ---
+  deriveFromDuties() {
+    const plan = this.scheduler.deriveWeekendPlanForFriday(this.selectedFriday());
+    this.satOffIds.set([...plan.saturdayOffIds]);
+    this.sunOffIds.set([...plan.sundayOffIds]);
+    this.inCampIds.set([]);
+    this.storage.notify('Η κατανομή εξοδούχων υπολογίστηκε αυτόματα βάσει των υπηρεσιών του Σ/Κ!', 'success');
+  }
+
+  applyPreferencesPreset() {
+    const dates = this.weekendDates();
+    const personnel = this.activePersonnel().filter(p => !p.exemptFromAllDuties);
+    const sat: string[] = [];
+    const sun: string[] = [];
+    const noPref: string[] = [];
+
+    personnel.forEach(p => {
+      const penSat = this.storage.hasActivePenaltyOnDate(p.id, dates.saturday);
+      const penSun = this.storage.hasActivePenaltyOnDate(p.id, dates.sunday);
+      if (penSat && penSun) {
+        return; // Stays in camp on both days
+      }
+
+      if (penSat) {
+        sun.push(p.id);
+        return;
+      }
+      if (penSun) {
+        sat.push(p.id);
+        return;
+      }
+
+      if (p.weekendPreference === 'Σάββατο') {
+        sat.push(p.id);
+      } else if (p.weekendPreference === 'Κυριακή') {
+        sun.push(p.id);
+      } else {
+        noPref.push(p.id);
+      }
+    });
+
+    // Balance remaining personnel
+    noPref.forEach(id => {
+      if (sat.length <= sun.length) {
+        sat.push(id);
+      } else {
+        sun.push(id);
+      }
+    });
+
+    this.satOffIds.set(sat);
+    this.sunOffIds.set(sun);
+    this.inCampIds.set([]);
+    this.persistPlan(false);
+    this.storage.notify('Εφαρμόστηκαν οι δηλωμένες προτιμήσεις του προσωπικού!', 'success');
+  }
+
+  // --- Preferences Modal Controls ---
+  openPreferencesModal() {
+    this.isPreferencesModalOpen.set(true);
+  }
+
+  closePreferencesModal() {
+    this.isPreferencesModalOpen.set(false);
+  }
+
+  setSoldierPreference(personId: string, pref: WeekendPreference) {
+    this.storage.updatePersonnelPreference(personId, pref);
+  }
+
+  cycleSoldierPreference(p: Personnel, event?: Event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    const current = p.weekendPreference || 'Χωρίς προτίμηση';
+    let next: WeekendPreference = 'Χωρίς προτίμηση';
+    if (current === 'Χωρίς προτίμηση') next = 'Σάββατο';
+    else if (current === 'Σάββατο') next = 'Κυριακή';
+    else if (current === 'Κυριακή') next = 'Χωρίς προτίμηση';
+
+    this.storage.updatePersonnelPreference(p.id, next);
   }
 
   // --- Persistence ---

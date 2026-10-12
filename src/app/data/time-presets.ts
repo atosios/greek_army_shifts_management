@@ -533,11 +533,11 @@ export function getDutySlotsForDate(
                 normShort === 'αρτ' || 
                 normName.includes('αρτοκλιβαν');
 
-  // Any duty with ROLLING_CYCLE preset (including ΘΦ, ΟΠΛ) automatically uses the rolling weekend swaps
-  const isRolling = duty.timePresetType === 'ROLLING_CYCLE' || 
-                    duty.timePresetType === 'GREEK_ARMY_2_6' ||
-                    isThf || 
-                    isOpl;
+  // Any duty with ROLLING_CYCLE preset with special weekend swaps (including ΘΦ, ΟΠΛ) automatically uses the rolling weekend swaps
+  const isRolling = (duty.timePresetType === 'ROLLING_CYCLE' || 
+                     duty.timePresetType === 'GREEK_ARMY_2_6' ||
+                     isThf || 
+                     isOpl) && ((duty as any).hasSpecialWeekendSwaps === true || isThf || isOpl);
 
   if (isRolling) {
     const slotsCount = Number(duty.slots) || (isThf ? 8 : 4);
@@ -590,12 +590,12 @@ export function getDutySlotsForDate(
     }));
   }
 
-  // 2. ΚΑΘΑΡΙΟΤΗΤΕΣ (14:00, 20:00, 07:00 επομ.) - Default preset fallback if no slotDefinitions configured
+  // 2. ΚΑΘΑΡΙΟΤΗΤΕΣ (14:00-15:00, 20:00-21:00, 06:30-07:30 επομ.) - Default preset fallback if no slotDefinitions configured
   if (isKath) {
     const cleaningTimes: TimeInterval[] = [
-      { from: '14:00', to: '14:30' },
-      { from: '20:00', to: '20:30' },
-      { from: '07:00', to: '07:30' }
+      { from: '14:00', to: '15:00' },
+      { from: '20:00', to: '21:00' },
+      { from: '06:30', to: '07:30' }
     ];
 
     const baseSlots: DutySlotDefinition[] = [

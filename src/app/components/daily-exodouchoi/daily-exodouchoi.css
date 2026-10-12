@@ -1,0 +1,619 @@
+.exodouchoi-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Page Header */
+.header-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.title-with-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.dropdown-group {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+/* Control Bar */
+.exodouchoi-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  padding: 0.75rem 1rem;
+  background: #FFFFFF;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+}
+
+.date-navigator-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.nav-chevrons {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.btn-icon-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-medium);
+  background: #FFFFFF;
+  color: var(--midnight-charcoal);
+  cursor: pointer;
+}
+
+.btn-icon-nav:hover {
+  background: var(--bg-surface);
+  border-color: var(--steel-blue-gray);
+}
+
+.btn-current-day {
+  height: 32px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0 0.75rem;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-medium);
+  background: #FFFFFF;
+  color: var(--midnight-charcoal);
+  cursor: pointer;
+}
+
+.btn-current-day:hover {
+  background: var(--bg-surface);
+  border-color: var(--steel-blue-gray);
+}
+
+.date-picker-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xs);
+  padding: 0.2rem 0.5rem;
+}
+
+.date-input-picker {
+  height: 28px;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.8rem;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-xs);
+  background: #FFFFFF;
+  color: var(--midnight-charcoal);
+}
+
+.formatted-date-label {
+  font-size: 0.85rem;
+  color: var(--midnight-charcoal);
+}
+
+.no-schedule-warning-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #FEF3C7;
+  color: #92400E;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-xs);
+  border: 1px solid #FCD34D;
+}
+
+.quick-tools-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+/* Army Rule Banner */
+.army-rule-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.75rem 1rem;
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  border-left: 4px solid #16A34A;
+  border-radius: var(--radius-sm);
+}
+
+.army-rule-banner.weekend-rule {
+  background: #FFFBEB;
+  border-color: #FDE68A;
+  border-left-color: #D97706;
+}
+
+.rule-icon {
+  color: #16A34A;
+  margin-top: 0.1rem;
+  flex-shrink: 0;
+}
+
+.weekend-rule .rule-icon {
+  color: #D97706;
+}
+
+.rule-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.rule-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1E293B;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.rule-desc {
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: #334155;
+}
+
+/* Stats Metric Strip */
+.stats-metric-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.metric-card {
+  display: flex;
+  flex-direction: column;
+  background: #FFFFFF;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.metric-card:hover {
+  border-color: var(--steel-blue-gray);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.metric-card.active-metric {
+  border-color: var(--accent-primary);
+  background: #F8FAFC;
+  box-shadow: 0 0 0 1px var(--accent-primary);
+}
+
+.metric-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.metric-value {
+  font-size: 1.45rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 0.15rem 0;
+  color: var(--midnight-charcoal);
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* Filter Search Bar */
+.filter-search-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.85rem;
+  background: #FFFFFF;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+}
+
+.filter-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.filter-tab-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: var(--radius-xs);
+  border: 1px solid transparent;
+  background: var(--bg-surface);
+  color: var(--midnight-charcoal);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filter-tab-btn:hover {
+  background: #E2E8F0;
+}
+
+.filter-tab-btn.active {
+  background: var(--midnight-charcoal);
+  color: #FFFFFF;
+}
+
+.filter-tab-btn.success-tab.active {
+  background: #16A34A;
+  color: #FFFFFF;
+}
+
+.filter-tab-btn.danger-tab.active {
+  background: #DC2626;
+  color: #FFFFFF;
+}
+
+.filter-tab-btn.warning-tab.active {
+  background: #D97706;
+  color: #FFFFFF;
+}
+
+.search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 250px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.65rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.search-soldier-box {
+  width: 100%;
+  padding-left: 2rem;
+  padding-right: 1.75rem;
+  height: 32px;
+  font-size: 0.8rem;
+}
+
+.btn-clear-search {
+  position: absolute;
+  right: 0.45rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0.2rem;
+}
+
+/* Table Container */
+.table-container-card {
+  padding: 0;
+  overflow-x: auto;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: #FFFFFF;
+}
+
+.exodouchoi-table {
+  margin-bottom: 0;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.exodouchoi-table th {
+  background: #F8FAFC;
+  color: var(--midnight-charcoal);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--border-medium);
+  vertical-align: middle;
+}
+
+.exodouchoi-table td {
+  padding: 0.6rem 0.75rem;
+  font-size: 0.82rem;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.row-going-out {
+  background: #FAFDFB;
+}
+
+.row-going-out:hover {
+  background: #F0FDF4;
+}
+
+.row-in-camp {
+  background: #FFFFFF;
+}
+
+.row-in-camp:hover {
+  background: #F8FAFC;
+}
+
+/* Soldier Cell */
+.soldier-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.soldier-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.rank-tag {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: #E2E8F0;
+  color: #334155;
+  border-radius: 3px;
+}
+
+.soldier-name {
+  color: var(--midnight-charcoal);
+  font-size: 0.85rem;
+}
+
+.soldier-meta-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.specialty-badge {
+  font-weight: 600;
+  color: #475569;
+}
+
+.phone-text {
+  color: #64748B;
+}
+
+/* Location Cell */
+.location-cell {
+  font-size: 0.78rem;
+  color: #334155;
+}
+
+/* Duty Cell */
+.duty-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.duty-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.55rem;
+  border-radius: 4px;
+  line-height: 1.25;
+}
+
+.manual-override-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #EDE9FE;
+  color: #6D28D9;
+  border: 1px solid #DDD6FE;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+}
+
+/* Toggle Pass Button */
+.btn-toggle-pass {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 130px;
+  height: 32px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  border: 1px solid transparent;
+}
+
+.btn-toggle-pass.pass-approved {
+  background: #DCFCE7;
+  color: #15803D;
+  border-color: #86EFAC;
+}
+
+.btn-toggle-pass.pass-approved:hover {
+  background: #BBF7D0;
+  border-color: #4ADE80;
+  transform: translateY(-1px);
+}
+
+.btn-toggle-pass.pass-denied {
+  background: #F1F5F9;
+  color: #64748B;
+  border-color: #CBD5E1;
+}
+
+.btn-toggle-pass.pass-denied:hover {
+  background: #FEE2E2;
+  color: #B91C1C;
+  border-color: #FCA5A5;
+  transform: translateY(-1px);
+}
+
+.notes-input {
+  width: 100%;
+  height: 30px;
+  font-size: 0.78rem;
+}
+
+.btn-reset-soldier {
+  background: none;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-xs);
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.btn-reset-soldier:hover {
+  background: var(--bg-surface);
+  color: var(--midnight-charcoal);
+  border-color: var(--steel-blue-gray);
+}
+
+.empty-table-state {
+  padding: 3rem 1rem !important;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* Print Only Section */
+.print-only {
+  display: none;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .exodouchoi-page {
+    gap: 0;
+  }
+
+  .military-print-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid #000;
+    padding-bottom: 0.75rem;
+  }
+
+  .print-header-top {
+    font-size: 0.85rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .print-doc-title {
+    font-size: 1.35rem;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.35rem;
+  }
+
+  .print-doc-date {
+    font-size: 0.9rem;
+  }
+
+  .table-container-card {
+    border: none;
+    box-shadow: none;
+  }
+
+  .exodouchoi-table {
+    border: 1px solid #000;
+  }
+
+  .exodouchoi-table th,
+  .exodouchoi-table td {
+    border: 1px solid #000 !important;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.75rem;
+    color: #000 !important;
+    background: transparent !important;
+  }
+
+  .btn-toggle-pass {
+    border: none !important;
+    background: none !important;
+    color: #000 !important;
+    font-weight: bold;
+    height: auto;
+    width: auto;
+  }
+
+  .notes-input {
+    border: none !important;
+    background: none !important;
+    padding: 0;
+    font-size: 0.75rem;
+  }
+
+  .print-signatures-footer {
+    display: flex !important;
+    justify-content: space-around;
+    margin-top: 3rem;
+    page-break-inside: avoid;
+  }
+
+  .signature-col {
+    text-align: center;
+    width: 250px;
+  }
+
+  .sig-title {
+    font-size: 0.8rem;
+    font-weight: bold;
+    margin-bottom: 3.5rem;
+  }
+
+  .sig-name {
+    font-size: 0.85rem;
+    font-weight: bold;
+    border-top: 1px dotted #000;
+    padding-top: 0.25rem;
+  }
+}

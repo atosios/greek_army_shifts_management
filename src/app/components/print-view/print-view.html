@@ -11,18 +11,64 @@
         Πίσω στις Υπηρεσίες
       </a>
 
-      <!-- Ink Saver (Εξοικονόμηση Μελανιού) Mode Toggle on Far Left -->
+      <!-- Ink Saver Toggle -->
       <button type="button" 
               class="btn btn-ink-saver" 
               [class.active]="inkSaver()" 
               (click)="toggleInkSaver()"
-              title="Εξοικονόμηση Μελανιού: Αφαιρεί όλα τα γκρι φόντα, διατηρεί έντονες επικεφαλίδες και κάνει τα ονόματα πιο διακριτικά για μέγιστη ιεραρχία και ελάχιστη κατανάλωση τόνερ">
+              title="Εξοικονόμηση Μελανιού: Αφαιρεί όλα τα γκρι φόντα, διατηρεί έντονες επικεφαλίδες για μέγιστη καθαρότητα και οικονομία τόνερ">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
         </svg>
         <span>Εξοικονόμηση Μελανιού</span>
         <span class="ink-saver-badge" [class.on]="inkSaver()">{{ inkSaver() ? 'ON' : 'OFF' }}</span>
       </button>
+
+      <!-- Print Display Settings Toggle -->
+      <button type="button" 
+              class="btn btn-display-settings" 
+              [class.active]="isDisplaySettingsOpen()"
+              (click)="toggleDisplaySettings()"
+              title="Ρυθμίσεις εμφάνισης, μεγέθους και διαμόρφωσης εκτύπωσης">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span>Εμφάνιση &amp; Διάταξη</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="m6 9 6 6 6-6"/>
+        </svg>
+      </button>
+
+      <!-- Edit Mode Toggle -->
+      <button type="button" 
+              class="btn btn-edit-mode" 
+              [class.active]="isEditModeActive()" 
+              (click)="toggleEditMode()"
+              title="Ενεργοποίηση χειροκίνητης επεξεργασίας κειμένων στην προεπισκόπηση">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 20h9"/>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+        <span>{{ isEditModeActive() ? 'Επεξεργασία (Ενεργή)' : 'Επεξεργασία Κειμένων' }}</span>
+        @if (overrideCount() > 0) {
+          <span class="edit-count-badge">{{ overrideCount() }}</span>
+        }
+      </button>
+
+      <!-- Reset Text Overrides -->
+      @if (overrideCount() > 0) {
+        <button type="button" 
+                class="btn btn-reset-text" 
+                (click)="resetOverrides()"
+                title="Επαναφορά όλων των χειροκίνητων αλλαγών κειμένου στα αρχικά δεδομένα">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+          </svg>
+          <span>Επαναφορά Κειμένων ({{ overrideCount() }})</span>
+        </button>
+      }
     </div>
 
     <div class="bar-right">
@@ -47,462 +93,771 @@
     </div>
   </div>
 
+  <!-- Display & Layout Settings Drawer Panel (Hidden during printing) -->
+  @if (isDisplaySettingsOpen()) {
+    <div class="no-print display-settings-panel">
+      <div class="settings-panel-header">
+        <div class="settings-panel-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <strong>Ρυθμίσεις Εμφάνισης &amp; Διάταξης Εκτύπωσης</strong>
+        </div>
+        <button type="button" class="btn-close-panel" (click)="closeDisplaySettings()" title="Κλείσιμο">&times;</button>
+      </div>
+
+      <div class="settings-panel-grid">
+        <!-- 1. Density / Scaling -->
+        <div class="settings-group">
+          <label class="settings-label">Πυκνότητα &amp; Μέγεθος Γραμματοσειράς:</label>
+          <div class="segmented-control">
+            <button type="button" 
+                    [class.active]="displaySettings().density === 'normal'"
+                    (click)="updateDisplaySetting('density', 'normal')">
+              Κανονική
+            </button>
+            <button type="button" 
+                    [class.active]="displaySettings().density === 'compact'"
+                    (click)="updateDisplaySetting('density', 'compact')"
+                    title="Συμπαγές μέγεθος για προγράμματα με πολλές υπηρεσίες ώστε να χωρούν σε 1 σελίδα">
+              Συμπαγής
+            </button>
+            <button type="button" 
+                    [class.active]="displaySettings().density === 'ultra-compact'"
+                    (click)="updateDisplaySetting('density', 'ultra-compact')"
+                    title="Πολύ συμπαγές για βαριά προγράμματα με πολλαπλές ειδικές υπηρεσίες">
+              Πολύ Συμπαγής
+            </button>
+            <button type="button" 
+                    [class.active]="displaySettings().density === 'spacious'"
+                    (click)="updateDisplaySetting('density', 'spacious')"
+                    title="Ευρύχωρη γραμματοσειρά για ημέρες με λίγες υπηρεσίες">
+              Ευρύχωρη
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. Section Toggles -->
+        <div class="settings-group">
+          <label class="settings-label">Ορατά Στοιχεία Εγγράφου:</label>
+          <div class="checkbox-options-grid">
+            <label class="custom-checkbox-item">
+              <input type="checkbox" 
+                     [checked]="displaySettings().showEmblems" 
+                     (change)="updateDisplaySetting('showEmblems', $any($event.target).checked)">
+              <span>Εμβλήματα Μονάδας</span>
+            </label>
+            <label class="custom-checkbox-item">
+              <input type="checkbox" 
+                     [checked]="displaySettings().showDivision" 
+                     (change)="updateDisplaySetting('showDivision', $any($event.target).checked)">
+              <span>Σχηματισμός (Υπότιτλος)</span>
+            </label>
+            <label class="custom-checkbox-item">
+              <input type="checkbox" 
+                     [checked]="displaySettings().showSignatures" 
+                     (change)="updateDisplaySetting('showSignatures', $any($event.target).checked)">
+              <span>Πλαίσιο Υπογραφών</span>
+            </label>
+            <label class="custom-checkbox-item">
+              <input type="checkbox" 
+                     [checked]="displaySettings().showRoomBed" 
+                     (change)="updateDisplaySetting('showRoomBed', $any($event.target).checked)">
+              <span>Εμφάνιση Θαλάμου &amp; Κρεβατιού</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-panel-footer">
+        <button type="button" class="btn btn-sm btn-secondary" (click)="resetDisplaySettings()">
+          Επαναφορά Προεπιλογών Διάταξης
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Live Edit Mode Guidance Banner (Hidden during printing) -->
+  @if (isEditModeActive()) {
+    <div class="no-print edit-mode-banner">
+      <div class="banner-content">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 20h9"/>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+        <span>
+          <strong>Χειροκίνητη Επεξεργασία Κειμένων:</strong> 
+          Κάντε κλικ σε οποιοδήποτε στοιχείο (επικεφαλίδες, ώρες, ονόματα, υπογραφές) για να το τροποποιήσετε άμεσα. Πατήστε <em>Enter</em> για αποθήκευση.
+        </span>
+      </div>
+      <div class="banner-actions">
+        @if (overrideCount() > 0) {
+          <span class="overrides-counter-badge">{{ overrideCount() }} τροποποιήσεις</span>
+          <button type="button" class="btn btn-sm btn-outline-danger" (click)="resetOverrides()">Επαναφορά Αρχικών</button>
+        }
+        <button type="button" class="btn btn-sm btn-primary" (click)="toggleEditMode()">Ολοκλήρωση</button>
+      </div>
+    </div>
+  }
+
   <!-- Printable A4 Document Sheet Stage -->
   <div class="print-stage">
-    <div class="print-sheet a4-landscape-page" [class.ink-saver-mode]="inkSaver()" [class.has-additional-duties]="additionalDuties().length > 0">
-      <!-- 1. Official Top Emblem & Unit Header (Fixed on top far left & right) -->
-      <div class="print-emblem-header">
-        <div class="header-emblem-col emblem-left">
-          @if (unit().emblemUrl) {
+    <div class="print-sheet a4-landscape-page" 
+         [class.ink-saver-mode]="inkSaver()" 
+         [class.has-additional-duties]="additionalDuties().length > 0"
+         [class.density-compact]="displaySettings().density === 'compact'"
+         [class.density-ultra-compact]="displaySettings().density === 'ultra-compact'"
+         [class.density-spacious]="displaySettings().density === 'spacious'"
+         [class.edit-mode-active]="isEditModeActive()">
+
+      <!-- 1. Official Header (Matching the Military Photo) -->
+      <div class="military-sheet-header">
+        <div class="hdr-side hdr-left" [class.hidden-emblem]="!displaySettings().showEmblems">
+          @if (displaySettings().showEmblems && unit().emblemUrl) {
             <img [src]="unit().emblemUrl" alt="Έμβλημα Μονάδας" class="emblem-img" />
           }
         </div>
 
-        <div class="header-center-col">
-          <div class="header-unit-location">
-            {{ unit().name }}
+        <div class="hdr-center">
+          <div class="header-main-title"
+               [attr.contenteditable]="isEditModeActive() ? true : null"
+               [class.is-edited]="hasOverride('header.title')"
+               (blur)="onTextBlur('header.title', $event, 'ΥΠΗΡΕΣΙΕΣ ΣΤ\' ΚΤΗΡΙΟΥ Γ\' ΠΥΡΧΙΑΣ ΤΗΣ ' + date1Formatted())"
+               (keydown.enter)="$event.preventDefault(); $any($event.target).blur()"
+               title="Κλικ για επεξεργασία τίτλου">
+            {{ getText('header.title', 'ΥΠΗΡΕΣΙΕΣ ΣΤ\' ΚΤΗΡΙΟΥ Γ\' ΠΥΡΧΙΑΣ ΤΗΣ ' + date1Formatted()) }}
           </div>
-          <div class="header-division">
-            {{ unit().division }}
+          <div class="header-sub-rule1"
+               [attr.contenteditable]="isEditModeActive() ? true : null"
+               [class.is-edited]="hasOverride('header.sub1')"
+               (blur)="onTextBlur('header.sub1', $event, 'ΟΙ ΠΑΡΑΚΑΤΩ ΥΠΗΡΕΣΙΕΣ ΙΣΧΥΟΥΝ ΑΠΟ ΣΗΜΕΡΑ ΣΤΙΣ 14:00 ΕΩΣ ΤΙΣ 14:00 ΤΗΣ ΕΠΟΜΕΝΗΣ ΜΕΡΑΣ')"
+               (keydown.enter)="$event.preventDefault(); $any($event.target).blur()"
+               title="Κλικ για επεξεργασία οδηγίας ωραρίου">
+            {{ getText('header.sub1', 'ΟΙ ΠΑΡΑΚΑΤΩ ΥΠΗΡΕΣΙΕΣ ΙΣΧΥΟΥΝ ΑΠΟ ΣΗΜΕΡΑ ΣΤΙΣ 14:00 ΕΩΣ ΤΙΣ 14:00 ΤΗΣ ΕΠΟΜΕΝΗΣ ΜΕΡΑΣ') }}
           </div>
-          <div class="header-date">
-            {{ formatGreekDate(date()) }}
+          <div class="header-sub-rule2"
+               [attr.contenteditable]="isEditModeActive() ? true : null"
+               [class.is-edited]="hasOverride('header.sub2')"
+               (blur)="onTextBlur('header.sub2', $event, 'ΚΑΘΑΡΙΟΤΗΤΕΣ [14:00-15:00 & 20:00-21:00 & 06:30-07:30]')"
+               (keydown.enter)="$event.preventDefault(); $any($event.target).blur()"
+               title="Κλικ για επεξεργασία ωραρίου καθαριοτήτων">
+            {{ getText('header.sub2', 'ΚΑΘΑΡΙΟΤΗΤΕΣ [14:00-15:00 & 20:00-21:00 & 06:30-07:30]') }}
           </div>
-          <div class="header-subtitle">ΥΠΗΡΕΣΙΕΣ ΟΠΛΙΤΩΝ</div>
         </div>
 
-        <div class="header-emblem-col emblem-right">
-          @if (unit().emblemUrl) {
-            <img [src]="unit().emblemUrl" alt="Έμβλημα Μονάδας" class="emblem-img" />
+        <div class="hdr-side hdr-right">
+          <div class="unit-badge-block">
+            <div class="unit-name-text"
+                 [attr.contenteditable]="isEditModeActive() ? true : null"
+                 [class.is-edited]="hasOverride('header.unit')"
+                 (blur)="onTextBlur('header.unit', $event, unit().name || 'ΚΕΝ ΘΗΒΑΣ (ΚΕΠΒ)')"
+                 (keydown.enter)="$event.preventDefault(); $any($event.target).blur()"
+                 title="Κλικ για επεξεργασία ονόματος μονάδας">
+              {{ getText('header.unit', unit().name || 'ΚΕΝ ΘΗΒΑΣ (ΚΕΠΒ)') }}
+            </div>
+            @if (displaySettings().showDivision) {
+              <div class="unit-div-text"
+                   [attr.contenteditable]="isEditModeActive() ? true : null"
+                   [class.is-edited]="hasOverride('header.division')"
+                   (blur)="onTextBlur('header.division', $event, unit().division || '2ο ΜΕΛ/Σ')"
+                   (keydown.enter)="$event.preventDefault(); $any($event.target).blur()"
+                   title="Κλικ για επεξεργασία σχηματισμού/μονάδας">
+                {{ getText('header.division', unit().division || '2ο ΜΕΛ/Σ') }}
+              </div>
+            }
+          </div>
+          @if (displaySettings().showEmblems && unit().emblemUrl) {
+            <img [src]="unit().emblemUrl" alt="Έμβλημα Μονάδας" class="emblem-img emblem-subtle" />
           }
         </div>
       </div>
 
-      <!-- 2. Main XLSX Grid Roster Table -->
+      <!-- 2. Main 3-Column Military Roster Board -->
       @if (schedule()) {
-        <table class="xlsx-sheet-table">
-          <colgroup>
-            <!-- Col 1: Θαλαμοφύλακες / Οπλοφύλακας / Λοιποί Φύλακες -->
-            <col style="width: 13.5%;">
-            <col style="width: 20.5%;">
-            <!-- Col 2: Καθαριότητες -->
-            <col style="width: 13%;">
-            <col style="width: 18%;">
-            <!-- Col 3: Εστιατόρια, Μόνιμοι, Επιφυλακές, Γραφείς, Αρτοκλίβανος -->
-            <col style="width: 14%;">
-            <col style="width: 21%;">
-          </colgroup>
+        <div class="military-board-grid">
 
-          <tbody>
-            <!-- SECTION ROW 1: Shift 1 / Τουαλέτες / Εστιατόρια -->
-            <tr class="xlsx-header-row">
-              <th>ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
-              <th class="col-border-right">
-                ΘΑΛΑΜΟΦΥΛΑΚΕΣ<br>ΟΠΛΟΦΥΛΑΚΑΣ
-                @if (extraGuardDuties().length > 0) {
-                  <span class="header-extra-guards-tag">/ ΛΟΙΠΟΙ ΦΥΛΑΚΕΣ</span>
-                }
-              </th>
-              <th>ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
-              <th class="col-border-right">{{ cleaningSections().sections[0]?.title || 'ΤΟΥΑΛΕΤΕΣ' }}</th>
-              <th>ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
-              <th>ΕΣΤΙΑΤΟΡΙΑ</th>
-            </tr>
-            <tr class="xlsx-data-row">
-              <!-- Col 1: Shift 1 -->
-              <td class="times-cell">
-                @for (t of guardGroups()[0].times; track $index) {
-                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
-                }
-              </td>
-              <td class="names-cell col-border-right">
-                @for (s of guardGroups()[0].thalamofylakes; track $index) {
-                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΘΦ') }}</div>
-                }
-                @for (s of guardGroups()[0].oplofylakes; track $index) {
-                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΟΦ') }}</div>
-                }
-                @for (og of guardGroups()[0].otherGuards; track og.dutyName) {
-                  @for (s of og.slots; track $index) {
-                    <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, og.shortName) }}</div>
-                  }
-                }
-              </td>
-
-              <!-- Col 2: Τουαλέτες -->
-              <td class="times-cell">
-                @for (t of cleaningSections().sections[0]?.times || []; track $index) {
-                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
-                }
-              </td>
-              <td class="names-cell col-border-right">
-                @for (slot of cleaningSections().sections[0]?.slots || []; track $index) {
-                  <div class="soldier-line">{{ formatSoldierDisplay(slot.personId, slot.personName) }}</div>
-                }
-                @if (!cleaningSections().sections[0] || cleaningSections().sections[0].slots.length === 0) {
-                  <div class="soldier-line empty-text">-</div>
-                }
-              </td>
-
-              <!-- Col 3: Εστιατόρια (2 columns if 3 or more people) -->
-              <td class="times-cell restaurant-times-cell">
-                <div class="restaurant-times-list">
-                  @for (t of col3Data().restaurant.times; track $index) {
-                    <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
-                  }
+          <!-- ==================== COLUMN 1 (LEFT): ΟΠΛΟΦΥΛΑΚΑΣ & ΘΑΛΑΜΟΦΥΛΑΚΕΣ ==================== -->
+          <div class="board-column col-left">
+            @for (shift of leftColumnShifts(); track shift.shiftIndex; let sIdx = $index) {
+              <div class="block-section shift-block">
+                <div class="grid-header-row">
+                  <div class="gh-cell gh-time">ΗΜΕΡΟΜΗΝΙΑ &amp; ΩΡΑ</div>
+                  <div class="gh-cell gh-duty">
+                    <span [attr.contenteditable]="isEditModeActive() ? true : null"
+                          [class.is-edited]="hasOverride('block.th.' + sIdx)"
+                          (blur)="onTextBlur('block.th.' + sIdx, $event, 'ΟΠΛΟΦΥΛΑΚΑΣ & ΘΑΛΑΜΟΦΥΛΑΚΕΣ')"
+                          (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                      {{ getText('block.th.' + sIdx, 'ΟΠΛΟΦΥΛΑΚΑΣ & ΘΑΛΑΜΟΦΥΛΑΚΕΣ') }}
+                    </span>
+                  </div>
                 </div>
-              </td>
-              <td class="names-cell">
-                <div class="restaurant-slots-container" [class.restaurant-grid-2col]="col3Data().restaurant.slots.length >= 3">
-                  @for (s of col3Data().restaurant.slots; track $index) {
-                    <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName) }}</div>
-                  }
-                  @if (col3Data().restaurant.slots.length === 0) {
-                    <div class="soldier-line empty-text">-</div>
-                  }
-                </div>
-              </td>
-            </tr>
-
-            <!-- SECTION ROW 2: Shift 2 / Λουτρά / Μόνιμοι Εστιατόρια & ΚΨΜ -->
-            <tr class="xlsx-header-subrow">
-              <th class="border-top-thick">ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
-              <th class="border-top-thick col-border-right">
-                ΘΑΛΑΜΟΦΥΛΑΚΕΣ<br>ΟΠΛΟΦΥΛΑΚΑΣ
-                @if (extraGuardDuties().length > 0) {
-                  <span class="header-extra-guards-tag">/ ΛΟΙΠΟΙ ΦΥΛΑΚΕΣ</span>
-                }
-              </th>
-              <th class="border-top-thick">ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
-              <th class="border-top-thick col-border-right">{{ cleaningSections().sections[1]?.title || 'ΛΟΥΤΡΑ / ΝΙΠΤΗΡΕΣ' }}</th>
-              <th class="border-top-thick">ΜΟΝΙΜΟΙ ΕΣΤΙΑΤΟΡΙΑ</th>
-              <th class="border-top-thick">ΜΟΝΙΜΟΙ ΚΨΜ</th>
-            </tr>
-            <tr class="xlsx-data-row">
-              <!-- Col 1: Shift 2 -->
-              <td class="times-cell">
-                @for (t of guardGroups()[1].times; track $index) {
-                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
-                }
-              </td>
-              <td class="names-cell col-border-right">
-                @for (s of guardGroups()[1].thalamofylakes; track $index) {
-                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΘΦ') }}</div>
-                }
-                @for (s of guardGroups()[1].oplofylakes; track $index) {
-                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΟΦ') }}</div>
-                }
-                @for (og of guardGroups()[1].otherGuards; track og.dutyName) {
-                  @for (s of og.slots; track $index) {
-                    <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, og.shortName) }}</div>
-                  }
-                }
-              </td>
-
-              <!-- Col 2: Λουτρά / Νιπτήρες -->
-              <td class="times-cell">
-                @for (t of cleaningSections().sections[1]?.times || []; track $index) {
-                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
-                }
-              </td>
-              <td class="names-cell col-border-right">
-                @for (slot of cleaningSections().sections[1]?.slots || []; track $index) {
-                  <div class="soldier-line">{{ formatSoldierDisplay(slot.personId, slot.personName) }}</div>
-                }
-                @if (!cleaningSections().sections[1] || cleaningSections().sections[1].slots.length === 0) {
-                  <div class="soldier-line empty-text">-</div>
-                }
-              </td>
-
-              <!-- Col 3: Μόνιμοι Εστιατόρια -->
-              <td class="names-cell">
-                @for (s of col3Data().permanentEst.slots; track $index) {
-                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName) }}</div>
-                }
-                @if (col3Data().permanentEst.slots.length === 0) {
-                  <div class="soldier-line empty-text">-</div>
-                }
-              </td>
-
-              <!-- Col 3: Μόνιμοι ΚΨΜ -->
-              <td class="names-cell">
-                @for (s of col3Data().permanentKpsm.slots; track $index) {
-                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName) }}</div>
-                }
-                @if (col3Data().permanentKpsm.slots.length === 0) {
-                  <div class="soldier-line empty-text">-</div>
-                }
-              </td>
-            </tr>
-
-            <!-- SECTION ROW 3: Shift 3 / Σκάλες-Διάδρομοι / Επιφυλακές & Γραφείς -->
-            <tr class="xlsx-header-subrow">
-              <th class="border-top-thick">ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
-              <th class="border-top-thick col-border-right">
-                ΘΑΛΑΜΟΦΥΛΑΚΕΣ<br>ΟΠΛΟΦΥΛΑΚΑΣ
-                @if (extraGuardDuties().length > 0) {
-                  <span class="header-extra-guards-tag">/ ΛΟΙΠΟΙ ΦΥΛΑΚΕΣ</span>
-                }
-              </th>
-              <th class="border-top-thick">ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
-              <th class="border-top-thick col-border-right">{{ cleaningSections().sections[2]?.title || 'ΣΚΑΛΕΣ / ΔΙΑΔΡΟΜΟΙ' }}</th>
-              <th class="border-top-thick" [attr.colspan]="col3Data().grafeis.slots.length > 0 ? 1 : 2">ΕΠΙΦΥΛΑΚΕΣ</th>
-              @if (col3Data().grafeis.slots.length > 0) {
-                <th class="border-top-thick">ΓΡΑΦΕΙΣ</th>
-              }
-            </tr>
-            <tr class="xlsx-data-row">
-              <!-- Col 1: Shift 3 -->
-              <td class="times-cell">
-                @for (t of guardGroups()[2].times; track $index) {
-                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
-                }
-              </td>
-              <td class="names-cell col-border-right">
-                @for (s of guardGroups()[2].thalamofylakes; track $index) {
-                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΘΦ') }}</div>
-                }
-                @for (s of guardGroups()[2].oplofylakes; track $index) {
-                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΟΦ') }}</div>
-                }
-                @for (og of guardGroups()[2].otherGuards; track og.dutyName) {
-                  @for (s of og.slots; track $index) {
-                    <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, og.shortName) }}</div>
-                  }
-                }
-              </td>
-
-              <!-- Col 2: Σκάλες / Διάδρομοι -->
-              <td class="times-cell">
-                @for (t of cleaningSections().sections[2]?.times || []; track $index) {
-                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
-                }
-              </td>
-              <td class="names-cell col-border-right">
-                @for (slot of cleaningSections().sections[2]?.slots || []; track $index) {
-                  <div class="soldier-line">{{ formatSoldierDisplay(slot.personId, slot.personName) }}</div>
-                }
-                @if (!cleaningSections().sections[2] || cleaningSections().sections[2].slots.length === 0) {
-                  <div class="soldier-line empty-text">-</div>
-                }
-              </td>
-
-              <!-- Col 3: Επιφυλακές (rowspan 3) -->
-              <td class="names-cell standby-cell" [attr.colspan]="col3Data().grafeis.slots.length > 0 ? 1 : 2" rowspan="3">
-                <div class="standby-names-list">
-                  @for (s of col3Data().standby.slots; track $index) {
-                    <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName) }}</div>
-                  }
-                  @if (col3Data().standby.slots.length === 0) {
-                    <div class="soldier-line empty-text">-</div>
-                  }
-                </div>
-              </td>
-
-              <!-- Col 3: Γραφείς (rowspan 3 if present) -->
-              @if (col3Data().grafeis.slots.length > 0) {
-                <td class="names-cell standby-cell" rowspan="3">
-                  <div class="standby-names-list">
-                    @for (s of col3Data().grafeis.slots; track $index) {
-                      <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName) }}</div>
+                <div class="grid-data-row">
+                  <div class="gd-cell cell-times">
+                    @for (t of shift.times; track $index) {
+                      <div class="time-item"
+                           [attr.contenteditable]="isEditModeActive() ? true : null"
+                           [class.is-edited]="hasOverride('shift.' + sIdx + '.t.' + $index)"
+                           (blur)="onTextBlur('shift.' + sIdx + '.t.' + $index, $event, t.date + '  ' + t.time)"
+                           (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                        <span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span>
+                      </div>
                     }
                   </div>
-                </td>
-              }
-            </tr>
-
-            <!-- SECTION ROW 4: Shift 4 / Προαύλιος Χώρος -->
-            <tr class="xlsx-header-subrow">
-              <th class="border-top-thick">ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
-              <th class="border-top-thick col-border-right">
-                ΘΑΛΑΜΟΦΥΛΑΚΕΣ<br>ΟΠΛΟΦΥΛΑΚΑΣ
-                @if (extraGuardDuties().length > 0) {
-                  <span class="header-extra-guards-tag">/ ΛΟΙΠΟΙ ΦΥΛΑΚΕΣ</span>
-                }
-              </th>
-              <th class="border-top-thick">ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
-              <th class="border-top-thick col-border-right">{{ cleaningSections().sections[3]?.title || 'ΠΡΟΑΥΛΙΟΣ ΧΩΡΟΣ' }}</th>
-            </tr>
-            <tr class="xlsx-data-row">
-              <!-- Col 1: Shift 4 -->
-              <td class="times-cell">
-                @for (t of guardGroups()[3].times; track $index) {
-                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
-                }
-              </td>
-              <td class="names-cell col-border-right">
-                @for (s of guardGroups()[3].thalamofylakes; track $index) {
-                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΘΦ') }}</div>
-                }
-                @for (s of guardGroups()[3].oplofylakes; track $index) {
-                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΟΦ') }}</div>
-                }
-                @for (og of guardGroups()[3].otherGuards; track og.dutyName) {
-                  @for (s of og.slots; track $index) {
-                    <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, og.shortName) }}</div>
-                  }
-                }
-              </td>
-
-              <!-- Col 2: Προαύλιος Χώρος -->
-              <td class="times-cell">
-                @for (t of cleaningSections().sections[3]?.times || []; track $index) {
-                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
-                }
-              </td>
-              <td class="names-cell col-border-right">
-                @for (slot of cleaningSections().sections[3]?.slots || []; track $index) {
-                  <div class="soldier-line">{{ formatSoldierDisplay(slot.personId, slot.personName) }}</div>
-                }
-                @if (!cleaningSections().sections[3] || cleaningSections().sections[3].slots.length === 0) {
-                  <div class="soldier-line empty-text">-</div>
-                }
-              </td>
-            </tr>
-
-            <!-- SECTION ROW 5: Υπεύθυνος Υλικού Καθαριότητας & Αρτοκλίβανος / Λοιπές Υπηρεσίες -->
-            <tr class="xlsx-header-subrow">
-              <th class="border-top-thick col-border-right" colspan="2">
-                @if (extraGuards().hasExtra) {
-                  ΕΠΙΠΡΟΣΘΕΤΟΙ ΦΥΛΑΚΕΣ
-                } @else {
-                  ΕΙΔΙΚΕΣ ΠΑΡΑΤΗΡΗΣΕΙΣ
-                }
-              </th>
-              <th class="border-top-thick col-border-right" colspan="2">ΥΠΕΥΘΥΝΟΣ ΥΛΙΚΟΥ ΚΑΘΑΡΙΟΤΗΤΑΣ</th>
-              <th class="border-top-thick">ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ</th>
-              <th class="border-top-thick">ΑΡΤΟΚΛΙΒΑΝΟΣ</th>
-            </tr>
-            <tr class="xlsx-data-row">
-              <!-- Col 1: extra guards if present -->
-              <td colspan="2" class="names-cell col-border-right">
-                @if (extraGuards().hasExtra) {
-                  @for (s of extraGuards().thalamofylakes; track $index) {
-                    <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΘΦ') }}</div>
-                  }
-                  @for (s of extraGuards().oplofylakes; track $index) {
-                    <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName, 'ΟΦ') }}</div>
-                  }
-                } @else {
-                  <div class="soldier-line empty-text text-muted">-</div>
-                }
-              </td>
-
-              <!-- Col 2: Υπεύθυνος Υλικού Καθαριότητας -->
-              <td colspan="2" class="names-cell text-center col-border-right">
-                @if (cleaningSections().supervisor; as sup) {
-                  <div class="soldier-line">{{ formatSoldierDisplay(sup.personId, sup.personName) }}</div>
-                } @else {
-                  <div class="soldier-line empty-text">-</div>
-                }
-              </td>
-
-              <!-- Col 3: Αρτοκλίβανος -->
-              <td class="times-cell">
-                @for (t of col3Data().bakery.times; track $index) {
-                  <div class="time-line"><span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span></div>
-                }
-              </td>
-              <td class="names-cell">
-                @for (s of col3Data().bakery.slots; track $index) {
-                  <div class="soldier-line">{{ formatSoldierDisplay(s.personId, s.personName) }}</div>
-                }
-                @if (col3Data().bakery.slots.length === 0) {
-                  <div class="soldier-line empty-text">-</div>
-                }
-              </td>
-            </tr>
-
-            @for (duty of additionalDuties(); track duty.dutyTypeId) {
-              <tr class="xlsx-header-subrow additional-duty-header">
-                <th class="border-top-thick col-border-right" colspan="2">ΗΜΕΡΟΜΗΝΙΑ &amp; ΩΡΑ</th>
-                <th class="border-top-thick" colspan="4">{{ duty.dutyName }}</th>
-              </tr>
-              @for (group of duty.timeGroups; track $index) {
-                <tr class="xlsx-data-row additional-duty-row">
-                  <td class="times-cell col-border-right" colspan="2">
-                    @for (time of group.times; track $index) {
-                      <div class="time-line"><span class="d-date">{{ time.date }}</span> <span class="d-time">{{ time.time }}</span></div>
+                  <div class="gd-cell cell-names">
+                    <!-- Row 1: Oplofylakas with (ΟΦ) suffix -->
+                    <div class="name-item name-oplo"
+                         [attr.contenteditable]="isEditModeActive() ? true : null"
+                         [class.is-edited]="hasOverride('shift.' + sIdx + '.op')"
+                         (blur)="onTextBlur('shift.' + sIdx + '.op', $event, formatSoldierDisplay(shift.oplofylakas?.personId, shift.oplofylakas?.personName, '(ΟΦ)'))"
+                         (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                      {{ getText('shift.' + sIdx + '.op', formatSoldierDisplay(shift.oplofylakas?.personId, shift.oplofylakas?.personName, '(ΟΦ)')) }}
+                    </div>
+                    <!-- Rows 2 & 3: Thalamofylakes -->
+                    @for (th of shift.thalamofylakes; track $index; let thIdx = $index) {
+                      <div class="name-item name-thalamo"
+                           [attr.contenteditable]="isEditModeActive() ? true : null"
+                           [class.is-edited]="hasOverride('shift.' + sIdx + '.th.' + thIdx)"
+                           (blur)="onTextBlur('shift.' + sIdx + '.th.' + thIdx, $event, formatSoldierDisplay(th.personId, th.personName))"
+                           (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                        {{ getText('shift.' + sIdx + '.th.' + thIdx, formatSoldierDisplay(th.personId, th.personName)) }}
+                      </div>
                     }
-                  </td>
-                  <td class="names-cell" colspan="4">
-                    @for (slot of group.slots; track slot.slotIndex) {
-                      <div class="soldier-line">{{ formatSoldierDisplay(slot.personId, slot.personName) }}</div>
+                    @if (shift.thalamofylakes.length === 0) {
+                      <div class="name-item name-empty">-</div>
+                      <div class="name-item name-empty">-</div>
+                    } @else if (shift.thalamofylakes.length === 1) {
+                      <div class="name-item name-empty">-</div>
                     }
-                    @if (group.slots.length === 0) {
-                      <div class="soldier-line empty-text">-</div>
-                    }
-                  </td>
-                </tr>
-              }
+                  </div>
+                </div>
+              </div>
             }
-          </tbody>
-        </table>
+          </div>
+
+          <!-- ==================== COLUMN 2 (MIDDLE): ΣΚΟΠΙΑ, ΔΕΚΑΝΕΙΣ, ΥΠΑΡΧΙΦΥΛΑΚΑΣ, ΑΜ ==================== -->
+          <div class="board-column col-middle">
+
+            <!-- Table 1: ΣΚΟΠΙΑ ΚΕΝΤΡΙΚΗ ΠΥΛΗ -->
+            <div class="block-section table-skopia">
+              <div class="grid-header-row">
+                <div class="gh-cell gh-time">ΗΜΕΡΟΜΗΝΙΑ &amp; ΩΡΑ</div>
+                <div class="gh-cell gh-duty">
+                  <span [attr.contenteditable]="isEditModeActive() ? true : null"
+                        [class.is-edited]="hasOverride('mid.skopia.title')"
+                        (blur)="onTextBlur('mid.skopia.title', $event, middleColumnData().skopia.title)"
+                        (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                    {{ getText('mid.skopia.title', middleColumnData().skopia.title) }}
+                  </span>
+                </div>
+              </div>
+              @for (row of middleColumnData().skopia.shifts; track row.shiftIndex; let rIdx = $index) {
+                <div class="grid-data-row sub-row">
+                  <div class="gd-cell cell-times">
+                    @for (t of row.times; track $index) {
+                      <div class="time-item"
+                           [attr.contenteditable]="isEditModeActive() ? true : null"
+                           [class.is-edited]="hasOverride('skopia.' + rIdx + '.t.' + $index)"
+                           (blur)="onTextBlur('skopia.' + rIdx + '.t.' + $index, $event, t.date + '  ' + t.time)"
+                           (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                        <span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span>
+                      </div>
+                    }
+                  </div>
+                  <div class="gd-cell cell-names">
+                    @for (g of row.guards; track $index; let gIdx = $index) {
+                      <div class="name-item"
+                           [attr.contenteditable]="isEditModeActive() ? true : null"
+                           [class.is-edited]="hasOverride('skopia.' + rIdx + '.g.' + gIdx)"
+                           (blur)="onTextBlur('skopia.' + rIdx + '.g.' + gIdx, $event, formatSoldierDisplay(g?.personId, g?.personName))"
+                           (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                        {{ getText('skopia.' + rIdx + '.g.' + gIdx, formatSoldierDisplay(g?.personId, g?.personName)) }}
+                      </div>
+                    }
+                    @if (row.guards.length === 0) {
+                      <div class="name-item name-empty">-</div>
+                      <div class="name-item name-empty">-</div>
+                    } @else if (row.guards.length === 1) {
+                      <div class="name-item name-empty">-</div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Table 2: ΔΕΚΑΝΕΙΣ ΑΛΛΑΓΗΣ -->
+            <div class="block-section table-dekaneis">
+              <div class="grid-header-row">
+                <div class="gh-cell gh-time">ΗΜΕΡΟΜΗΝΙΑ &amp; ΩΡΑ</div>
+                <div class="gh-cell gh-duty">
+                  <span [attr.contenteditable]="isEditModeActive() ? true : null"
+                        [class.is-edited]="hasOverride('mid.dekaneis.title')"
+                        (blur)="onTextBlur('mid.dekaneis.title', $event, middleColumnData().dekaneis.title)"
+                        (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                    {{ getText('mid.dekaneis.title', middleColumnData().dekaneis.title) }}
+                  </span>
+                </div>
+              </div>
+              @for (row of middleColumnData().dekaneis.shifts; track $index; let rIdx = $index) {
+                <div class="grid-data-row sub-row-compact">
+                  <div class="gd-cell cell-times">
+                    @for (t of row.times; track $index) {
+                      <div class="time-item"
+                           [attr.contenteditable]="isEditModeActive() ? true : null"
+                           [class.is-edited]="hasOverride('dek.' + rIdx + '.t')"
+                           (blur)="onTextBlur('dek.' + rIdx + '.t', $event, t.date + '  ' + t.time)"
+                           (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                        <span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span>
+                      </div>
+                    }
+                  </div>
+                  <div class="gd-cell cell-names">
+                    <div class="name-item"
+                         [attr.contenteditable]="isEditModeActive() ? true : null"
+                         [class.is-edited]="hasOverride('dek.' + rIdx + '.g')"
+                         (blur)="onTextBlur('dek.' + rIdx + '.g', $event, formatSoldierDisplay(row.guard?.personId, row.guard?.personName))"
+                         (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                      {{ getText('dek.' + rIdx + '.g', formatSoldierDisplay(row.guard?.personId, row.guard?.personName)) }}
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Table 3: ΥΠΑΡΧΙΦΥΛΑΚΑΣ -->
+            <div class="block-section table-yparch">
+              <div class="grid-header-row">
+                <div class="gh-cell gh-time">ΗΜΕΡΟΜΗΝΙΑ &amp; ΩΡΑ</div>
+                <div class="gh-cell gh-duty">
+                  <span [attr.contenteditable]="isEditModeActive() ? true : null"
+                        [class.is-edited]="hasOverride('mid.yparch.title')"
+                        (blur)="onTextBlur('mid.yparch.title', $event, middleColumnData().yparchifylakas.title)"
+                        (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                    {{ getText('mid.yparch.title', middleColumnData().yparchifylakas.title) }}
+                  </span>
+                </div>
+              </div>
+              <div class="grid-data-row sub-row-compact">
+                <div class="gd-cell cell-times">
+                  @for (t of middleColumnData().yparchifylakas.shift.times; track $index) {
+                    <div class="time-item"
+                         [attr.contenteditable]="isEditModeActive() ? true : null"
+                         [class.is-edited]="hasOverride('yparch.t')"
+                         (blur)="onTextBlur('yparch.t', $event, t.date + '  ' + t.time)"
+                         (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                      <span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span>
+                    </div>
+                  }
+                </div>
+                <div class="gd-cell cell-names">
+                  <div class="name-item"
+                       [attr.contenteditable]="isEditModeActive() ? true : null"
+                       [class.is-edited]="hasOverride('yparch.g')"
+                       (blur)="onTextBlur('yparch.g', $event, formatSoldierDisplay(middleColumnData().yparchifylakas.shift.guard?.personId, middleColumnData().yparchifylakas.shift.guard?.personName))"
+                       (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                    {{ getText('yparch.g', formatSoldierDisplay(middleColumnData().yparchifylakas.shift.guard?.personId, middleColumnData().yparchifylakas.shift.guard?.personName)) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Table 4: ΑΜ -->
+            <div class="block-section table-am">
+              <div class="grid-header-row">
+                <div class="gh-cell gh-time">ΗΜΕΡΟΜΗΝΙΑ &amp; ΩΡΑ</div>
+                <div class="gh-cell gh-duty">
+                  <span [attr.contenteditable]="isEditModeActive() ? true : null"
+                        [class.is-edited]="hasOverride('mid.am.title')"
+                        (blur)="onTextBlur('mid.am.title', $event, middleColumnData().am.title)"
+                        (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                    {{ getText('mid.am.title', middleColumnData().am.title) }}
+                  </span>
+                </div>
+              </div>
+              @for (row of middleColumnData().am.shifts; track $index; let rIdx = $index) {
+                <div class="grid-data-row sub-row-compact">
+                  <div class="gd-cell cell-times">
+                    @for (t of row.times; track $index) {
+                      <div class="time-item"
+                           [attr.contenteditable]="isEditModeActive() ? true : null"
+                           [class.is-edited]="hasOverride('am.' + rIdx + '.t')"
+                           (blur)="onTextBlur('am.' + rIdx + '.t', $event, t.date + '  ' + t.time)"
+                           (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                        <span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span>
+                      </div>
+                    }
+                  </div>
+                  <div class="gd-cell cell-names">
+                    @for (g of row.guards; track $index; let gIdx = $index) {
+                      <div class="name-item"
+                           [attr.contenteditable]="isEditModeActive() ? true : null"
+                           [class.is-edited]="hasOverride('am.' + rIdx + '.g.' + gIdx)"
+                           (blur)="onTextBlur('am.' + rIdx + '.g.' + gIdx, $event, formatSoldierDisplay(g?.personId, g?.personName))"
+                           (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                        {{ getText('am.' + rIdx + '.g.' + gIdx, formatSoldierDisplay(g?.personId, g?.personName)) }}
+                      </div>
+                    }
+                    @if (row.guards.length === 0) {
+                      <div class="name-item name-empty">-</div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+          </div>
+
+          <!-- ==================== COLUMN 3 (RIGHT): ΕΣΤΙΑΤΟΡΙΑ, ΑΡΤΟΚΛΙΒΑΝΟΣ, ΕΠΙΦΥΛΑΚΗ, ΞΕΝΟΚΡΑΤΗΣ, ΚΑΘΑΡΙΟΤΗΤΕΣ ==================== -->
+          <div class="board-column col-right">
+
+            <!-- 1. ΕΣΤΙΑΤΟΡΙΑ (15:00-16:00) -->
+            <div class="block-section table-estiatoria">
+              <div class="grid-header-row">
+                <div class="gh-cell gh-time">ΗΜΕΡΟΜΗΝΙΑ &amp; ΩΡΑ</div>
+                <div class="gh-cell gh-duty">
+                  <span [attr.contenteditable]="isEditModeActive() ? true : null"
+                        [class.is-edited]="hasOverride('right.est.title')"
+                        (blur)="onTextBlur('right.est.title', $event, rightColumnData().estiatoria.title)"
+                        (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                    {{ getText('right.est.title', rightColumnData().estiatoria.title) }}
+                  </span>
+                </div>
+              </div>
+              <div class="grid-data-row est-body-row">
+                <div class="gd-cell cell-times est-times">
+                  @for (t of rightColumnData().estiatoria.times; track $index) {
+                    <div class="time-item"
+                         [attr.contenteditable]="isEditModeActive() ? true : null"
+                         [class.is-edited]="hasOverride('est.t.' + $index)"
+                         (blur)="onTextBlur('est.t.' + $index, $event, t.date + '  ' + t.time)"
+                         (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                      <span class="d-date">{{ t.date }}</span> <span class="d-time">{{ t.time }}</span>
+                    </div>
+                  }
+                </div>
+                <div class="gd-cell cell-names est-names-cell">
+                  <!-- Note banner inside soldier cell -->
+                  <div class="est-note-banner"
+                       [attr.contenteditable]="isEditModeActive() ? true : null"
+                       [class.is-edited]="hasOverride('right.est.note')"
+                       (blur)="onTextBlur('right.est.note', $event, rightColumnData().estiatoria.note)"
+                       (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                    {{ getText('right.est.note', rightColumnData().estiatoria.note) }}
+                  </div>
+                  <!-- 2 columns of 5 soldiers = 10 soldiers -->
+                  <div class="est-soldiers-2col">
+                    <div class="est-col">
+                      @for (s of rightColumnData().estiatoria.guards.slice(0, 5); track $index; let idx = $index) {
+                        <div class="name-item numbered"
+                             [attr.contenteditable]="isEditModeActive() ? true : null"
+                             [class.is-edited]="hasOverride('est.g.' + idx)"
+                             (blur)="onTextBlur('est.g.' + idx, $event, formatSoldierDisplay(s?.personId, s?.personName))"
+                             (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                          <span class="num">{{ idx + 1 }}.</span> {{ getText('est.g.' + idx, formatSoldierDisplay(s?.personId, s?.personName)) }}
+                        </div>
+                      }
+                    </div>
+                    <div class="est-col">
+                      @for (s of rightColumnData().estiatoria.guards.slice(5, 10); track $index; let idx = $index) {
+                        <div class="name-item numbered"
+                             [attr.contenteditable]="isEditModeActive() ? true : null"
+                             [class.is-edited]="hasOverride('est.g.' + (idx + 5))"
+                             (blur)="onTextBlur('est.g.' + (idx + 5), $event, formatSoldierDisplay(s?.personId, s?.personName))"
+                             (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                          <span class="num">{{ idx + 6 }}.</span> {{ getText('est.g.' + (idx + 5), formatSoldierDisplay(s?.personId, s?.personName)) }}
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. ΑΡΤΟΚΛΙΒΑΝΟΣ (06:50-14:00) -->
+            <div class="block-section table-artoklivanos">
+              <div class="grid-banner-header">
+                <span [attr.contenteditable]="isEditModeActive() ? true : null"
+                      [class.is-edited]="hasOverride('right.art.title')"
+                      (blur)="onTextBlur('right.art.title', $event, rightColumnData().artoklivanos.title)"
+                      (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                  {{ getText('right.art.title', rightColumnData().artoklivanos.title) }}
+                </span>
+              </div>
+              <div class="compact-grid-2col">
+                <div class="col-half">
+                  <div class="name-item numbered"
+                       [attr.contenteditable]="isEditModeActive() ? true : null"
+                       [class.is-edited]="hasOverride('art.g.0')"
+                       (blur)="onTextBlur('art.g.0', $event, formatSoldierDisplay(rightColumnData().artoklivanos.guards[0]?.personId, rightColumnData().artoklivanos.guards[0]?.personName))"
+                       (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                    <span class="num">1.</span> {{ getText('art.g.0', formatSoldierDisplay(rightColumnData().artoklivanos.guards[0]?.personId, rightColumnData().artoklivanos.guards[0]?.personName)) }}
+                  </div>
+                  <div class="name-item numbered"
+                       [attr.contenteditable]="isEditModeActive() ? true : null"
+                       [class.is-edited]="hasOverride('art.g.2')"
+                       (blur)="onTextBlur('art.g.2', $event, formatSoldierDisplay(rightColumnData().artoklivanos.guards[2]?.personId, rightColumnData().artoklivanos.guards[2]?.personName))"
+                       (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                    <span class="num">3.</span> {{ getText('art.g.2', formatSoldierDisplay(rightColumnData().artoklivanos.guards[2]?.personId, rightColumnData().artoklivanos.guards[2]?.personName)) }}
+                  </div>
+                </div>
+                <div class="col-half">
+                  <div class="name-item numbered"
+                       [attr.contenteditable]="isEditModeActive() ? true : null"
+                       [class.is-edited]="hasOverride('art.g.1')"
+                       (blur)="onTextBlur('art.g.1', $event, formatSoldierDisplay(rightColumnData().artoklivanos.guards[1]?.personId, rightColumnData().artoklivanos.guards[1]?.personName))"
+                       (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                    <span class="num">2.</span> {{ getText('art.g.1', formatSoldierDisplay(rightColumnData().artoklivanos.guards[1]?.personId, rightColumnData().artoklivanos.guards[1]?.personName)) }}
+                  </div>
+                  <div class="name-item numbered"
+                       [attr.contenteditable]="isEditModeActive() ? true : null"
+                       [class.is-edited]="hasOverride('art.g.3')"
+                       (blur)="onTextBlur('art.g.3', $event, formatSoldierDisplay(rightColumnData().artoklivanos.guards[3]?.personId, rightColumnData().artoklivanos.guards[3]?.personName))"
+                       (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                    <span class="num">4.</span> {{ getText('art.g.3', formatSoldierDisplay(rightColumnData().artoklivanos.guards[3]?.personId, rightColumnData().artoklivanos.guards[3]?.personName)) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. ΕΠΙΦΥΛΑΚΗ -->
+            <div class="block-section table-epifylaki">
+              <div class="grid-banner-header">
+                <span [attr.contenteditable]="isEditModeActive() ? true : null"
+                      [class.is-edited]="hasOverride('right.epif.title')"
+                      (blur)="onTextBlur('right.epif.title', $event, rightColumnData().epifylaki.title)"
+                      (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                  {{ getText('right.epif.title', rightColumnData().epifylaki.title) }}
+                </span>
+              </div>
+              <div class="compact-grid-2col">
+                <div class="col-half">
+                  @for (s of rightColumnData().epifylaki.guards.slice(0, 3); track $index; let idx = $index) {
+                    <div class="name-item numbered"
+                         [attr.contenteditable]="isEditModeActive() ? true : null"
+                         [class.is-edited]="hasOverride('epif.g.' + idx)"
+                         (blur)="onTextBlur('epif.g.' + idx, $event, formatSoldierDisplay(s?.personId, s?.personName))"
+                         (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                      <span class="num">{{ idx + 1 }}.</span> {{ getText('epif.g.' + idx, formatSoldierDisplay(s?.personId, s?.personName)) }}
+                    </div>
+                  }
+                </div>
+                <div class="col-half">
+                  @for (s of rightColumnData().epifylaki.guards.slice(3, 5); track $index; let idx = $index) {
+                    <div class="name-item numbered"
+                         [attr.contenteditable]="isEditModeActive() ? true : null"
+                         [class.is-edited]="hasOverride('epif.g.' + (idx + 3))"
+                         (blur)="onTextBlur('epif.g.' + (idx + 3), $event, formatSoldierDisplay(s?.personId, s?.personName))"
+                         (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                      <span class="num">{{ idx + 4 }}.</span> {{ getText('epif.g.' + (idx + 3), formatSoldierDisplay(s?.personId, s?.personName)) }}
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. ΞΕΝΟΚΡΑΤΗΣ -->
+            <div class="block-section table-xenokratis">
+              <div class="grid-banner-header">
+                <span [attr.contenteditable]="isEditModeActive() ? true : null"
+                      [class.is-edited]="hasOverride('right.xen.title')"
+                      (blur)="onTextBlur('right.xen.title', $event, rightColumnData().xenokratis.title)"
+                      (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                  {{ getText('right.xen.title', rightColumnData().xenokratis.title) }}
+                </span>
+              </div>
+              <div class="compact-grid-2col">
+                <div class="col-half">
+                  @for (s of rightColumnData().xenokratis.guards.slice(0, 3); track $index; let idx = $index) {
+                    <div class="name-item numbered"
+                         [attr.contenteditable]="isEditModeActive() ? true : null"
+                         [class.is-edited]="hasOverride('xen.g.' + idx)"
+                         (blur)="onTextBlur('xen.g.' + idx, $event, formatSoldierDisplay(s?.personId, s?.personName))"
+                         (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                      <span class="num">{{ idx + 1 }}.</span> {{ getText('xen.g.' + idx, formatSoldierDisplay(s?.personId, s?.personName)) }}
+                    </div>
+                  }
+                </div>
+                <div class="col-half">
+                  @for (s of rightColumnData().xenokratis.guards.slice(3, 5); track $index; let idx = $index) {
+                    <div class="name-item numbered"
+                         [attr.contenteditable]="isEditModeActive() ? true : null"
+                         [class.is-edited]="hasOverride('xen.g.' + (idx + 3))"
+                         (blur)="onTextBlur('xen.g.' + (idx + 3), $event, formatSoldierDisplay(s?.personId, s?.personName))"
+                         (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                      <span class="num">{{ idx + 4 }}.</span> {{ getText('xen.g.' + (idx + 3), formatSoldierDisplay(s?.personId, s?.personName)) }}
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <!-- 5. ΚΑΘΑΡΙΟΤΗΤΕΣ -->
+            <div class="block-section table-kathariotites">
+              <div class="grid-banner-header">
+                <span [attr.contenteditable]="isEditModeActive() ? true : null"
+                      [class.is-edited]="hasOverride('right.kath.title')"
+                      (blur)="onTextBlur('right.kath.title', $event, rightColumnData().kathariotites.title)"
+                      (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                  {{ getText('right.kath.title', rightColumnData().kathariotites.title) }}
+                </span>
+              </div>
+              <div class="cleaning-2x2-grid">
+                @for (sec of rightColumnData().kathariotites.sections; track $index; let secIdx = $index) {
+                  <div class="clean-quadrant">
+                    <div class="clean-quad-header"
+                         [attr.contenteditable]="isEditModeActive() ? true : null"
+                         [class.is-edited]="hasOverride('kath.sec.' + secIdx + '.title')"
+                         (blur)="onTextBlur('kath.sec.' + secIdx + '.title', $event, sec.title)"
+                         (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                      {{ getText('kath.sec.' + secIdx + '.title', sec.title) }}
+                    </div>
+                    <div class="clean-quad-names">
+                      @for (g of sec.guards; track $index; let gIdx = $index) {
+                        <div class="name-item"
+                             [attr.contenteditable]="isEditModeActive() ? true : null"
+                             [class.is-edited]="hasOverride('kath.sec.' + secIdx + '.g.' + gIdx)"
+                             (blur)="onTextBlur('kath.sec.' + secIdx + '.g.' + gIdx, $event, formatSoldierDisplay(g?.personId, g?.personName))"
+                             (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+                          {{ getText('kath.sec.' + secIdx + '.g.' + gIdx, formatSoldierDisplay(g?.personId, g?.personName)) }}
+                        </div>
+                      }
+                      @if (sec.guards.length === 0) {
+                        <div class="name-item name-empty">-</div>
+                        <div class="name-item name-empty">-</div>
+                      } @else if (sec.guards.length === 1) {
+                        <div class="name-item name-empty">-</div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- Optional Additional Duties Section (only if custom duties added beyond standard 11) -->
+        @if (additionalDuties().length > 0) {
+          <div class="additional-duties-container">
+            @for (duty of additionalDuties(); track duty.dutyTypeId) {
+              <div class="add-duty-card">
+                <div class="add-duty-title">{{ duty.dutyName }} ({{ duty.shiftHours || 'Υπηρεσία' }})</div>
+                <div class="add-duty-names">
+                  @for (s of duty.slots; track s.slotIndex) {
+                    <span class="add-soldier-chip">{{ formatSoldierDisplay(s.personId, s.personName) }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
       } @else {
         <div class="empty-notice">
           Δεν έχει δημιουργηθεί ακόμη πρόγραμμα για την ημερομηνία αυτή.
         </div>
       }
 
-      <!-- 3. Dynamic Signatures Block (Selected from Higher Personnel) -->
-      <div class="no-print signatures-management-bar">
-        <div class="sig-manage-info">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 20h9"/>
-            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-          </svg>
-          <span class="sig-manage-title">Υπογραφές: <strong>{{ signatures().length }}</strong></span>
-        </div>
-        <div class="sig-manage-actions">
-          <button type="button" class="btn-sig-pill-action" (click)="addSignatureSlot()" title="Προσθήκη νέας θέσης υπογραφής">
-            + Προσθήκη
-          </button>
-          <button type="button" class="btn-sig-pill-action text-muted" (click)="resetDefaultSignatures()" title="Επαναφορά προεπιλογών">
-            Επαναφορά
-          </button>
-        </div>
-      </div>
-
-      <div class="xlsx-signatures-row">
-        @for (sig of signatures(); track $index; let i = $index; let first = $first; let last = $last) {
-          <div class="xlsx-sig-box">
-            <!-- Screen-only dropdown selector & slot controls (Hidden during printing) -->
-            <div class="no-print sig-slot-controls">
-              <select 
-                class="sig-member-select" 
-                [ngModel]="sig.higherPersonnelId" 
-                (ngModelChange)="onSelectSigner(i, $event)"
-                title="Επιλέξτε στέλεχος από το Προσωπικό">
-                <option value="">-- Επιλογή Στελέχους --</option>
-                @for (hp of higherPersonnel(); track hp.id) {
-                  <option [value]="hp.id">{{ hp.roleTitle }} - {{ hp.fullName }} ({{ hp.rank }})</option>
-                }
-              </select>
-
-              <div class="sig-btn-mini-group">
-                @if (!first) {
-                  <button type="button" class="btn-mini-sig" (click)="moveSignature(i, 'left')" title="Μετακίνηση αριστερά">&larr;</button>
-                }
-                @if (!last) {
-                  <button type="button" class="btn-mini-sig" (click)="moveSignature(i, 'right')" title="Μετακίνηση δεξιά">&rarr;</button>
-                }
-                @if (signatures().length > 1) {
-                  <button type="button" class="btn-mini-sig btn-mini-del" (click)="removeSignatureSlot(i)" title="Αφαίρεση υπογραφής">&times;</button>
-                }
-              </div>
-            </div>
-
-            <!-- Printable Official Military Signature Block -->
-            <div class="sig-dash">-Ο-</div>
-            <div class="sig-title">{{ sig.roleTitle }}</div>
-            <div class="sig-space"></div>
-            <div class="sig-name">{{ sig.fullName }}</div>
-            @if (sig.rank) {
-              <div class="sig-rank">{{ sig.rank }}</div>
-            }
+      <!-- 3. Official Signatures Block (Matching the Military Photo) -->
+      @if (displaySettings().showSignatures) {
+        <div class="no-print signatures-management-bar">
+          <div class="sig-manage-info">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9"/>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+            <span class="sig-manage-title">Υπογραφές Εγγράφου: <strong>{{ signatures().length }}</strong></span>
           </div>
-        }
-      </div>
+          <div class="sig-manage-actions">
+            <button type="button" class="btn-sig-pill-action text-muted" (click)="resetDefaultSignatures()" title="Επαναφορά προεπιλογών υπογραφόντων">
+              Επαναφορά
+            </button>
+          </div>
+        </div>
+
+        <div class="military-signatures-row">
+          <!-- Left: ΔΙΟΙΚΗΤΗΣ ΜΟΙΡΑΣ -->
+          <div class="military-sig-box sig-left">
+            <div class="sig-super-title">ΘΕΩΡΗΘΗΚΕ</div>
+            <div class="sig-dash">-Ο-</div>
+            <div class="sig-role-title"
+                 [attr.contenteditable]="isEditModeActive() ? true : null"
+                 [class.is-edited]="hasOverride('sig.left.role')"
+                 (blur)="onTextBlur('sig.left.role', $event, printSignatures().left.roleTitle)"
+                 (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+              {{ getText('sig.left.role', printSignatures().left.roleTitle) }}
+            </div>
+            <div class="sig-officer-name"
+                 [attr.contenteditable]="isEditModeActive() ? true : null"
+                 [class.is-edited]="hasOverride('sig.left.name')"
+                 (blur)="onTextBlur('sig.left.name', $event, printSignatures().left.fullName)"
+                 (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+              {{ getText('sig.left.name', printSignatures().left.fullName) }}
+            </div>
+            <div class="sig-officer-rank"
+                 [attr.contenteditable]="isEditModeActive() ? true : null"
+                 [class.is-edited]="hasOverride('sig.left.rank')"
+                 (blur)="onTextBlur('sig.left.rank', $event, printSignatures().left.rank || '')"
+                 (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+              {{ getText('sig.left.rank', printSignatures().left.rank || '') }}
+            </div>
+          </div>
+
+          <!-- Center: ΔΚΤΗΣ ΠΥΡΧΙΑΣ -->
+          <div class="military-sig-box sig-center">
+            <div class="sig-super-title invisible-spacer">&nbsp;</div>
+            <div class="sig-dash">-Ο-</div>
+            <div class="sig-role-title"
+                 [attr.contenteditable]="isEditModeActive() ? true : null"
+                 [class.is-edited]="hasOverride('sig.center.role')"
+                 (blur)="onTextBlur('sig.center.role', $event, printSignatures().center.roleTitle)"
+                 (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+              {{ getText('sig.center.role', printSignatures().center.roleTitle) }}
+            </div>
+            <div class="sig-officer-name"
+                 [attr.contenteditable]="isEditModeActive() ? true : null"
+                 [class.is-edited]="hasOverride('sig.center.name')"
+                 (blur)="onTextBlur('sig.center.name', $event, printSignatures().center.fullName)"
+                 (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+              {{ getText('sig.center.name', printSignatures().center.fullName) }}
+            </div>
+            <div class="sig-officer-rank"
+                 [attr.contenteditable]="isEditModeActive() ? true : null"
+                 [class.is-edited]="hasOverride('sig.center.rank')"
+                 (blur)="onTextBlur('sig.center.rank', $event, printSignatures().center.rank || '')"
+                 (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+              {{ getText('sig.center.rank', printSignatures().center.rank || '') }}
+            </div>
+          </div>
+
+          <!-- Right: ΑΛΧΙΑΣ ΠΥΡΧΙΑΣ -->
+          <div class="military-sig-box sig-right">
+            <div class="sig-super-title invisible-spacer">&nbsp;</div>
+            <div class="sig-dash">-Ο-</div>
+            <div class="sig-role-title"
+                 [attr.contenteditable]="isEditModeActive() ? true : null"
+                 [class.is-edited]="hasOverride('sig.right.role')"
+                 (blur)="onTextBlur('sig.right.role', $event, printSignatures().right.roleTitle)"
+                 (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+              {{ getText('sig.right.role', printSignatures().right.roleTitle) }}
+            </div>
+            <div class="sig-officer-name"
+                 [attr.contenteditable]="isEditModeActive() ? true : null"
+                 [class.is-edited]="hasOverride('sig.right.name')"
+                 (blur)="onTextBlur('sig.right.name', $event, printSignatures().right.fullName)"
+                 (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+              {{ getText('sig.right.name', printSignatures().right.fullName) }}
+            </div>
+            <div class="sig-officer-rank"
+                 [attr.contenteditable]="isEditModeActive() ? true : null"
+                 [class.is-edited]="hasOverride('sig.right.rank')"
+                 (blur)="onTextBlur('sig.right.rank', $event, printSignatures().right.rank || '')"
+                 (keydown.enter)="$event.preventDefault(); $any($event.target).blur()">
+              {{ getText('sig.right.rank', printSignatures().right.rank || '') }}
+            </div>
+          </div>
+        </div>
+      }
     </div>
   </div>
 </div>

@@ -6,6 +6,17 @@
       <p class="page-subtitle">Καταγραφή και παρακολούθηση αιτημάτων και πειθαρχικών ποινών οπλιτών μονάδας</p>
     </div>
     <div class="header-actions">
+      <button type="button" class="btn btn-secondary" (click)="exportPenaltiesExcel()"
+        title="Εξαγωγή πίνακα ποινών σε αρχείο Excel (XLSX) με ονοματεπώνυμο, ποινή/διάρκεια και έκτιση">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="8" y1="13" x2="16" y2="13"/>
+          <line x1="8" y1="17" x2="16" y2="17"/>
+        </svg>
+        Εξαγωγή Ποινών Excel
+      </button>
+
       <a routerLink="/hkap" class="btn btn-secondary" title="Μετάβαση στη σελίδα έκδοσης και εκτύπωσης ΗΚΑΠ">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="6 9 6 2 18 2 18 9" />
@@ -242,13 +253,14 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th style="width: 100px;"><button type="button" class="sortable-header" (click)="toggleSort('type')">ΤΥΠΟΣ <span>{{ sortColumn() === 'type' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
-            <th style="width: 110px;"><button type="button" class="sortable-header" (click)="toggleSort('date')">ΗΜΕΡΟΜΗΝΙΑ <span>{{ sortColumn() === 'date' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
-            <th style="width: 240px;"><button type="button" class="sortable-header" (click)="toggleSort('personName')">ΣΤΡΑΤΙΩΤΗΣ <span>{{ sortColumn() === 'personName' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
-            <th><button type="button" class="sortable-header" (click)="toggleSort('reason')">ΑΙΤΙΟΛΟΓΙΑ <span>{{ sortColumn() === 'reason' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
-            <th><button type="button" class="sortable-header" (click)="toggleSort('notes')">ΠΑΡΑΤΗΡΗΣΕΙΣ <span>{{ sortColumn() === 'notes' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
-            <th style="width: 120px;"><button type="button" class="sortable-header" (click)="toggleSort('status')">ΚΑΤΑΣΤΑΣΗ <span>{{ sortColumn() === 'status' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
-            <th style="width: 110px; text-align: center;">ΕΝΕΡΓΕΙΕΣ</th>
+            <th style="width: 95px;"><button type="button" class="sortable-header" (click)="toggleSort('type')">ΤΥΠΟΣ <span>{{ sortColumn() === 'type' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
+            <th style="width: 105px;"><button type="button" class="sortable-header" (click)="toggleSort('date')">ΗΜΕΡΟΜΗΝΙΑ <span>{{ sortColumn() === 'date' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
+            <th style="width: 180px;"><button type="button" class="sortable-header" (click)="toggleSort('personName')">ΣΤΡΑΤΙΩΤΗΣ <span>{{ sortColumn() === 'personName' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
+            <th class="th-reason"><button type="button" class="sortable-header" (click)="toggleSort('reason')">ΑΙΤΙΟΛΟΓΙΑ <span>{{ sortColumn() === 'reason' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
+            <th class="th-notes"><button type="button" class="sortable-header" (click)="toggleSort('notes')">ΠΑΡΑΤΗΡΗΣΕΙΣ <span>{{ sortColumn() === 'notes' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
+            <th style="width: 135px; text-align: center;">ΕΚΤΙΣΗ</th>
+            <th style="width: 115px;"><button type="button" class="sortable-header" (click)="toggleSort('status')">ΚΑΤΑΣΤΑΣΗ <span>{{ sortColumn() === 'status' ? (sortDirection() === 'asc' ? '▲' : '▼') : '↕' }}</span></button></th>
+            <th style="width: 95px; text-align: center;">ΕΝΕΡΓΕΙΕΣ</th>
           </tr>
         </thead>
         <tbody>
@@ -290,20 +302,98 @@
             </td>
 
             <!-- Reason (ΑΙΤΙΟΛΟΓΙΑ) -->
-            <td>
-              <div class="reason-cell" [title]="record.reason">
-                {{ record.reason }}
+            <td class="reason-cell-td">
+              <div class="cell-ellipsis-wrapper">
+                <span class="reason-cell-text" [title]="record.reason">{{ record.reason }}</span>
+                <button type="button" 
+                        class="btn-copy-text" 
+                        (click)="copyText(record.reason, record.id + '-reason', 'Η αιτιολογία')"
+                        [class.copied]="copiedRecordKey() === record.id + '-reason'"
+                        [title]="copiedRecordKey() === record.id + '-reason' ? 'Αντιγράφηκε!' : 'Αντιγραφή πλήρους κειμένου'">
+                  @if (copiedRecordKey() === record.id + '-reason') {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  } @else {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                    </svg>
+                  }
+                </button>
               </div>
             </td>
 
             <!-- Notes (ΠΑΡΑΤΗΡΗΣΕΙΣ) -->
-            <td>
+            <td class="notes-cell-td">
               @if (record.notes) {
-              <div class="notes-cell" [title]="record.notes">
-                {{ record.notes }}
+              <div class="cell-ellipsis-wrapper">
+                <span class="notes-cell-text" [title]="record.notes">{{ record.notes }}</span>
+                <button type="button" 
+                        class="btn-copy-text" 
+                        (click)="copyText(record.notes, record.id + '-notes', 'Οι παρατηρήσεις')"
+                        [class.copied]="copiedRecordKey() === record.id + '-notes'"
+                        [title]="copiedRecordKey() === record.id + '-notes' ? 'Αντιγράφηκε!' : 'Αντιγραφή πλήρους κειμένου'">
+                  @if (copiedRecordKey() === record.id + '-notes') {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  } @else {
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                    </svg>
+                  }
+                </button>
               </div>
               } @else {
               <span class="empty-field">-</span>
+              }
+            </td>
+
+            <!-- Serving Progress (ΕΚΤΙΣΗ) -->
+            <td class="progress-cell-td">
+              @if (record.type === 'ΠΟΙΝΗ') {
+                @let prog = getRecordProgress(record);
+                <div class="penalty-progress-wrap" [title]="getProgressTooltip(record, prog)">
+                  <div class="progress-badge-line">
+                    <span class="progress-badge"
+                          [class.progress-completed]="prog.isCompleted"
+                          [class.progress-warning]="!prog.isCompleted">
+                      {{ prog.servedDays }}/{{ prog.totalDays }}
+                      @if (prog.isCompleted) {
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                      }
+                    </span>
+                    <span class="progress-type-tag">{{ prog.penaltyType }}</span>
+                  </div>
+                  <div class="progress-step-controls">
+                    <button type="button" class="btn-step-progress" 
+                            (click)="adjustProgress(record, -1, $event)" 
+                            [disabled]="prog.servedDays <= 0"
+                            title="Μείωση ημερών έκτισης (-1)">-</button>
+                    <button type="button" class="btn-step-progress" 
+                            (click)="adjustProgress(record, 1, $event)" 
+                            [disabled]="prog.servedDays >= prog.totalDays"
+                            title="Αύξηση ημερών έκτισης (+1)">+</button>
+                    @if (prog.isManual) {
+                      <button type="button" class="btn-reset-progress" 
+                              (click)="resetAutoProgress(record, $event)" 
+                              title="Επαναφορά αυτόματου υπολογισμού">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                          <path d="M21 3v5h-5"/>
+                          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                          <path d="M3 21v-5h5"/>
+                        </svg>
+                      </button>
+                    }
+                  </div>
+                </div>
+              } @else {
+                <span class="empty-field text-center d-block">-</span>
               }
             </td>
 
@@ -484,6 +574,62 @@
             </select>
           </div>
         </div>
+
+        <!-- Penalty Details (ΤΥΠΟΣ & ΔΙΑΡΚΕΙΑ & ΕΚΤΙΣΗ) -->
+        @if (formModel.type === 'ΠΟΙΝΗ') {
+        <div class="penalty-config-card">
+          <div class="penalty-config-header">
+            <span class="penalty-config-title">ΡΥΘΜΙΣΗ ΠΟΙΝΗΣ & ΕΚΤΙΣΗΣ</span>
+            <span class="penalty-rule-hint">
+              @if (formModel.penaltyType === 'ΣΤ ΕΞΟΔΟΥ') {
+                * ΣΤ ΕΞΟΔΟΥ: Μετράει μόνο σε ημέρα χωρίς υπηρεσία (εξοδούχος)
+              } @else {
+                * {{ formModel.penaltyType }}: Μετράει κάθε ημερολογιακή ημέρα
+              }
+            </span>
+          </div>
+
+          <div class="penalty-types-pill-group">
+            @for (pt of penaltyTypes; track pt) {
+              <button type="button" class="penalty-type-chip"
+                      [class.active]="formModel.penaltyType === pt"
+                      (click)="formModel.penaltyType = pt">
+                {{ pt }}
+              </button>
+            }
+          </div>
+
+          <div class="form-row-2col penalty-inputs-row">
+            <div class="form-group">
+              <label class="form-label">ΔΙΑΡΚΕΙΑ (ΗΜΕΡΕΣ) *</label>
+              <div class="number-input-wrap">
+                <input type="number" min="1" max="60" class="form-control"
+                       [(ngModel)]="formModel.totalDays"
+                       placeholder="π.χ. 3" required />
+                <span class="input-suffix">ημ.</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                ΕΚΤΙΣΗ (ΗΜΕΡΕΣ)
+                @if (formModel.isManualServedDays) {
+                  <span class="manual-tag">(Χειροκίνητη)</span>
+                } @else {
+                  <span class="auto-tag">(Αυτόματη)</span>
+                }
+              </label>
+              <div class="number-input-wrap">
+                <input type="number" min="0" [max]="formModel.totalDays || 60" class="form-control"
+                       [(ngModel)]="formModel.servedDays"
+                       (ngModelChange)="formModel.isManualServedDays = true"
+                       placeholder="0" />
+                <span class="input-suffix">ημ.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        }
 
         <!-- Reason (ΑΙΤΙΟΛΟΓΙΑ) -->
         <div class="form-group">

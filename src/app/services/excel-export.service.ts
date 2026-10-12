@@ -1,18 +1,28 @@
 import { Injectable, inject } from '@angular/core';
 import * as XLSX from 'xlsx';
 import { StorageService } from './storage.service';
-import { DailySchedule, Personnel, SignatureSlot, formatGreekDate, getCorpsShort, normalizeGreek } from '../models/shift.model';
+import { DailySchedule, Personnel, SignatureSlot, DailyExodouchoiPlan, DailyExodouchoiSoldier, formatGreekDate, formatRecordPersonName, getCorpsShort, normalizeGreek } from '../models/shift.model';
 
 export interface MilitaryPrintExportData {
   schedule: DailySchedule;
   date1Formatted: string;
   date2Formatted: string;
-  guardGroups: any[];
-  cleaningSections: any;
-  col3Data: any;
-  extraGuards: any;
-  signatures: SignatureSlot[];
+  guardGroups?: any[];
+  cleaningSections?: any;
+  col3Data?: any;
+  extraGuards?: any;
+  signatures?: SignatureSlot[];
+  leftColumnShifts?: any[];
+  middleColumnData?: any;
+  rightColumnData?: any;
+  printSignatures?: any;
   formatSoldierFn?: (personId: string | null | undefined, personNameFallback?: string, suffix?: string) => string;
+  unitTitle?: string;
+  divisionTitle?: string;
+  dateTitle?: string;
+  subTitle?: string;
+  subRule1?: string;
+  subRule2?: string;
 }
 
 @Injectable({
@@ -22,7 +32,7 @@ export class ExcelExportService {
   private storage = inject(StorageService);
 
   /**
-   * Exports the schedule to Excel matching the exact Greek Army landscape duty paper layout.
+   * Exports the schedule to Excel matching the exact Greek Army landscape duty paper layout (3-column board).
    */
   async exportScheduleToExcel(schedule: DailySchedule, customData?: MilitaryPrintExportData): Promise<boolean> {
     const unit = this.storage.unitInfo();
@@ -41,17 +51,7 @@ export class ExcelExportService {
           displayName = `${displayName} ${initial}.`;
         }
       }
-      let roomBed = '';
-      if (p && (p.barracksRoom || p.bedNumber)) {
-        const r = (p.barracksRoom || '').replace(/[^0-9.]/g, '');
-        const b = (p.bedNumber || '').replace(/[^0-9]/g, '');
-        if (r.includes('.')) roomBed = `(${r})`;
-        else if (r && b) roomBed = `(${r}.${b})`;
-        else if (r) roomBed = `(${r})`;
-        else if (b) roomBed = `(${b})`;
-      }
       const parts = [displayName];
-      if (roomBed) parts.push(roomBed);
       if (suffix) parts.push(suffix);
       return parts.join(' ');
     });
@@ -63,281 +63,324 @@ export class ExcelExportService {
     const merges: XLSX.Range[] = [];
     let currentRow = 0;
 
-    // 1. Official Header
-    const unitTitle = unit.name || 'ΜΟΝΑΔΑ';
+    // 1. Official Header (Merged across 7 columns)
+    const mainTitle = data.dateTitle || `ΥΠΗΡΕΣΙΕΣ ΣΤ' ΚΤΗΡΙΟΥ Γ' ΠΥΡΧΙΑΣ ΤΗΣ ${data.date1Formatted}`;
+    rows.push([mainTitle]);
+    merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 6 } });
+    currentRow++;
+
+    const subRule1 = data.subRule1 || 'ΟΙ ΠΑΡΑΚΑΤΩ ΥΠΗΡΕΣΙΕΣ ΙΣΧΥΟΥΝ ΑΠΟ ΣΗΜΕΡΑ ΣΤΙΣ 14:00 ΕΩΣ ΤΙΣ 14:00 ΤΗΣ ΕΠΟΜΕΝΗΣ ΜΕΡΑΣ';
+    rows.push([subRule1]);
+    merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 6 } });
+    currentRow++;
+
+    const subRule2 = data.subRule2 || 'ΚΑΘΑΡΙΟΤΗΤΕΣ [14:00-15:00 & 20:00-21:00 & 06:30-07:30]';
+    rows.push([subRule2]);
+    merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 6 } });
+    currentRow++;
+
+    const unitTitle = (data.unitTitle || unit.name || 'ΚΕΝ ΘΗΒΑΣ (ΚΕΠΒ)') + 
+      (data.divisionTitle ? ` - ${data.divisionTitle}` : (unit.division ? ` - ${unit.division}` : ''));
     rows.push([unitTitle]);
-    merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 5 } });
+    merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 6 } });
     currentRow++;
 
-    rows.push([unit.division || '']);
-    merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 5 } });
-    currentRow++;
-
-    rows.push([formatGreekDate(schedule.date)]);
-    merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 5 } });
-    currentRow++;
-
-    rows.push(['ΥΠΗΡΕΣΙΕΣ ΟΠΛΙΤΩΝ']);
-    merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 5 } });
-    currentRow++;
-
-    // Blank separator
+    // Blank separator row before main board
     rows.push([]);
     currentRow++;
 
-    // --- Helper to extract guard column lines ---
-    const getGuardLines = (gIdx: number) => {
-      const g = data.guardGroups[gIdx];
-      const times = (g?.times || []).map((t: any) => `${t.date} ${t.time}`);
-      const soldiers: string[] = [];
-      (g?.thalamofylakes || []).forEach((s: any) => soldiers.push(fmt(s.personId, s.personName, 'ΘΦ')));
-      (g?.oplofylakes || []).forEach((s: any) => soldiers.push(fmt(s.personId, s.personName, 'ΟΦ')));
-      (g?.otherGuards || []).forEach((og: any) => {
-        (og.slots || []).forEach((s: any) => soldiers.push(fmt(s.personId, s.personName, og.shortName)));
+    // 2. Build the 3 Board Columns
+    const leftColRows: [string, string][] = [];
+    const middleColRows: [string, string][] = [];
+    const rightColRows: [string, string, string][] = [];
+    const rightMergesLocal: { sR: number; sC: number; eR: number; eC: number }[] = [];
+
+    // --- Column 1 (Left): 4 Shifts of ΟΠΛΟΦΥΛΑΚΑΣ & ΘΑΛΑΜΟΦΥΛΑΚΕΣ ---
+    const leftShifts = data.leftColumnShifts || [];
+    leftShifts.forEach((shift: any, sIdx: number) => {
+      leftColRows.push(['ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ', 'ΟΠΛΟΦΥΛΑΚΑΣ & ΘΑΛΑΜΟΦΥΛΑΚΕΣ']);
+      
+      const t0 = shift.times?.[0] ? `${shift.times[0].date}  ${shift.times[0].time}` : '';
+      const opName = fmt(shift.oplofylakas?.personId, shift.oplofylakas?.personName, '(ΟΦ)');
+      leftColRows.push([t0, opName]);
+
+      const t1 = shift.times?.[1] ? `${shift.times[1].date}  ${shift.times[1].time}` : '';
+      const th1Name = fmt(shift.thalamofylakes?.[0]?.personId, shift.thalamofylakes?.[0]?.personName);
+      leftColRows.push([t1, th1Name]);
+
+      const t2 = shift.times?.[2] ? `${shift.times[2].date}  ${shift.times[2].time}` : '';
+      const th2Name = fmt(shift.thalamofylakes?.[1]?.personId, shift.thalamofylakes?.[1]?.personName);
+      leftColRows.push([t2, th2Name]);
+
+      if (sIdx < leftShifts.length - 1) {
+        leftColRows.push(['', '']);
+      }
+    });
+
+    // --- Column 2 (Middle): ΣΚΟΠΙΑ, ΔΕΚΑΝΕΙΣ, ΥΠΑΡΧΙΦΥΛΑΚΑΣ, ΑΜ ---
+    const midData = data.middleColumnData || {};
+
+    // Table 1: Σκοπιά
+    const skopia = midData.skopia || {};
+    middleColRows.push(['ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ', skopia.title || 'ΣΚΟΠΙΑ ΚΕΝΤΡΙΚΗ ΠΥΛΗ']);
+    (skopia.shifts || []).forEach((sh: any) => {
+      const t0 = sh.times?.[0] ? `${sh.times[0].date}  ${sh.times[0].time}` : '';
+      const g0 = fmt(sh.guards?.[0]?.personId, sh.guards?.[0]?.personName);
+      middleColRows.push([t0, g0]);
+
+      const t1 = sh.times?.[1] ? `${sh.times[1].date}  ${sh.times[1].time}` : '';
+      const g1 = fmt(sh.guards?.[1]?.personId, sh.guards?.[1]?.personName);
+      middleColRows.push([t1, g1]);
+
+      const t2 = sh.times?.[2] ? `${sh.times[2].date}  ${sh.times[2].time}` : '';
+      middleColRows.push([t2, '']);
+    });
+    middleColRows.push(['', '']);
+
+    // Table 2: Δεκανείς
+    const dek = midData.dekaneis || {};
+    middleColRows.push(['ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ', dek.title || 'ΔΕΚΑΝΕΙΣ ΑΛΛΑΓΗΣ']);
+    (dek.shifts || []).forEach((sh: any) => {
+      const t0 = sh.times?.[0] ? `${sh.times[0].date}  ${sh.times[0].time}` : '';
+      const g0 = fmt(sh.guard?.personId, sh.guard?.personName);
+      middleColRows.push([t0, g0]);
+    });
+    middleColRows.push(['', '']);
+
+    // Table 3: Υπαρχιφύλακας
+    const yparch = midData.yparchifylakas || {};
+    middleColRows.push(['ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ', yparch.title || 'ΥΠΑΡΧΙΦΥΛΑΚΑΣ']);
+    const yt0 = yparch.shift?.times?.[0] ? `${yparch.shift.times[0].date}  ${yparch.shift.times[0].time}` : '';
+    const yg0 = fmt(yparch.shift?.guard?.personId, yparch.shift?.guard?.personName);
+    middleColRows.push([yt0, yg0]);
+    middleColRows.push(['', '']);
+
+    // Table 4: ΑΜ
+    const am = midData.am || {};
+    middleColRows.push(['ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ', am.title || 'ΑΜ']);
+    (am.shifts || []).forEach((sh: any) => {
+      const t0 = sh.times?.[0] ? `${sh.times[0].date}  ${sh.times[0].time}` : '';
+      const g0 = fmt(sh.guards?.[0]?.personId, sh.guards?.[0]?.personName);
+      middleColRows.push([t0, g0]);
+      if (sh.guards?.length > 1) {
+        for (let gIdx = 1; gIdx < sh.guards.length; gIdx++) {
+          middleColRows.push(['', fmt(sh.guards[gIdx]?.personId, sh.guards[gIdx]?.personName)]);
+        }
+      }
+    });
+
+    // --- Column 3 (Right): ΕΣΤΙΑΤΟΡΙΑ, ΑΡΤΟΚΛΙΒΑΝΟΣ, ΕΠΙΦΥΛΑΚΗ, ΞΕΝΟΚΡΑΤΗΣ, ΚΑΘΑΡΙΟΤΗΤΕΣ ---
+    const rightData = data.rightColumnData || {};
+
+    // 1. Εστιατόρια
+    const est = rightData.estiatoria || {};
+    let rIdx = rightColRows.length;
+    rightColRows.push(['ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ', est.title || 'ΕΣΤΙΑΤΟΡΙΑ (15:00-16:00)', '']);
+    rightMergesLocal.push({ sR: rIdx, sC: 1, eR: rIdx, eC: 2 });
+
+    rIdx = rightColRows.length;
+    rightColRows.push([est.note || 'ΟΙ ΠΑΡΑΚΑΤΩ ΜΕΤΑΒΑΙΝΟΥΝ ΝΩΡΙΤΕΡΑ ΜΕ ΟΡΙΣΜΕΝΟ ΒΑΓΟΝΙ', '', '']);
+    rightMergesLocal.push({ sR: rIdx, sC: 0, eR: rIdx, eC: 2 });
+
+    const estTimes = est.times || [];
+    const estGuards = est.guards || [];
+    for (let i = 0; i < 5; i++) {
+      const tStr = estTimes[i] ? `${estTimes[i].date}  ${estTimes[i].time}` : '';
+      const g1 = estGuards[i] ? `${i + 1}. ${fmt(estGuards[i].personId, estGuards[i].personName)}` : '-';
+      const g2 = estGuards[i + 5] ? `${i + 6}. ${fmt(estGuards[i + 5].personId, estGuards[i + 5].personName)}` : '-';
+      rightColRows.push([tStr, g1, g2]);
+    }
+    rightColRows.push(['', '', '']);
+
+    // 2. Αρτοκλίβανος
+    const art = rightData.artoklivanos || {};
+    rIdx = rightColRows.length;
+    rightColRows.push([art.title || 'ΑΡΤΟΚΛΙΒΑΝΟΣ (06:50-14:00)', '', '']);
+    rightMergesLocal.push({ sR: rIdx, sC: 0, eR: rIdx, eC: 2 });
+
+    const artGuards = art.guards || [];
+    rIdx = rightColRows.length;
+    rightColRows.push([
+      artGuards[0] ? `1. ${fmt(artGuards[0].personId, artGuards[0].personName)}` : '-',
+      '',
+      artGuards[1] ? `2. ${fmt(artGuards[1].personId, artGuards[1].personName)}` : '-'
+    ]);
+    rightMergesLocal.push({ sR: rIdx, sC: 0, eR: rIdx, eC: 1 });
+
+    rIdx = rightColRows.length;
+    rightColRows.push([
+      artGuards[2] ? `3. ${fmt(artGuards[2].personId, artGuards[2].personName)}` : '-',
+      '',
+      artGuards[3] ? `4. ${fmt(artGuards[3].personId, artGuards[3].personName)}` : '-'
+    ]);
+    rightMergesLocal.push({ sR: rIdx, sC: 0, eR: rIdx, eC: 1 });
+    rightColRows.push(['', '', '']);
+
+    // 3. Επιφυλακή
+    const epif = rightData.epifylaki || {};
+    rIdx = rightColRows.length;
+    rightColRows.push([epif.title || 'ΕΠΙΦΥΛΑΚΗ', '', '']);
+    rightMergesLocal.push({ sR: rIdx, sC: 0, eR: rIdx, eC: 2 });
+
+    const epifGuards = epif.guards || [];
+    for (let i = 0; i < 3; i++) {
+      rIdx = rightColRows.length;
+      const g1 = epifGuards[i] ? `${i + 1}. ${fmt(epifGuards[i].personId, epifGuards[i].personName)}` : '-';
+      const g2 = epifGuards[i + 3] ? `${i + 4}. ${fmt(epifGuards[i + 3].personId, epifGuards[i + 3].personName)}` : '-';
+      rightColRows.push([g1, '', g2]);
+      rightMergesLocal.push({ sR: rIdx, sC: 0, eR: rIdx, eC: 1 });
+    }
+    rightColRows.push(['', '', '']);
+
+    // 4. Ξενοκράτης
+    const xen = rightData.xenokratis || {};
+    rIdx = rightColRows.length;
+    rightColRows.push([xen.title || 'ΞΕΝΟΚΡΑΤΗΣ', '', '']);
+    rightMergesLocal.push({ sR: rIdx, sC: 0, eR: rIdx, eC: 2 });
+
+    const xenGuards = xen.guards || [];
+    for (let i = 0; i < 3; i++) {
+      rIdx = rightColRows.length;
+      const g1 = xenGuards[i] ? `${i + 1}. ${fmt(xenGuards[i].personId, xenGuards[i].personName)}` : '-';
+      const g2 = xenGuards[i + 3] ? `${i + 4}. ${fmt(xenGuards[i + 3].personId, xenGuards[i + 3].personName)}` : '-';
+      rightColRows.push([g1, '', g2]);
+      rightMergesLocal.push({ sR: rIdx, sC: 0, eR: rIdx, eC: 1 });
+    }
+    rightColRows.push(['', '', '']);
+
+    // 5. Καθαριότητες
+    const kath = rightData.kathariotites || {};
+    rIdx = rightColRows.length;
+    rightColRows.push([kath.title ? `${kath.title} [14:00-15:00 & 20:00-21:00 & 06:30-07:30]` : 'ΚΑΘΑΡΙΟΤΗΤΕΣ', '', '']);
+    rightMergesLocal.push({ sR: rIdx, sC: 0, eR: rIdx, eC: 2 });
+
+    const kathSecs = kath.sections || [];
+    rIdx = rightColRows.length;
+    rightColRows.push([kathSecs[0]?.title || 'ΤΟΥΑΛΕΤΕΣ', '', kathSecs[1]?.title || 'ΛΟΥΤΡΑ / ΝΙΠΤΗΡΕΣ']);
+    rightMergesLocal.push({ sR: rIdx, sC: 0, eR: rIdx, eC: 1 });
+
+    for (let i = 0; i < 2; i++) {
+      rIdx = rightColRows.length;
+      const g1 = kathSecs[0]?.guards?.[i] ? fmt(kathSecs[0].guards[i].personId, kathSecs[0].guards[i].personName) : '-';
+      const g2 = kathSecs[1]?.guards?.[i] ? fmt(kathSecs[1].guards[i].personId, kathSecs[1].guards[i].personName) : '-';
+      rightColRows.push([g1, '', g2]);
+      rightMergesLocal.push({ sR: rIdx, sC: 0, eR: rIdx, eC: 1 });
+    }
+
+    rIdx = rightColRows.length;
+    rightColRows.push([kathSecs[2]?.title || 'ΣΚΑΛΕΣ / ΠΡΟΘΑΛΑΜΟΣ / ΘΑΛΑΜΟΙ', '', kathSecs[3]?.title || 'ΠΡΟΑΥΛΙΟΣ ΧΩΡΟΣ / ΕΞΩΤ. ΣΚΑΛΕΣ']);
+    rightMergesLocal.push({ sR: rIdx, sC: 0, eR: rIdx, eC: 1 });
+
+    for (let i = 0; i < 2; i++) {
+      rIdx = rightColRows.length;
+      const g1 = kathSecs[2]?.guards?.[i] ? fmt(kathSecs[2].guards[i].personId, kathSecs[2].guards[i].personName) : '-';
+      const g2 = kathSecs[3]?.guards?.[i] ? fmt(kathSecs[3].guards[i].personId, kathSecs[3].guards[i].personName) : '-';
+      rightColRows.push([g1, '', g2]);
+      rightMergesLocal.push({ sR: rIdx, sC: 0, eR: rIdx, eC: 1 });
+    }
+
+    // --- Combine the 3 Board Columns into the Sheet ---
+    const maxBoardRows = Math.max(leftColRows.length, middleColRows.length, rightColRows.length);
+    const boardStartRow = currentRow;
+
+    for (let r = 0; r < maxBoardRows; r++) {
+      const left = leftColRows[r] || ['', ''];
+      const mid = middleColRows[r] || ['', ''];
+      const right = rightColRows[r] || ['', '', ''];
+      rows.push([...left, ...mid, ...right]);
+      currentRow++;
+    }
+
+    // Apply right column merges with row offset and column offset (Cols E..G = 4..6)
+    rightMergesLocal.forEach(m => {
+      merges.push({
+        s: { r: boardStartRow + m.sR, c: 4 + m.sC },
+        e: { r: boardStartRow + m.eR, c: 4 + m.eC }
       });
-      return { times, soldiers };
+    });
+
+    // --- 3. Official Signatures Block (Bottom) ---
+    rows.push([]);
+    currentRow++;
+
+    const sigs = data.printSignatures || {
+      left: { roleTitle: 'ΔΙΟΙΚΗΤΗΣ ΜΟΙΡΑΣ', fullName: '', rank: '' },
+      center: { roleTitle: 'ΔΚΤΗΣ ΠΥΡΧΙΑΣ', fullName: '', rank: '' },
+      right: { roleTitle: 'ΑΛΧΙΑΣ ΠΥΡΧΙΑΣ', fullName: '', rank: '' }
     };
 
-    // --- SECTION 1: Shift 1 / Τουαλέτες / Εστιατόρια ---
-    rows.push([
-      'ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ',
-      'ΘΑΛΑΜΟΦΥΛΑΚΕΣ / ΟΠΛΟΦΥΛΑΚΑΣ',
-      'ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ',
-      data.cleaningSections?.sections[0]?.title || 'ΤΟΥΑΛΕΤΕΣ',
-      'ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ',
-      'ΕΣΤΙΑΤΟΡΙΑ'
-    ]);
+    // Row: ΘΕΩΡΗΘΗΚΕ
+    rows.push(['ΘΕΩΡΗΘΗΚΕ', '', '', '', '', '', '']);
+    merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 1 } });
+    merges.push({ s: { r: currentRow, c: 2 }, e: { r: currentRow, c: 3 } });
+    merges.push({ s: { r: currentRow, c: 4 }, e: { r: currentRow, c: 6 } });
     currentRow++;
 
-    const g1 = getGuardLines(0);
-    const c1Times = (data.cleaningSections?.sections[0]?.times || []).map((t: any) => `${t.date} ${t.time}`);
-    const c1Soldiers = (data.cleaningSections?.sections[0]?.slots || []).map((s: any) => fmt(s.personId, s.personName));
-    const rTimes = (data.col3Data?.restaurant?.times || []).map((t: any) => `${t.date} ${t.time}`);
-    const rSoldiers = (data.col3Data?.restaurant?.slots || []).map((s: any) => fmt(s.personId, s.personName));
-
-    const sec1Max = Math.max(g1.times.length, g1.soldiers.length, c1Times.length, c1Soldiers.length, rTimes.length, rSoldiers.length, 3);
-    for (let i = 0; i < sec1Max; i++) {
-      rows.push([
-        g1.times[i] || '',
-        g1.soldiers[i] || '',
-        c1Times[i] || '',
-        c1Soldiers[i] || '',
-        rTimes[i] || '',
-        rSoldiers[i] || ''
-      ]);
-      currentRow++;
-    }
-
-    // --- SECTION 2: Shift 2 / Λουτρά / Μόνιμοι Εστιατόρια & ΚΨΜ ---
-    rows.push([
-      'ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ',
-      'ΘΑΛΑΜΟΦΥΛΑΚΕΣ / ΟΠΛΟΦΥΛΑΚΑΣ',
-      'ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ',
-      data.cleaningSections?.sections[1]?.title || 'ΛΟΥΤΡΑ / ΝΙΠΤΗΡΕΣ',
-      'ΜΟΝΙΜΟΙ ΕΣΤΙΑΤΟΡΙΑ',
-      'ΜΟΝΙΜΟΙ ΚΨΜ'
-    ]);
+    // Row: -Ο-
+    rows.push(['-Ο-', '', '-Ο-', '', '-Ο-', '', '']);
+    merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 1 } });
+    merges.push({ s: { r: currentRow, c: 2 }, e: { r: currentRow, c: 3 } });
+    merges.push({ s: { r: currentRow, c: 4 }, e: { r: currentRow, c: 6 } });
     currentRow++;
 
-    const g2 = getGuardLines(1);
-    const c2Times = (data.cleaningSections?.sections[1]?.times || []).map((t: any) => `${t.date} ${t.time}`);
-    const c2Soldiers = (data.cleaningSections?.sections[1]?.slots || []).map((s: any) => fmt(s.personId, s.personName));
-    const permEstSoldiers = (data.col3Data?.permanentEst?.slots || []).map((s: any) => fmt(s.personId, s.personName));
-    const permKpsmSoldiers = (data.col3Data?.permanentKpsm?.slots || []).map((s: any) => fmt(s.personId, s.personName));
-
-    const sec2Max = Math.max(g2.times.length, g2.soldiers.length, c2Times.length, c2Soldiers.length, permEstSoldiers.length, permKpsmSoldiers.length, 3);
-    for (let i = 0; i < sec2Max; i++) {
-      rows.push([
-        g2.times[i] || '',
-        g2.soldiers[i] || '',
-        c2Times[i] || '',
-        c2Soldiers[i] || '',
-        permEstSoldiers[i] || '',
-        permKpsmSoldiers[i] || ''
-      ]);
-      currentRow++;
-    }
-
-    // --- SECTION 3: Shift 3 / Σκάλες-Διάδρομοι / Επιφυλακές & Γραφείς ---
+    // Row: Role Titles
     rows.push([
-      'ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ',
-      'ΘΑΛΑΜΟΦΥΛΑΚΕΣ / ΟΠΛΟΦΥΛΑΚΑΣ',
-      'ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ',
-      data.cleaningSections?.sections[2]?.title || 'ΣΚΑΛΕΣ / ΔΙΑΔΡΟΜΟΙ',
-      'ΕΠΙΦΥΛΑΚΕΣ',
-      'ΓΡΑΦΕΙΣ'
-    ]);
-    currentRow++;
-
-    const g3 = getGuardLines(2);
-    const c3Times = (data.cleaningSections?.sections[2]?.times || []).map((t: any) => `${t.date} ${t.time}`);
-    const c3Soldiers = (data.cleaningSections?.sections[2]?.slots || []).map((s: any) => fmt(s.personId, s.personName));
-    const epifSoldiers = (data.col3Data?.standby?.slots || []).map((s: any) => fmt(s.personId, s.personName));
-    const grafeisSoldiers = (data.col3Data?.grafeis?.slots || []).map((s: any) => fmt(s.personId, s.personName));
-
-    const sec3Max = Math.max(g3.times.length, g3.soldiers.length, c3Times.length, c3Soldiers.length, epifSoldiers.length, grafeisSoldiers.length, 3);
-    for (let i = 0; i < sec3Max; i++) {
-      rows.push([
-        g3.times[i] || '',
-        g3.soldiers[i] || '',
-        c3Times[i] || '',
-        c3Soldiers[i] || '',
-        epifSoldiers[i] || '',
-        grafeisSoldiers[i] || ''
-      ]);
-      currentRow++;
-    }
-
-    // --- SECTION 4: Shift 4 / Προαύλιος Χώρος ---
-    rows.push([
-      'ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ',
-      'ΘΑΛΑΜΟΦΥΛΑΚΕΣ / ΟΠΛΟΦΥΛΑΚΑΣ',
-      'ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ',
-      data.cleaningSections?.sections[3]?.title || 'ΠΡΟΑΥΛΙΟΣ ΧΩΡΟΣ',
-      'ΕΠΙΦΥΛΑΚΕΣ (συνέχεια)',
-      'ΛΟΙΠΟΙ'
-    ]);
-    currentRow++;
-
-    const g4 = getGuardLines(3);
-    const c4Times = (data.cleaningSections?.sections[3]?.times || []).map((t: any) => `${t.date} ${t.time}`);
-    const c4Soldiers = (data.cleaningSections?.sections[3]?.slots || []).map((s: any) => fmt(s.personId, s.personName));
-    const remainingEpif = epifSoldiers.slice(sec3Max);
-    const remainingGrafeis = grafeisSoldiers.slice(sec3Max);
-
-    const sec4Max = Math.max(g4.times.length, g4.soldiers.length, c4Times.length, c4Soldiers.length, remainingEpif.length, remainingGrafeis.length, 3);
-    for (let i = 0; i < sec4Max; i++) {
-      rows.push([
-        g4.times[i] || '',
-        g4.soldiers[i] || '',
-        c4Times[i] || '',
-        c4Soldiers[i] || '',
-        remainingEpif[i] || '',
-        remainingGrafeis[i] || ''
-      ]);
-      currentRow++;
-    }
-
-    // --- SECTION 5: Επιπρόσθετοι Φύλακες / Υπεύθυνος Υλικού / Αρτοκλίβανος ---
-    rows.push([
-      data.extraGuards?.hasExtra ? 'ΕΠΙΠΡΟΣΘΕΤΟΙ ΦΥΛΑΚΕΣ' : 'ΕΙΔΙΚΕΣ ΠΑΡΑΤΗΡΗΣΕΙΣ',
-      '',
-      'ΥΠΕΥΘΥΝΟΣ ΥΛΙΚΟΥ ΚΑΘΑΡΙΟΤΗΤΑΣ',
-      '',
-      'ΗΜΕΡΟΜΗΝΙΑ & ΩΡΑ',
-      'ΑΡΤΟΚΛΙΒΑΝΟΣ'
+      sigs.left?.roleTitle || 'ΔΙΟΙΚΗΤΗΣ ΜΟΙΡΑΣ', '',
+      sigs.center?.roleTitle || 'ΔΚΤΗΣ ΠΥΡΧΙΑΣ', '',
+      sigs.right?.roleTitle || 'ΑΛΧΙΑΣ ΠΥΡΧΙΑΣ', '', ''
     ]);
     merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 1 } });
     merges.push({ s: { r: currentRow, c: 2 }, e: { r: currentRow, c: 3 } });
+    merges.push({ s: { r: currentRow, c: 4 }, e: { r: currentRow, c: 6 } });
     currentRow++;
 
-    const extraGuardsSoldiers: string[] = [];
-    if (data.extraGuards?.hasExtra) {
-      (data.extraGuards?.thalamofylakes || []).forEach((s: any) => extraGuardsSoldiers.push(fmt(s.personId, s.personName, 'ΘΦ')));
-      (data.extraGuards?.oplofylakes || []).forEach((s: any) => extraGuardsSoldiers.push(fmt(s.personId, s.personName, 'ΟΦ')));
-    } else {
-      extraGuardsSoldiers.push('-');
-    }
-
-    const supSoldier = data.cleaningSections?.supervisor
-      ? fmt(data.cleaningSections.supervisor.personId, data.cleaningSections.supervisor.personName)
-      : '---';
-
-    const bTimes = (data.col3Data?.bakery?.times || []).map((t: any) => `${t.date} ${t.time}`);
-    const bSoldiers = (data.col3Data?.bakery?.slots || []).map((s: any) => fmt(s.personId, s.personName));
-
-    const sec5Max = Math.max(extraGuardsSoldiers.length, 1, bTimes.length, bSoldiers.length, 2);
-    for (let i = 0; i < sec5Max; i++) {
-      rows.push([
-        extraGuardsSoldiers[i] || '',
-        '',
-        i === 0 ? supSoldier : '',
-        '',
-        bTimes[i] || '',
-        bSoldiers[i] || ''
-      ]);
-      merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 1 } });
-      merges.push({ s: { r: currentRow, c: 2 }, e: { r: currentRow, c: 3 } });
-      currentRow++;
-    }
-
-    // --- 3. DYNAMIC SIGNATURES BLOCK ---
+    // Rows: Blank Signature space
     rows.push([]);
+    merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 1 } });
+    merges.push({ s: { r: currentRow, c: 2 }, e: { r: currentRow, c: 3 } });
+    merges.push({ s: { r: currentRow, c: 4 }, e: { r: currentRow, c: 6 } });
     currentRow++;
 
-    const sigs: SignatureSlot[] = data.signatures || [];
-    const rowDash = ['', '', '', '', '', ''];
-    const rowTitle = ['', '', '', '', '', ''];
-    const rowName = ['', '', '', '', '', ''];
-    const rowRank = ['', '', '', '', '', ''];
-
-    if (sigs.length === 1) {
-      rowDash[2] = '-Ο-';
-      rowTitle[2] = sigs[0].roleTitle;
-      rowName[2] = sigs[0].fullName;
-      rowRank[2] = sigs[0].rank || '';
-      merges.push({ s: { r: currentRow, c: 2 }, e: { r: currentRow, c: 3 } });
-      merges.push({ s: { r: currentRow + 1, c: 2 }, e: { r: currentRow + 1, c: 3 } });
-      merges.push({ s: { r: currentRow + 4, c: 2 }, e: { r: currentRow + 4, c: 3 } });
-      merges.push({ s: { r: currentRow + 5, c: 2 }, e: { r: currentRow + 5, c: 3 } });
-    } else if (sigs.length === 2) {
-      rowDash[0] = '-Ο-';
-      rowTitle[0] = sigs[0].roleTitle;
-      rowName[0] = sigs[0].fullName;
-      rowRank[0] = sigs[0].rank || '';
-      merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 2 } });
-      merges.push({ s: { r: currentRow + 1, c: 0 }, e: { r: currentRow + 1, c: 2 } });
-      merges.push({ s: { r: currentRow + 4, c: 0 }, e: { r: currentRow + 4, c: 2 } });
-      merges.push({ s: { r: currentRow + 5, c: 0 }, e: { r: currentRow + 5, c: 2 } });
-
-      rowDash[3] = '-Ο-';
-      rowTitle[3] = sigs[1].roleTitle;
-      rowName[3] = sigs[1].fullName;
-      rowRank[3] = sigs[1].rank || '';
-      merges.push({ s: { r: currentRow, c: 3 }, e: { r: currentRow, c: 5 } });
-      merges.push({ s: { r: currentRow + 1, c: 3 }, e: { r: currentRow + 1, c: 5 } });
-      merges.push({ s: { r: currentRow + 4, c: 3 }, e: { r: currentRow + 4, c: 5 } });
-      merges.push({ s: { r: currentRow + 5, c: 3 }, e: { r: currentRow + 5, c: 5 } });
-    } else {
-      // 3 or more: Col 0-1, Col 2-3, Col 4-5
-      for (let sIdx = 0; sIdx < Math.min(sigs.length, 3); sIdx++) {
-        const colStart = sIdx * 2;
-        rowDash[colStart] = '-Ο-';
-        rowTitle[colStart] = sigs[sIdx].roleTitle;
-        rowName[colStart] = sigs[sIdx].fullName;
-        rowRank[colStart] = sigs[sIdx].rank || '';
-        merges.push({ s: { r: currentRow, c: colStart }, e: { r: currentRow, c: colStart + 1 } });
-        merges.push({ s: { r: currentRow + 1, c: colStart }, e: { r: currentRow + 1, c: colStart + 1 } });
-        merges.push({ s: { r: currentRow + 4, c: colStart }, e: { r: currentRow + 4, c: colStart + 1 } });
-        merges.push({ s: { r: currentRow + 5, c: colStart }, e: { r: currentRow + 5, c: colStart + 1 } });
-      }
-    }
-
-    rows.push(rowDash);
-    currentRow++;
-    rows.push(rowTitle);
-    currentRow++;
-    // Blank rows for signature ink
     rows.push([]);
+    merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 1 } });
+    merges.push({ s: { r: currentRow, c: 2 }, e: { r: currentRow, c: 3 } });
+    merges.push({ s: { r: currentRow, c: 4 }, e: { r: currentRow, c: 6 } });
     currentRow++;
-    rows.push([]);
+
+    // Row: Officer Names
+    rows.push([
+      sigs.left?.fullName || '', '',
+      sigs.center?.fullName || '', '',
+      sigs.right?.fullName || '', '', ''
+    ]);
+    merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 1 } });
+    merges.push({ s: { r: currentRow, c: 2 }, e: { r: currentRow, c: 3 } });
+    merges.push({ s: { r: currentRow, c: 4 }, e: { r: currentRow, c: 6 } });
     currentRow++;
-    rows.push(rowName);
-    currentRow++;
-    rows.push(rowRank);
+
+    // Row: Officer Ranks
+    rows.push([
+      sigs.left?.rank || '', '',
+      sigs.center?.rank || '', '',
+      sigs.right?.rank || '', '', ''
+    ]);
+    merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 1 } });
+    merges.push({ s: { r: currentRow, c: 2 }, e: { r: currentRow, c: 3 } });
+    merges.push({ s: { r: currentRow, c: 4 }, e: { r: currentRow, c: 6 } });
     currentRow++;
 
     // Create Worksheet
     const ws = XLSX.utils.aoa_to_sheet(rows);
 
-    // Set Column Widths (matching 6-column landscape paper)
+    // Set Column Widths (matching 7-column landscape military board)
     ws['!cols'] = [
-      { wch: 18 }, // Col A: Date & Time
-      { wch: 30 }, // Col B: Guards & Duties
-      { wch: 18 }, // Col C: Cleaning Times
-      { wch: 28 }, // Col D: Cleaning Personnel
-      { wch: 18 }, // Col E: Times / Roles
-      { wch: 30 }  // Col F: Service Personnel
+      { wch: 18 }, // Col A: Col 1 Time (14:00 - 16:00, etc.)
+      { wch: 28 }, // Col B: Col 1 Duty (Οπλοφύλακας & Θαλαμοφύλακες)
+      { wch: 18 }, // Col C: Col 2 Time
+      { wch: 28 }, // Col D: Col 2 Duty (Σκοπιά, Δεκανείς, Υπαρχ, ΑΜ)
+      { wch: 18 }, // Col E: Col 3 Time / Quadrant 1
+      { wch: 24 }, // Col F: Col 3 Names 1
+      { wch: 24 }  // Col G: Col 3 Names 2
     ];
     ws['!merges'] = merges;
 
@@ -382,6 +425,7 @@ export class ExcelExportService {
     const d1 = `${parts[2]}/${parts[1]}/${parts[0]}`;
     const next = new Date(parts[0], parts[1] - 1, parts[2] + 1);
     const d2 = `${next.getDate()}/${next.getMonth() + 1}/${next.getFullYear()}`;
+    const unit = this.storage.unitInfo();
 
     const findDuty = (kw: string) => {
       const normKw = normalizeGreek(kw);
@@ -396,6 +440,17 @@ export class ExcelExportService {
     const thDuty = findDuty('θαλαμ');
     const opDuty = findDuty('οπλοφ');
     const kathDuty = findDuty('καθαρι');
+    const skopiaDuty = findDuty('σκοπ') || findDuty('πυλ');
+    const dekDuty = findDuty('δεκαν');
+    const yparchDuty = findDuty('υπαρχ');
+    const amDuty = schedule.duties.find(d => {
+      const id = (d.dutyTypeId || '').toLowerCase();
+      const n = normalizeGreek(d.dutyName || '');
+      const s = normalizeGreek(d.shortName || '');
+      return id === 'duty-am' || n === 'αμ' || s === 'αμ';
+    });
+    const xenDuty = findDuty('ξενοκρατ');
+
     const estDuties = schedule.duties.filter(d => {
       const dtDef = this.storage.dutyTypes().find(dt => dt.id === d.dutyTypeId);
       const name = (d.dutyName || '').toLowerCase();
@@ -428,7 +483,6 @@ export class ExcelExportService {
              dtNormShort === 'αρτ';
     });
 
-    // Fallback to soldier with special role if no assigned slot
     let finalArtSlots = artDuty?.slots || [];
     const hasAssignedArt = finalArtSlots.some(s => !!(s.personId || s.personName));
     if (!hasAssignedArt) {
@@ -452,65 +506,152 @@ export class ExcelExportService {
       return normName.includes('επιφυλακ') || normCode.includes('επιφυλακ');
     });
 
-    const timeDefs = [
+    const shiftTimes = [
       [{ date: d1, time: '14:00 - 16:00' }, { date: d1, time: '22:00 - 00:00' }, { date: d2, time: '06:00 - 08:00' }],
       [{ date: d1, time: '16:00 - 18:00' }, { date: d2, time: '00:00 - 02:00' }, { date: d2, time: '08:00 - 10:00' }],
       [{ date: d1, time: '18:00 - 20:00' }, { date: d2, time: '02:00 - 04:00' }, { date: d2, time: '10:00 - 12:00' }],
       [{ date: d1, time: '20:00 - 22:00' }, { date: d2, time: '04:00 - 06:00' }, { date: d2, time: '12:00 - 14:00' }]
     ];
 
-    const guardGroups = timeDefs.map((times, idx) => {
+    const opSlots = opDuty?.slots || [];
+    const thSlots = thDuty?.slots || [];
+
+    const leftColumnShifts = shiftTimes.map((times, idx) => {
       const gIndex = idx + 1;
-      const th = (thDuty?.slots || []).filter(s => s.groupIndex === gIndex || (!s.groupIndex && (s.slotIndex === gIndex * 2 - 1 || s.slotIndex === gIndex * 2)));
-      const op = (opDuty?.slots || []).filter(s => s.groupIndex === gIndex || (!s.groupIndex && s.slotIndex === gIndex));
-      return { groupIndex: gIndex, times, thalamofylakes: th, oplofylakes: op, otherGuards: [] };
+      const op = opSlots.find(s => s.groupIndex === gIndex) || opSlots[idx];
+      const thGrp = thSlots.filter(s => s.groupIndex === gIndex);
+      const th1 = thGrp[0] || thSlots[idx * 2];
+      const th2 = thGrp[1] || thSlots[idx * 2 + 1];
+      return {
+        shiftIndex: gIndex,
+        times,
+        oplofylakas: op,
+        thalamofylakes: [th1, th2].filter(Boolean)
+      };
     });
 
-    const standardTimes = [
-      { date: d1, time: '14:00 - 15:00' },
-      { date: d1, time: '20:00 - 21:00' },
-      { date: d2, time: '07:00 - 07:30' }
+    const skopiaSlots = skopiaDuty?.slots || [];
+    const skopiaShifts = shiftTimes.map((times, idx) => {
+      const gIndex = idx + 1;
+      const grp = skopiaSlots.filter(s => s.groupIndex === gIndex);
+      const s1 = grp[0] || skopiaSlots[idx * 2];
+      const s2 = grp[1] || skopiaSlots[idx * 2 + 1];
+      return {
+        shiftIndex: gIndex,
+        times,
+        guards: [s1, s2].filter(Boolean)
+      };
+    });
+
+    const dekSlots = dekDuty?.slots || [];
+    const dekShifts = [
+      { times: [{ date: d1, time: '14:00 - 00:00' }], guard: dekSlots[0] },
+      { times: [{ date: d2, time: '00:00 - 14:00' }], guard: dekSlots[1] }
     ];
 
-    const cleaningSections = {
-      sections: [
-        { title: 'ΤΟΥΑΛΕΤΕΣ', times: standardTimes, slots: kathDuty?.slots.slice(0, 1) || [] },
-        { title: 'ΛΟΥΤΡΑ / ΝΙΠΤΗΡΕΣ', times: standardTimes, slots: kathDuty?.slots.slice(1, 2) || [] },
-        { title: 'ΣΚΑΛΕΣ / ΔΙΑΔΡΟΜΟΙ', times: standardTimes, slots: kathDuty?.slots.slice(2, 3) || [] },
-        { title: 'ΠΡΟΑΥΛΙΟΣ ΧΩΡΟΣ', times: standardTimes, slots: kathDuty?.slots.slice(3, 4) || [] }
-      ],
-      supervisor: kathDuty?.slots[4] ? { personId: kathDuty.slots[4].personId, personName: kathDuty.slots[4].personName } : null
+    const yparchSlots = yparchDuty?.slots || [];
+    const yparchShift = {
+      times: [{ date: d1, time: '14:00 - 06:00' }],
+      guard: yparchSlots[0]
     };
 
-    const col3Data = {
-      restaurant: { times: [{ date: d1, time: '16:00 - 22:00' }, { date: d2, time: '05:20 - 16:00' }], slots: estSlots || [] },
-      bakery: { times: [{ date: d2, time: '06:50 - 14:00' }], slots: finalArtSlots },
-      standby: { slots: epifDuty?.slots || [] },
-      permanentEst: { slots: [] },
-      permanentKpsm: { slots: [] },
-      grafeis: { slots: [] }
+    const amSlots = amDuty?.slots || [];
+    const amShifts = [
+      { times: [{ date: d1, time: '14:00 - 22:00' }], guards: [amSlots[0]].filter(Boolean) },
+      { times: [{ date: d2, time: '06:00 - 14:00' }], guards: [amSlots[1], amSlots[2]].filter(Boolean) }
+    ];
+
+    const middleColumnData = {
+      skopia: { title: 'ΣΚΟΠΙΑ ΚΕΝΤΡΙΚΗ ΠΥΛΗ', shifts: skopiaShifts },
+      dekaneis: { title: 'ΔΕΚΑΝΕΙΣ ΑΛΛΑΓΗΣ', shifts: dekShifts },
+      yparchifylakas: { title: 'ΥΠΑΡΧΙΦΥΛΑΚΑΣ', shift: yparchShift },
+      am: { title: 'ΑΜ', shifts: amShifts }
+    };
+
+    const estTimes = [
+      { date: d1, time: '16:00 - 22:00' },
+      { date: d2, time: '05:20 - 16:00' }
+    ];
+    const estGuards = Array.from({ length: 10 }, (_, i) => estSlots[i] || null);
+    const artGuards = Array.from({ length: 4 }, (_, i) => finalArtSlots[i] || null);
+    const epifGuards = Array.from({ length: 5 }, (_, i) => epifDuty?.slots[i] || null);
+    const xenGuards = Array.from({ length: 5 }, (_, i) => xenDuty?.slots[i] || null);
+
+    const kathSlots = kathDuty?.slots || [];
+    const getSlotsForKeyword = (kw: string, fallbackIdxs: [number, number]) => {
+      const matched = kathSlots.filter(s => {
+        const lbl = normalizeGreek(s.hoursNote || '') + ' ' + normalizeGreek(s.groupTag || '');
+        return lbl.includes(kw);
+      });
+      if (matched.length >= 2) return [matched[0], matched[1]];
+      if (matched.length === 1) return [matched[0], kathSlots[fallbackIdxs[1]] || null];
+      return [kathSlots[fallbackIdxs[0]] || null, kathSlots[fallbackIdxs[1]] || null];
+    };
+
+    const kathSections = [
+      { title: 'ΤΟΥΑΛΕΤΕΣ', guards: getSlotsForKeyword('τουαλ', [0, 1]) },
+      { title: 'ΛΟΥΤΡΑ / ΝΙΠΤΗΡΕΣ', guards: getSlotsForKeyword('λουτρ', [2, 3]) },
+      { title: 'ΣΚΑΛΕΣ/ ΠΡΟΘΑΛΑΜΟΣ/ ΘΑΛΑΜΟΙ/ ΔΙΑΔΡΟΜΟΣ', guards: getSlotsForKeyword('σκαλ', [4, 5]) },
+      { title: 'ΠΡΟΑΥΛΙΟΣ ΧΩΡΟΣ / ΕΞΩΤΕΡΙΚΕΣ ΣΚΑΛΕΣ', guards: getSlotsForKeyword('προαυλ', [6, 7]) }
+    ];
+
+    const rightColumnData = {
+      estiatoria: {
+        title: 'ΕΣΤΙΑΤΟΡΙΑ (15:00-16:00)',
+        note: 'ΟΙ ΠΑΡΑΚΑΤΩ ΜΕΤΑΒΑΙΝΟΥΝ ΝΩΡΙΤΕΡΑ ΜΕ ΟΡΙΣΜΕΝΟ ΒΑΓΟΝΙ',
+        times: estTimes,
+        guards: estGuards
+      },
+      artoklivanos: {
+        title: 'ΑΡΤΟΚΛΙΒΑΝΟΣ (06:50-14:00)',
+        guards: artGuards
+      },
+      epifylaki: {
+        title: 'ΕΠΙΦΥΛΑΚΗ',
+        guards: epifGuards
+      },
+      xenokratis: {
+        title: 'ΞΕΝΟΚΡΑΤΗΣ',
+        guards: xenGuards
+      },
+      kathariotites: {
+        title: 'ΚΑΘΑΡΙΟΤΗΤΕΣ',
+        sections: kathSections
+      }
     };
 
     const hpList = this.storage.higherPersonnel();
-    const defaultSigs: SignatureSlot[] = hpList.length > 0 ? hpList.slice(0, 3).map(hp => ({
-      roleTitle: hp.roleTitle,
-      fullName: hp.fullName,
-      rank: hp.rank,
-      higherPersonnelId: hp.id
-    })) : [
-      { roleTitle: 'ΑΞΙΩΜΑΤΙΚΟΣ ΥΠΗΡΕΣΙΑΣ', fullName: '', rank: '' },
-      { roleTitle: 'Ο ΔΙΟΙΚΗΤΗΣ', fullName: '', rank: '' }
-    ];
+    const printSignatures = {
+      left: {
+        roleTitle: hpList[0]?.roleTitle || 'ΔΙΟΙΚΗΤΗΣ ΜΟΙΡΑΣ',
+        fullName: hpList[0]?.fullName || 'ΖΑΒΙΤΣΑΝΟΣ ΔΗΜΗΤΡΙΟΣ',
+        rank: hpList[0]?.rank || 'ΑΝΧΗΣ (ΠΒ)'
+      },
+      center: {
+        roleTitle: hpList[1]?.roleTitle || 'ΔΚΤΗΣ ΠΥΡΧΙΑΣ',
+        fullName: hpList[1]?.fullName || 'ΛΙΝΑΡΔΟΣ ΜΑΡΙΟΣ',
+        rank: hpList[1]?.rank || 'ΥΠΛΓΟΣ (ΠΖ)'
+      },
+      right: {
+        roleTitle: hpList[2]?.roleTitle || 'ΑΛΧΙΑΣ ΠΥΡΧΙΑΣ',
+        fullName: hpList[2]?.fullName || 'ΤΕΡΖΟΓΛΟΥ ΕΥΜΟΡΦΙΑ',
+        rank: hpList[2]?.rank || 'ΑΝΘΛΓΟΣ (ΠΒ)'
+      }
+    };
 
     return {
       schedule,
       date1Formatted: d1,
       date2Formatted: d2,
-      guardGroups,
-      cleaningSections,
-      col3Data,
-      extraGuards: { hasExtra: false, thalamofylakes: [], oplofylakes: [] },
-      signatures: defaultSigs
+      leftColumnShifts,
+      middleColumnData,
+      rightColumnData,
+      printSignatures,
+      dateTitle: `ΥΠΗΡΕΣΙΕΣ ΣΤ' ΚΤΗΡΙΟΥ Γ' ΠΥΡΧΙΑΣ ΤΗΣ ${d1}`,
+      subRule1: 'ΟΙ ΠΑΡΑΚΑΤΩ ΥΠΗΡΕΣΙΕΣ ΙΣΧΥΟΥΝ ΑΠΟ ΣΗΜΕΡΑ ΣΤΙΣ 14:00 ΕΩΣ ΤΙΣ 14:00 ΤΗΣ ΕΠΟΜΕΝΗΣ ΜΕΡΑΣ',
+      subRule2: 'ΚΑΘΑΡΙΟΤΗΤΕΣ [14:00-15:00 & 20:00-21:00 & 06:30-07:30]',
+      unitTitle: unit.name || 'ΚΕΝ ΘΗΒΑΣ (ΚΕΠΒ)',
+      divisionTitle: unit.division || '2ο ΜΕΛ/Σ'
     };
   }
 
@@ -581,7 +722,10 @@ export class ExcelExportService {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Δύναμη_Προσωπικού');
     const filename = `Δύναμη_Προσωπικού_${unit.name.replace(/[\/\s]/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    return this.saveWorkbook(wb, filename);
+  }
 
+  private async saveWorkbook(wb: XLSX.WorkBook, filename: string): Promise<boolean> {
     if (this.storage.isElectron() && window.electronAPI) {
       const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       const res = await window.electronAPI.saveExcelFile(buffer, filename);
@@ -595,5 +739,319 @@ export class ExcelExportService {
       this.storage.notify('Το αρχείο Excel λήφθηκε επιτυχώς!', 'success');
       return true;
     }
+  }
+
+  /**
+   * Exports punishments to Excel with:
+   * 1. Name of punished soldier
+   * 2. Punishment days and type in ONE column (e.g. "2 ΣΤ ΕΞΟΔΟΥ", "3 Κ", "5 Φ")
+   * 3. Counter (e.g. 1/3, 0/3)
+   * 4. Date, Reason, Notes, Status
+   */
+  async exportPenaltiesToExcel(
+    records?: import('../models/shift.model').SoldierRecord[],
+    asOfDateStr?: string
+  ): Promise<boolean> {
+    const unit = this.storage.unitInfo();
+    const targetDate = asOfDateStr || new Date().toISOString().slice(0, 10);
+    const sourceRecords = records || this.storage.soldierRecords();
+    const penaltyRecords = sourceRecords.filter(r => r.type === 'ΠΟΙΝΗ');
+
+    const rows: (string | number)[][] = [
+      ['ΕΛΛΗΝΙΚΗ ΔΗΜΟΚΡΑΤΙΑ'],
+      ['ΥΠΟΥΡΓΕΙΟ ΕΘΝΙΚΗΣ ΑΜΥΝΑΣ'],
+      [`ΜΟΝΑΔΑ: ${unit.name} - ${unit.location}`],
+      ['ΠΙΝΑΚΑΣ ΠΕΙΘΑΡΧΙΚΩΝ ΠΟΙΝΩΝ & ΕΚΤΙΣΗΣ'],
+      [`Ημερομηνία Αναφοράς: ${formatGreekDate(targetDate)}`],
+      [],
+      [
+        'Α/Α',
+        'Ονοματεπώνυμο Οπλίτη',
+        'Ποινή & Διάρκεια',
+        'Έκτιση',
+        'Ημερομηνία Επιβολής',
+        'Αιτιολογία',
+        'Παρατηρήσεις',
+        'Κατάσταση'
+      ]
+    ];
+
+    if (penaltyRecords.length === 0) {
+      rows.push(['-', 'Δεν υπάρχουν καταχωρημένες ποινές', '-', '-', '-', '-', '-', '-']);
+    } else {
+      penaltyRecords.forEach((r, idx) => {
+        const prog = this.storage.calculatePenaltyProgress(r, targetDate);
+        const penaltyTypeStr = (r.penaltyType || prog.penaltyType || 'ΣΤ ΕΞΟΔΟΥ').trim();
+        const totalDays = prog.totalDays || r.totalDays || 1;
+        // e.g. "2 ΣΤ ΕΞΟΔΟΥ", "3 Κ", "5 Φ"
+        const typeAndDays = `${totalDays} ${penaltyTypeStr}`;
+        // e.g. "1/3", "0/3"
+        const counterStr = `${prog.servedDays}/${totalDays}`;
+
+        rows.push([
+          idx + 1,
+          formatRecordPersonName(r.personName),
+          typeAndDays,
+          counterStr,
+          formatGreekDate(r.date),
+          r.reason || '-',
+          r.notes || '-',
+          r.status || 'Εκκρεμεί'
+        ]);
+      });
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [
+      { wch: 6 },
+      { wch: 30 },
+      { wch: 20 },
+      { wch: 12 },
+      { wch: 20 },
+      { wch: 38 },
+      { wch: 28 },
+      { wch: 16 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Ποινές');
+    const filename = `Ποινές_${unit.name.replace(/[\/\s]/g, '_')}_${targetDate}.xlsx`;
+    return this.saveWorkbook(wb, filename);
+  }
+
+  /**
+   * Exports HKAP (Daily Orders: Requests & Penalties) to Excel matching the printable sheets.
+   */
+  async exportHkapToExcel(data: {
+    date: string;
+    headerLines: string[];
+    requests: any[];
+    penalties: any[];
+    signatures?: SignatureSlot[];
+  }): Promise<boolean> {
+    const unit = this.storage.unitInfo();
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Αιτήματα
+    const reqRows: (string | number)[][] = [
+      ...(data.headerLines.map(line => [line])),
+      [],
+      ['ΠΙΝΑΚΑΣ ΑΙΤΗΣΕΩΝ – ΑΝΑΦΟΡΩΝ ΟΠΛΙΤΩΝ'],
+      [`Ημερομηνία: ${formatGreekDate(data.date)}`],
+      [],
+      ['Α/Α', 'Ονοματεπώνυμο', 'Αίτημα - Αναφορά', 'Παρατηρήσεις']
+    ];
+
+    if (!data.requests || data.requests.length === 0 || data.requests.every(r => r.isEmpty)) {
+      reqRows.push(['0', '-', '-', '-']);
+    } else {
+      data.requests.filter(r => !r.isEmpty).forEach((r, idx) => {
+        reqRows.push([
+          r.numberText || String(idx + 1),
+          r.soldierName || '-',
+          r.content || '-',
+          r.notes || '-'
+        ]);
+      });
+    }
+
+    // Add signatures at bottom
+    if (data.signatures && data.signatures.length > 0) {
+      reqRows.push([]);
+      reqRows.push([]);
+      reqRows.push(['', '', ...data.signatures.map(s => s.roleTitle)]);
+      reqRows.push(['', '', ...data.signatures.map(s => s.fullName)]);
+    }
+
+    const wsReq = XLSX.utils.aoa_to_sheet(reqRows);
+    wsReq['!cols'] = [
+      { wch: 6 },
+      { wch: 30 },
+      { wch: 45 },
+      { wch: 25 }
+    ];
+    XLSX.utils.book_append_sheet(wb, wsReq, 'Αιτήματα');
+
+    // Sheet 2: Ποινές
+    const penRows: (string | number)[][] = [
+      ...(data.headerLines.map(line => [line])),
+      [],
+      ['ΠΙΝΑΚΑΣ ΠΟΙΝΩΝ ΟΠΛΙΤΩΝ'],
+      [`Ημερομηνία: ${formatGreekDate(data.date)}`],
+      [],
+      ['Α/Α', 'Ονοματεπώνυμο', 'Αιτιολογικό - Ποινή', 'Παρατηρήσεις']
+    ];
+
+    if (!data.penalties || data.penalties.length === 0 || data.penalties.every(r => r.isEmpty)) {
+      penRows.push(['0', '-', '-', '-']);
+    } else {
+      data.penalties.filter(r => !r.isEmpty).forEach((r, idx) => {
+        penRows.push([
+          r.numberText || String(idx + 1),
+          r.soldierName || '-',
+          r.content || '-',
+          r.notes || '-'
+        ]);
+      });
+    }
+
+    if (data.signatures && data.signatures.length > 0) {
+      penRows.push([]);
+      penRows.push([]);
+      penRows.push(['', '', ...data.signatures.map(s => s.roleTitle)]);
+      penRows.push(['', '', ...data.signatures.map(s => s.fullName)]);
+    }
+
+    const wsPen = XLSX.utils.aoa_to_sheet(penRows);
+    wsPen['!cols'] = [
+      { wch: 6 },
+      { wch: 30 },
+      { wch: 45 },
+      { wch: 25 }
+    ];
+    XLSX.utils.book_append_sheet(wb, wsPen, 'Ποινές');
+
+    const filename = `ΗΚΑΠ_${unit.name.replace(/[\/\s]/g, '_')}_${data.date}.xlsx`;
+    return this.saveWorkbook(wb, filename);
+  }
+
+  /**
+   * Generates CSV content formatted for Greek Windows Excel (UTF-8 BOM, semicolon separated).
+   */
+  generateExodouchoiCsv(plan: DailyExodouchoiPlan, onlyGoingOut = false): string {
+    const unit = this.storage.unitInfo();
+    const list = onlyGoingOut ? plan.soldiers.filter(s => s.isGoingOut) : plan.soldiers;
+
+    const escapeCsv = (str: any) => {
+      if (str === null || str === undefined) return '';
+      const s = String(str).trim();
+      if (s.includes(';') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    };
+
+    const lines: string[] = [];
+    const BOM = '\uFEFF';
+
+    lines.push(escapeCsv(`${unit.name} - ${unit.division}`));
+    lines.push(escapeCsv(`ΚΑΤΑΣΤΑΣΗ ΕΞΟΔΟΥΧΩΝ — ${formatGreekDate(plan.date)}`));
+    lines.push(escapeCsv(onlyGoingOut ? 'ΦΙΛΤΡΟ: ΜΟΝΟ ΕΞΟΔΟΥΧΟΙ' : 'ΦΙΛΤΡΟ: ΟΛΗ Η ΔΥΝΑΜΗ'));
+    lines.push('');
+
+    const headers = [
+      'Α/Α',
+      'ΒΑΘΜΟΣ',
+      'ΟΝΟΜΑΤΕΠΩΝΥΜΟ',
+      'ΑΣΜ',
+      'ΕΙΔΙΚΟΤΗΤΑ',
+      'ΛΟΧΟΣ',
+      'ΘΑΛΑΜΟΣ',
+      'ΚΡΕΒΑΤΙ',
+      'ΚΑΤΑΣΤΑΣΗ',
+      'ΥΠΗΡΕΣΙΑ / ΑΙΤΙΟΛΟΓΙΑ',
+      'ΤΗΛΕΦΩΝΟ',
+      'ΠΑΡΑΤΗΡΗΣΕΙΣ'
+    ];
+    lines.push(headers.join(';'));
+
+    list.forEach((s, idx) => {
+      const row = [
+        idx + 1,
+        s.rankShort,
+        s.fullName,
+        s.asm,
+        s.specialty,
+        s.company || '-',
+        s.barracksRoom || '-',
+        s.bedNumber || '-',
+        s.isGoingOut ? 'ΕΞΟΔΟΥΧΟΣ' : 'ΜΕΣΑ',
+        s.dutyStatusText || '-',
+        s.phone || '-',
+        s.notes || '-'
+      ];
+      lines.push(row.map(escapeCsv).join(';'));
+    });
+
+    return BOM + lines.join('\r\n');
+  }
+
+  /**
+   * Exports Exodouchoi list to CSV file.
+   */
+  async exportExodouchoiToCsv(plan: DailyExodouchoiPlan, onlyGoingOut = false): Promise<boolean> {
+    const unit = this.storage.unitInfo();
+    const content = this.generateExodouchoiCsv(plan, onlyGoingOut);
+    const suffix = onlyGoingOut ? 'ΕΞΟΔΟΥΧΟΙ' : 'ΟΛΗ_Η_ΔΥΝΑΜΗ';
+    const filename = `Κατάσταση_Εξοδούχων_${unit.name.replace(/[\/\s]/g, '_')}_${plan.date}_${suffix}.csv`;
+    return this.storage.downloadCsvFile(content, filename);
+  }
+
+  /**
+   * Exports Exodouchoi list to Excel (.xlsx) workbook.
+   */
+  async exportExodouchoiToExcel(plan: DailyExodouchoiPlan, onlyGoingOut = false): Promise<boolean> {
+    const unit = this.storage.unitInfo();
+    const list = onlyGoingOut ? plan.soldiers.filter(s => s.isGoingOut) : plan.soldiers;
+    const wb = XLSX.utils.book_new();
+
+    const rows: (string | number)[][] = [
+      [`${unit.name} - ${unit.division}`],
+      [`ΚΑΤΑΣΤΑΣΗ ΕΞΟΔΟΥΧΩΝ — ${formatGreekDate(plan.date)}`],
+      [onlyGoingOut ? 'ΜΟΝΟ ΕΞΟΔΟΥΧΟΙ' : 'ΟΛΗ Η ΔΥΝΑΜΗ ΜΟΝΑΔΑΣ'],
+      [],
+      [
+        'Α/Α',
+        'Βαθμός',
+        'Ονοματεπώνυμο',
+        'ΑΣΜ',
+        'Ειδικότητα',
+        'Λόχος',
+        'Θάλαμος',
+        'Κρεβάτι',
+        'Κατάσταση',
+        'Υπηρεσία / Αιτιολογία',
+        'Τηλέφωνο',
+        'Παρατηρήσεις'
+      ]
+    ];
+
+    list.forEach((s, idx) => {
+      rows.push([
+        idx + 1,
+        s.rankShort,
+        s.fullName,
+        s.asm,
+        s.specialty,
+        s.company || '-',
+        s.barracksRoom || '-',
+        s.bedNumber || '-',
+        s.isGoingOut ? 'ΕΞΟΔΟΥΧΟΣ' : 'ΜΕΣΑ',
+        s.dutyStatusText || '-',
+        s.phone || '-',
+        s.notes || '-'
+      ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [
+      { wch: 6 },
+      { wch: 10 },
+      { wch: 30 },
+      { wch: 16 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 12 },
+      { wch: 10 },
+      { wch: 15 },
+      { wch: 35 },
+      { wch: 15 },
+      { wch: 25 }
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Εξοδούχοι');
+    const suffix = onlyGoingOut ? 'ΕΞΟΔΟΥΧΟΙ' : 'ΟΛΟΙ';
+    const filename = `Εξοδούχοι_${unit.name.replace(/[\/\s]/g, '_')}_${plan.date}_${suffix}.xlsx`;
+    return this.saveWorkbook(wb, filename);
   }
 }

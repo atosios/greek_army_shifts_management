@@ -314,6 +314,16 @@
   padding: 0.05rem 0.35rem;
 }
 
+.penalty-tag {
+  font-size: 0.65rem;
+  padding: 0.05rem 0.35rem;
+  background-color: #FEF2F2;
+  color: #DC2626;
+  border: 1px solid #FECACA;
+  font-weight: 700;
+  border-radius: 4px;
+}
+
 .soldier-card-actions {
   display: flex;
   align-items: center;
@@ -454,4 +464,224 @@
   align-items: center;
   gap: 0.3rem;
   flex-shrink: 0;
+}
+
+/* Preferences Badges on Soldier Cards */
+.pref-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.12rem 0.45rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.pref-badge-pill:hover {
+  filter: brightness(0.95);
+  transform: translateY(-1px);
+}
+
+.pref-badge-pill.pref-sat {
+  background-color: #EEF2FF;
+  color: #3730A3;
+  border: 1px solid #C7D2FE;
+}
+
+.pref-badge-pill.pref-sun {
+  background-color: #F0FDF4;
+  color: #166534;
+  border: 1px solid #BBF7D0;
+}
+
+.btn-pref-ghost {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.08rem 0.35rem;
+  border-radius: 4px;
+  background: transparent;
+  color: #94A3B8;
+  border: 1px dashed #CBD5E1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.btn-pref-ghost:hover {
+  background: #F1F5F9;
+  color: #334155;
+  border-color: #94A3B8;
+}
+
+.btn-derive-duties {
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Preferences Modal Styles */
+.modal-pref-dialog {
+  max-width: 680px;
+  width: 95%;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.pref-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  overflow: hidden;
+  padding: 1rem 1.25rem;
+}
+
+.pref-modal-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.pref-filter-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #F1F5F9;
+  padding: 0.2rem;
+  border-radius: 6px;
+}
+
+.pref-filter-tabs .btn-tab {
+  border: none;
+  background: transparent;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748B;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.pref-filter-tabs .btn-tab.active {
+  background: #FFFFFF;
+  color: #0F172A;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.pref-search-wrap input {
+  width: 190px;
+}
+
+.pref-soldiers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  overflow-y: auto;
+  max-height: 52vh;
+  padding-right: 0.25rem;
+}
+
+.pref-soldier-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  transition: background-color 0.12s ease;
+}
+
+.pref-soldier-row:hover {
+  background: #F8FAFC;
+}
+
+.pref-soldier-info {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.pref-soldier-rank {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748B;
+}
+
+.pref-soldier-name {
+  font-size: 0.85rem;
+  color: #0F172A;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pref-soldier-company {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.35rem;
+  background: #F1F5F9;
+  color: #475569;
+  border-radius: 3px;
+}
+
+.pref-soldier-spec {
+  font-size: 0.7rem;
+  color: #94A3B8;
+}
+
+.pref-selector-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.btn-pref-choice {
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  color: #475569;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.btn-pref-choice:hover {
+  background: #F1F5F9;
+  border-color: #94A3B8;
+}
+
+.btn-pref-choice.active-sat {
+  background: #4338CA;
+  border-color: #3730A3;
+  color: #FFFFFF;
+  box-shadow: 0 1px 2px rgba(67, 56, 202, 0.25);
+}
+
+.btn-pref-choice.active-sun {
+  background: #16A34A;
+  border-color: #15803D;
+  color: #FFFFFF;
+  box-shadow: 0 1px 2px rgba(22, 163, 74, 0.25);
+}
+
+.btn-pref-choice.active-none {
+  background: #64748B;
+  border-color: #475569;
+  color: #FFFFFF;
 }
