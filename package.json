@@ -1,6 +1,6 @@
 {
   "name": "army-shift-app",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Greek Army Shifts Management Desktop Application",
   "author": "Hellenic Army Shift Management",
   "main": "electron-main.js",
